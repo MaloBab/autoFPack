@@ -8,8 +8,9 @@ const menuItems = [
   { label: 'Résultats', route: '/resultats', icon: '📈' },
   { label: 'Paramètres', route: '/parametres', icon: '⚙️' }
 ]
-</script>
 
+import icon from '../assets/signin.png'
+</script>
 <template>
   <nav class="sidebar">
     <ul>
@@ -20,16 +21,31 @@ const menuItems = [
         </router-link>
       </li>
     </ul>
+    <router-link to="/signIn" class="menu-link profil-link">
+      <img class="signIn" :src="icon" alt="signIn" />
+      Profil
+    </router-link>
   </nav>
 </template>
 
 
 <style scoped>
 .sidebar {
-  width: 220px;
+  width: 20%;
   background-color: #1e1e1e;
   color: white;
-  padding: 1rem;
+  padding: 1%;
+  box-sizing: border-box;
+  transition: width 0.3s;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+}
+
+.sidebar ul {
+  list-style: none;
+  padding: 0%;
+  margin: 0%;
 }
 
 .menu-link {
@@ -38,18 +54,31 @@ const menuItems = [
   display: flex;
   align-items: center;
   padding: 0.75rem 0;
-  transition: background 0.2s;
+  font-size: 1.1rem;
+  transition: background 0.2s, font-size 0.2s;
 }
 
 .menu-link:hover {
   background-color: #333;
-  border-radius: 6px;
-  padding-left: 0.5rem;
+  border-radius: 5%;
+  padding-left: 5%;
 }
 
 .icon {
-  width: 24px;
-  margin-right: 0.75rem;
-  text-align: center;
+  width: 20%;
+  margin-right: 0%;
+  font-size: 110%;
 }
+
+.profil-link {
+  margin-top: auto;
+  padding-bottom: 1%;
+}
+
+.signIn {
+  width: 15%;
+  height: auto;
+  margin-right: 5%;
+}
+
 </style>
