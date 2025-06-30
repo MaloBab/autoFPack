@@ -22,12 +22,20 @@ const emit = defineEmits(['toggle-sidebar'])
   position: relative;
 }
 .sidebar-toggle {
-  font-size: 150%;
+  font-size: 3vw;
   background: none;
-  border: orange solid 2%;
+  border: none;
+  color: #d80000;
   cursor: pointer;
-  margin-right: 120%;
+  padding: 0.5vw 0.5vw;    
+  border-radius: 0.5vw;
+  transition: background 0.2s;
 }
+
+.sidebar-toggle:hover {
+  background: #ffe066;
+}
+
 .logo {
   position: absolute;
   left: 50%;

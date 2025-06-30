@@ -87,6 +87,7 @@ import icon from '../assets/signin.png'
   width: 15%;
   height: auto;
   margin-right: 5%;
+  margin-bottom: 3%;
 }
 
 </style>
