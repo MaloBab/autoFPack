@@ -1,4 +1,5 @@
 <script setup>
+defineProps({ open: Boolean })
 const menuItems = [
   { label: 'Dashboard', route: '/', icon: '📊' },
   { label: 'Produits', route: '/produits', icon: '📦' },
@@ -12,7 +13,7 @@ const menuItems = [
 import icon from '../assets/signin.png'
 </script>
 <template>
-  <nav class="sidebar">
+ <nav class="sidebar" :class="{ closed: !open }">
     <ul>
       <li v-for="item in menuItems" :key="item.label">
         <router-link :to="item.route" class="menu-link">
@@ -32,14 +33,21 @@ import icon from '../assets/signin.png'
 <style scoped>
 .sidebar {
   width: 20%;
+  min-width: 180px;
   background-color: #1e1e1e;
   color: white;
   padding: 1%;
   box-sizing: border-box;
-  transition: width 0.3s;
+  transition: width 0.3s, min-width 0.3s;
   display: flex;
   flex-direction: column;
   justify-content: space-between;
+  overflow: hidden;
+}
+.sidebar.closed {
+  width: 0;
+  min-width: 0;
+  padding: 0;
 }
 
 .sidebar ul {

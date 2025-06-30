@@ -1,13 +1,17 @@
 <script setup>
 import SideBar from './SideBar.vue'
 import HeaderBar from './HeaderBar.vue'
+import { ref } from 'vue'
+
+const isSidebarOpen = ref(true)
+
 </script>
 
 <template>
   <div class="app-container">
-    <HeaderBar />
+    <HeaderBar @toggle-sidebar="isSidebarOpen = !isSidebarOpen" />
     <div class="content-container">
-      <SideBar />
+      <SideBar :open="isSidebarOpen" />
       <div class="main-container">
         <router-view />
       </div>
