@@ -1,0 +1,27 @@
+{
+  "name": "fpack-app",
+  "private": true,
+  "version": "0.0.0",
+  "type": "module",
+  "main": "electron-main.js",
+  "scripts": {
+    "dev": "vite",
+    "electron": "electron .",
+    "dev:electron": "concurrently \"npm run dev\" \"wait-on http://localhost:5173 && npm run electron\"",
+    "build": "vite build",
+    "start": "electron ."
+  },
+  "dependencies": {
+    "vue": "^3.5.17"
+  },
+  "devDependencies": {
+    "@vitejs/plugin-vue": "^6.0.0",
+    "@vue/tsconfig": "^0.7.0",
+    "concurrently": "^9.2.0",
+    "electron": "^37.1.0",
+    "typescript": "~5.8.3",
+    "vite": "^7.0.0",
+    "vue-tsc": "^2.2.10",
+    "wait-on": "^8.0.3"
+  }
+}
