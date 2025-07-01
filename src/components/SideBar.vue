@@ -2,15 +2,13 @@
 defineProps({ open: Boolean })
 const menuItems = [
   { label: 'Dashboard', route: '/', icon: '📊' },
-  { label: 'Produits', route: '/produits', icon: '📦' },
   { label: 'Fournisseurs', route: '/fournisseurs', icon: '🏭' },
   { label: 'Clients', route: '/clients', icon: '👤' },
-  { label: 'Robots', route: '/robots', icon: '🤖' },
-  { label: 'Résultats', route: '/resultats', icon: '📈' },
-  { label: 'Paramètres', route: '/parametres', icon: '⚙️' }
+  { label: 'Produits', route: '/produits', icon: '🧩' },
+  { label: 'F-Pack', route: '/fpack', icon: '📦' },
+  { label: 'Résultats', route: '/resultats', icon: '📈' }
 ]
 
-import icon from '../assets/signin.png'
 </script>
 <template>
  <nav class="sidebar" :class="{ closed: !open }">
@@ -22,9 +20,9 @@ import icon from '../assets/signin.png'
         </router-link>
       </li>
     </ul>
-    <router-link to="/signIn" class="menu-link profil-link">
-      <img class="signIn" :src="icon" alt="signIn" />
-      Profil
+    <router-link to="/parametres" class="menu-link param-link">
+      <span class="iconfooter">⚙️</span>
+      Paramètres
     </router-link>
   </nav>
 </template>
@@ -33,7 +31,7 @@ import icon from '../assets/signin.png'
 <style scoped>
 .sidebar {
   width: 20%;
-  min-width: 180px;
+  min-width: 18%;
   background-color: #1e1e1e;
   color: white;
   padding: 1%;
@@ -78,16 +76,14 @@ import icon from '../assets/signin.png'
   font-size: 110%;
 }
 
-.profil-link {
+.param-link {
   margin-top: auto;
   padding-bottom: 1%;
 }
-
-.signIn {
-  width: 15%;
-  height: auto;
-  margin-right: 5%;
-  margin-bottom: 3%;
+.iconfooter {
+  width: 20%;
+  margin-right: 0%;
+  font-size: 130%;
 }
 
 </style>

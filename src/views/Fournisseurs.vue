@@ -1,12 +1,17 @@
-<script setup>
+<script lang="ts">
+import { defineComponent } from 'vue';
+import PageHeader from '../components/PageHeader.vue';
+
+export default defineComponent({
+  name: 'Fournisseurs',
+  components: {
+    PageHeader
+  }
+});
 </script>
 
 <template>
   <div>
-    <h1>Fournisseurs</h1>
-    <p>Liste des fournisseurs...</p>
+    <PageHeader titre="Fournisseurs" />
   </div>
 </template>
-
-<style scoped>
-</style>

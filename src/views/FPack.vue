@@ -3,8 +3,8 @@
 
 <template>
   <div>
-    <h1>Robot</h1>
-    <p>Liste des robots...</p>
+    <h1>FPack</h1>
+    <p>Liste des FPacks...</p>
   </div>
 </template>
 

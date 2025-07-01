@@ -3,7 +3,6 @@ import path from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { dirname } from 'node:path'
 
-// Recrée le chemin __dirname en ESM
 const __filename = fileURLToPath(import.meta.url)
 const __dirname = dirname(__filename)
 
@@ -30,9 +29,8 @@ function createWindow() {
   if (app.isPackaged) {
     win.loadFile(path.join(__dirname, 'dist', 'index.html'))
   } else {
-    // Mode développement : charger l'URL Vite
+
     win.loadURL(devServerUrl)
-    win.webContents.openDevTools()
   }
 
   win.on('closed', () => {
@@ -40,15 +38,13 @@ function createWindow() {
   })
 }
 
-// App prête → créer la fenêtre
+
 app.whenReady().then(createWindow)
 
-// Recrée la fenêtre si l'app est relancée (macOS)
 app.on('activate', () => {
   if (BrowserWindow.getAllWindows().length === 0) createWindow()
 })
 
-// Quitter l'app si toutes les fenêtres sont fermées (sauf macOS)
 app.on('window-all-closed', () => {
   if (process.platform !== 'darwin') app.quit()
 })

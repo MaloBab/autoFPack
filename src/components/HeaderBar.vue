@@ -32,6 +32,10 @@ const emit = defineEmits(['toggle-sidebar'])
   transition: background 0.2s;
 }
 
+.sidebar-toggle:focus {
+  outline: none;
+}
+
 .sidebar-toggle:hover {
   background: #ffe066;
 }
