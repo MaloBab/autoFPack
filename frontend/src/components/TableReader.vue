@@ -1,6 +1,7 @@
 <script setup lang="ts">
-import { defineEmits, defineProps } from 'vue'
+import { computed, defineEmits, defineProps } from 'vue'
 import { useTableReader } from '../composables/useTableReader'
+import Searcher from './Searcher.vue'
 import { ref, watch } from 'vue'
 
 const scrollContainer = ref<HTMLElement | null>(null)
@@ -17,10 +18,49 @@ const {
   validateAdd, cancelAdd, startEdit, validateEdit, cancelEdit, deleteRow
 } = useTableReader(props, emit)
 
+const filters = ref<Record<string, Set<any>>>({})
+
+// Valeurs distinctes pour chaque colonne
+const columnValues = computed(() => {
+  const map: Record<string, Set<any>> = {}
+  for (const row of rows.value) {
+    for (const col of columns.value) {
+      map[col] ??= new Set()
+      map[col].add(row[col])
+    }
+  }
+  return map
+})
+
+// Filtrage
+const filteredRows = computed(() =>
+  rows.value.filter(row =>
+    columns.value.every(col =>
+      !filters.value[col] || filters.value[col].has(row[col])
+    )
+  )
+)
+
+function updateFilter(col: string, values: Set<any>) {
+  filters.value[col] = values
+}
+
 watch(() => props.ajouter, (val) => {
   if (val && scrollContainer.value) {
     scrollContainer.value.scrollTop = 0
   }
+})
+
+const valueLabels = computed(() => {
+  const map: Record<string, Record<any, string>> = {}
+
+  if (props.tableName === 'produits') {
+    map['fournisseur_id'] = Object.fromEntries(
+      fournisseurs.value.map(f => [f.id, f.nom])
+    )
+  }
+
+  return map
 })
 
 </script>
@@ -33,22 +73,27 @@ watch(() => props.ajouter, (val) => {
       <thead>
         <tr>
           <th v-for="col in columns" :key="col">
-            <template v-if="col === 'fournisseur_id' && props.tableName === 'produits'">
-              fournisseur
-            </template>
-            <template v-else>
-              {{ col }}
-            </template>
+            <div style="display: flex; align-items: center; gap: 0.3rem;">
+              <span>
+                <template v-if="col === 'fournisseur_id' && props.tableName === 'produits'">fournisseur</template>
+                <template v-else>{{ col }}</template>
+              </span>
+              <Searcher
+                :column="col"
+                :values="[...columnValues[col] || []]"
+                :selected="filters[col] || new Set([...columnValues[col] || []])"
+                :labels="valueLabels[col]"
+                @filter-change="updateFilter"
+              />
+            </div>
           </th>
           <th>Actions</th>
         </tr>
       </thead>
     </table>
-    <!-- Table scrollable pour le corps -->
     <div class="table-body-scroll" ref="scrollContainer">
       <table>
         <tbody>
-          <!-- Ligne d'ajout -->
           <tr v-if="ajouter">
             <td v-for="col in columns" :key="col">
               <template v-if="col === 'fournisseur_id' && props.tableName === 'produits'">
@@ -65,24 +110,19 @@ watch(() => props.ajouter, (val) => {
               <button @click="cancelAdd">❌</button>
             </td>
           </tr>
-          <!-- Lignes normales -->
-          <tr v-for="row in rows" :key="row.id">
+          <tr v-for="row in filteredRows" :key="row.id">
             <td v-for="col in columns" :key="col">
-              <!-- Mode édition fournisseur -->
               <template v-if="editingId === row.id && col === 'fournisseur_id' && props.tableName === 'produits'">
                 <select v-model="editRow.fournisseur_nom" @keyup.enter="validateEdit(row.id)">
                   <option v-for="f in fournisseurs" :key="f.id" :value="f.nom">{{ f.nom }}</option>
                 </select>
               </template>
-              <!-- Mode édition autres champs -->
               <template v-else-if="editingId === row.id && col !== 'id'">
                 <input v-model="editRow[col]" @keyup.enter="validateEdit(row.id)" />
               </template>
-              <!-- Affichage nom fournisseur -->
               <template v-else-if="col === 'fournisseur_id' && props.tableName === 'produits'">
                 {{ fournisseurs.find(f => f.id === row.fournisseur_id)?.nom || row.fournisseur_id }}
               </template>
-              <!-- Affichage normal -->
               <template v-else>
                 {{ row[col] }}
               </template>
