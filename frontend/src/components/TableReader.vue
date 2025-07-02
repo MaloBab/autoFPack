@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref, onMounted, watch, defineEmits } from 'vue'
+import { ref, onMounted, watch, defineEmits, onBeforeUnmount } from 'vue'
 import axios from 'axios'
 
 const emit = defineEmits(['added', 'cancelled'])
@@ -14,6 +14,25 @@ const columns = ref<string[]>([])
 const rows = ref<any[]>([])
 const newRow = ref<any>({})
 const adding = ref(false)
+const editingId = ref<number|null>(null)
+const editRow = ref<any>({})
+const fournisseurs = ref<{ id: number, nom: string }[]>([])
+
+const fetchFournisseurs = async () => {
+  if (props.tableName === 'produits') {
+    const res = await axios.get(
+      props.apiUrl
+        ? `${props.apiUrl}/fournisseurs`
+        : `http://localhost:8000/fournisseurs`
+    )
+    fournisseurs.value = res.data
+  }
+}
+
+onMounted(() => {
+  fetchFournisseurs()
+})
+
 
 const fetchData = async () => {
   const colRes = await axios.get(
@@ -29,6 +48,9 @@ const fetchData = async () => {
       : `http://localhost:8000/${props.tableName}`
   )
   rows.value = dataRes.data
+  if (props.tableName === 'produits') {
+    await fetchFournisseurs()
+  }
 }
 
 onMounted(fetchData)
@@ -40,13 +62,29 @@ watch(() => props.ajouter, (val) => {
 function startAddRow() {
   if (adding.value) return
   adding.value = true
+    setTimeout(() => {
+    const scrollDiv = document.querySelector('.table-body-scroll')
+    if (scrollDiv) scrollDiv.scrollTop = 0
+  }, 0)
   newRow.value = {}
-  columns.value.forEach(col => newRow.value[col] = '')
+  columns.value.forEach(col => {
+    if (col === 'fournisseur_id' && props.tableName === 'produits') {
+      newRow.value['fournisseur_nom'] = fournisseurs.value[0]?.nom || ''
+    } else {
+      newRow.value[col] = ''
+    }
+  })
 }
 
 async function validateAdd() {
   try {
     const dataToSend = { ...newRow.value }
+    // Pour produits, convertir le nom du fournisseur en ID
+    if (props.tableName === 'produits') {
+      const fournisseur = fournisseurs.value.find(f => f.nom === dataToSend.fournisseur_nom)
+      dataToSend.fournisseur_id = fournisseur?.id
+      delete dataToSend.fournisseur_nom
+    }
     delete dataToSend.id
     await axios.post(
       props.apiUrl
@@ -66,40 +104,133 @@ function cancelAdd() {
   adding.value = false
   emit('cancelled')
 }
+
+function startEdit(row: any) {
+  editingId.value = row.id
+  editRow.value = { ...row }
+  // Pour produits, ajouter fournisseur_nom pour l'édition
+  if (props.tableName === 'produits' && 'fournisseur_id' in row) {
+    const fournisseur = fournisseurs.value.find(f => f.id === row.fournisseur_id)
+    editRow.value.fournisseur_nom = fournisseur?.nom || ''
+  }
+}
+
+async function validateEdit(rowId: number) {
+  try {
+    const dataToSend = { ...editRow.value }
+    if (props.tableName === 'produits') {
+      const fournisseur = fournisseurs.value.find(f => f.nom === dataToSend.fournisseur_nom)
+      dataToSend.fournisseur_id = fournisseur?.id
+      delete dataToSend.fournisseur_nom
+    }
+    await axios.put(
+      props.apiUrl
+        ? `${props.apiUrl}/${props.tableName}/${rowId}`
+        : `http://localhost:8000/${props.tableName}/${rowId}`,
+      dataToSend
+    )
+    editingId.value = null
+    await fetchData()
+  } catch (e) {
+    alert("Erreur lors de la modification")
+  }
+}
+
+function cancelEdit() {
+  editingId.value = null
+}
+
+async function deleteRow(rowId: number) {
+  try {
+    await axios.delete(
+      props.apiUrl
+        ? `${props.apiUrl}/${props.tableName}/${rowId}`
+        : `http://localhost:8000/${props.tableName}/${rowId}`
+    )
+    await fetchData()
+  } catch (e) {
+    alert("Erreur lors de la suppression")
+  }
+}
 </script>
 
 <template>
-  <div>
-    <table>
+  <div class="table-container">
+    <!-- Table pour l'en-tête, non scrollable -->
+    <table class="table-head">
       <thead>
         <tr>
-          <th v-for="col in columns" :key="col">{{ col }}</th>
+          <th v-for="col in columns" :key="col">
+            <template v-if="col === 'fournisseur_id' && props.tableName === 'produits'">
+              fournisseur
+            </template>
+            <template v-else>
+              {{ col }}
+            </template>
+          </th>
           <th>Actions</th>
         </tr>
       </thead>
-      <tbody>
-        <tr v-if="adding">
-          <td v-for="col in columns" :key="col">
-            <input v-if="col !== 'id'" v-model="newRow[col]" />
-          </td>
-          <td class="actions">
-            <button @click="validateAdd">✅</button>
-            <button @click="cancelAdd">❌</button>
-          </td>
-        </tr>
-        <tr v-for="row in rows" :key="row.id">
-          <td v-for="col in columns" :key="col">{{ row[col] }}</td>
-          <td class="actions">
-            <button title="Éditer">✏️</button>
-            <button title="Supprimer">🗑️</button>
-          </td>
-        </tr>
-      </tbody>
     </table>
+    <!-- Table scrollable pour le corps -->
+    <div class="table-body-scroll">
+      <table>
+        <tbody>
+          <!-- Ligne d'ajout -->
+          <tr v-if="adding">
+            <td v-for="col in columns" :key="col">
+              <template v-if="col === 'fournisseur_id' && props.tableName === 'produits'">
+                <select v-model="newRow.fournisseur_nom">
+                  <option v-for="f in fournisseurs" :key="f.id" :value="f.nom">{{ f.nom }}</option>
+                </select>
+              </template>
+              <template v-else-if="col !== 'id'">
+                <input v-model="newRow[col]" @keyup.enter="validateAdd" />
+              </template>
+            </td>
+            <td class="actions">
+              <button @click="validateAdd">✅</button>
+              <button @click="cancelAdd">❌</button>
+            </td>
+          </tr>
+          <!-- Lignes normales -->
+          <tr v-for="row in rows" :key="row.id">
+            <td v-for="col in columns" :key="col">
+              <!-- Mode édition fournisseur -->
+              <template v-if="editingId === row.id && col === 'fournisseur_id' && props.tableName === 'produits'">
+                <select v-model="editRow.fournisseur_nom" @keyup.enter="validateEdit(row.id)">
+                  <option v-for="f in fournisseurs" :key="f.id" :value="f.nom">{{ f.nom }}</option>
+                </select>
+              </template>
+              <!-- Mode édition autres champs -->
+              <template v-else-if="editingId === row.id && col !== 'id'">
+                <input v-model="editRow[col]" @keyup.enter="validateEdit(row.id)" />
+              </template>
+              <!-- Affichage nom fournisseur -->
+              <template v-else-if="col === 'fournisseur_id' && props.tableName === 'produits'">
+                {{ fournisseurs.find(f => f.id === row.fournisseur_id)?.nom || row.fournisseur_id }}
+              </template>
+              <!-- Affichage normal -->
+              <template v-else>
+                {{ row[col] }}
+              </template>
+            </td>
+            <td class="actions">
+              <template v-if="editingId === row.id">
+                <button @click="validateEdit(row.id)">✅</button>
+                <button @click="cancelEdit">❌</button>
+              </template>
+              <template v-else>
+                <button title="Éditer" @click="startEdit(row)">✏️</button>
+                <button title="Supprimer" @click="deleteRow(row.id)">🗑️</button>
+              </template>
+            </td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
   </div>
 </template>
-
-
 
 <style scoped>
 .add-btn {
@@ -116,16 +247,59 @@ function cancelAdd() {
   background: #1d4ed8;
 }
 
-table {
-  width: 80%;
+/* Conteneur principal du tableau */
+.table-container {
+  width: 100%;
+  background: #f7f7f7;
+}
+
+/* Table d'en-tête (fixe) */
+.table-head {
+  width: 90%;
   margin-top: 3%;
   margin-left: 2%;
+  min-width: 80%;
   border-collapse: separate;
   border-spacing: 0;
   background: white;
   font-family: inherit;
   border-radius: 1.5%;
-  overflow: hidden; 
+  table-layout: fixed;
+}
+
+/* Corps scrollable */
+.table-body-scroll {
+  width: 90%;
+  margin-left: 2%;
+  max-height: 40vh;
+  overflow-y: auto;
+  background: white;
+  scrollbar-width: thin;
+  scrollbar-color: #b3b3b3 #f3f4f6;
+}
+
+.table-body-scroll::-webkit-scrollbar {
+  width: 10px;
+  height: 10px;
+  background: #f3f4f6;
+  border-radius: 8px;
+}
+.table-body-scroll::-webkit-scrollbar-thumb {
+  background: #b3b3b3;
+  border-radius: 8px;
+}
+.table-body-scroll::-webkit-scrollbar-thumb:hover {
+  background: #4d4e4f;
+}
+
+/* Table du corps */
+.table-body-scroll table {
+  width: 100%;
+  border-collapse: separate;
+  border-spacing: 0;
+  background: white;
+  font-family: inherit;
+  table-layout: fixed;
 }
 
 th, td {
@@ -171,5 +345,24 @@ td {
 
 .actions button:hover {
   color: #2563eb;
+}
+
+input, select {
+  border: 1px solid #bbb;
+  border-radius: 4px;
+  padding: 0.3rem 0.5rem;
+  font-size: 1rem;
+  font-family: inherit;
+  background: #f9fafb;
+  color: #222;
+  outline: none;
+  transition: border 0.2s;
+  width: 100%;
+  min-width: 60px;
+  max-width: 200px;
+}
+input:focus, select:focus {
+  border: 1.5px solid #2563eb;
+  background: #fff;
 }
 </style>

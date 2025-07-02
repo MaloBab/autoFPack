@@ -8,7 +8,7 @@ class Fournisseur(Base):
 
     id = Column(Integer, primary_key=True, index=True)
     nom = Column(String(255), unique=True, index=True, nullable=False)
-    produits = relationship("Produit", back_populates="fournisseur")
+    produits = relationship("Produit", back_populates="fournisseur", cascade="all, delete-orphan")
 
 class Client(Base):
     __tablename__ = "clients"
@@ -20,6 +20,6 @@ class Produit(Base):
     id = Column(Integer, primary_key=True, index=True)
     nom = Column(String(255), nullable=False)
     description = Column(String(255), nullable=True)
-    fournisseur_id = Column(Integer, ForeignKey("fournisseurs.id"), nullable=False)
+    fournisseur_id = Column(Integer, ForeignKey("fournisseurs.id", ondelete="CASCADE"), nullable=False)
     type = Column(String(255))
     fournisseur = relationship("Fournisseur", back_populates="produits")
