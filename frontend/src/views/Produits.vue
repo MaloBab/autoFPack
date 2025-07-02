@@ -1,21 +1,23 @@
-<script lang="ts">
-import { defineComponent } from 'vue';
-import PageHeader from '../components/PageHeader.vue';
+<script setup lang="ts">
+import { ref } from 'vue'
+import PageHeader from '../components/PageHeader.vue'
 import TableReader from '../components/TableReader.vue'
+const ajouter = ref(false)
 
-export default defineComponent({
-  name: 'Produits',
-  components: {
-    PageHeader,
-    TableReader
-  }
-});
+function resetAjouter() {
+  ajouter.value = false
+}
+
 </script>
 
 <template>
   <div>
-    <PageHeader titre="Produits" />
-     <TableReader tableName="produits" />
+    <PageHeader titre="Produits" @ajouter="ajouter = true"/>
+    <TableReader
+      tableName="produits"
+      :ajouter="ajouter"
+      @added="resetAjouter"
+      @cancelled="resetAjouter"
+    />
   </div>
 </template>
-

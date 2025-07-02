@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { defineEmits } from 'vue'
-import logo from '../assets/FANUC.png'
+const logo = new URL('../assets/FANUC.png', import.meta.url).href
 const emit = defineEmits(['toggle-sidebar'])
 </script>
 

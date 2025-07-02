@@ -8,7 +8,8 @@ const props = defineProps({
   }
 })
 
-// Retire le "s" final si le titre est au pluriel pour avoir "Produit" au lieu de "Produits"
+const emit = defineEmits(['ajouter'])
+
 const titreSingulier = computed(() =>
   props.titre.endsWith('s') ? props.titre.slice(0, -1) : props.titre
 )
@@ -16,8 +17,8 @@ const titreSingulier = computed(() =>
 
 <template>
   <div>
-    <h1 class="text-2xl font-bold mb-4">{{ titre }}</h1>
-    <button class="bg-blue-600 text-white font-semibold py-2 px-4 rounded">
+    <h1 class="title">{{ titre }}</h1>
+    <button class="add" @click="emit('ajouter')">
       Ajouter {{ titreSingulier }}
     </button>
   </div>
