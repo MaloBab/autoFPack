@@ -1,9 +1,11 @@
-import { ref, onMounted, watch } from 'vue'
+import { ref, onMounted, watch, type Ref } from 'vue'
 import axios from 'axios'
 
 export function useTableReader(
   props: { tableName: string; apiUrl?: string; ajouter?: boolean },
-  emit: (event: 'added' | 'cancelled') => void ){
+  emit: (event: 'added' | 'cancelled') => void,
+  filters: Ref<Record<string, Set<any>>>)
+  {
   const columns = ref<string[]>([])
   const rows = ref<any[]>([])
   const newRow = ref<any>({})
@@ -26,6 +28,9 @@ export function useTableReader(
 
     const dataRes = await axios.get(`${urlBase}/${props.tableName}`)
     rows.value = dataRes.data
+    filters.value = {}
+    columns.value.forEach(col => {
+      filters.value[col] = new Set(rows.value.map(row => row[col]))})
 
     if (props.tableName === 'produits') await fetchFournisseurs()
   }

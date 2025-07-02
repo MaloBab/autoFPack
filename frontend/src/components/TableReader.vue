@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { computed, defineEmits, defineProps } from 'vue'
 import { useTableReader } from '../composables/useTableReader'
-import Searcher from './Searcher.vue'
+import Filters from './Filters.vue'
 import { ref, watch } from 'vue'
 
 const scrollContainer = ref<HTMLElement | null>(null)
@@ -10,15 +10,17 @@ const props = defineProps<{
   tableName: string
   apiUrl?: string
   ajouter?: boolean
+  search?: string
 }>()
 const emit = defineEmits(['added', 'cancelled'])
 
+const filters = ref<Record<string, Set<any>>>({})
 const {
   columns, rows, newRow, editingId, editRow, fournisseurs,
   validateAdd, cancelAdd, startEdit, validateEdit, cancelEdit, deleteRow
-} = useTableReader(props, emit)
+} = useTableReader(props, emit,filters)
 
-const filters = ref<Record<string, Set<any>>>({})
+
 
 // Valeurs distinctes pour chaque colonne
 const columnValues = computed(() => {
@@ -34,11 +36,26 @@ const columnValues = computed(() => {
 
 // Filtrage
 const filteredRows = computed(() =>
-  rows.value.filter(row =>
-    columns.value.every(col =>
-      !filters.value[col] || filters.value[col].has(row[col])
+  rows.value
+    .filter(row =>
+      columns.value.every(col =>
+        !filters.value[col] || filters.value[col].has(row[col])
+      )
     )
-  )
+    .filter(row => {
+      if (!props.search) return true
+      const search = props.search.toLowerCase()
+      return columns.value.some(col => {
+      let cellValue = row[col]
+
+      // Si c'est un produit et qu'on est sur la colonne fournisseur_id
+      if (props.tableName === 'produits' && col === 'fournisseur_id') {
+        const fournisseur = fournisseurs.value.find(f => f.id === cellValue)
+        cellValue = fournisseur?.nom || ''
+      }
+
+      return String(cellValue).toLowerCase().includes(search)
+    })})
 )
 
 function updateFilter(col: string, values: Set<any>) {
@@ -78,7 +95,7 @@ const valueLabels = computed(() => {
                 <template v-if="col === 'fournisseur_id' && props.tableName === 'produits'">fournisseur</template>
                 <template v-else>{{ col }}</template>
               </span>
-              <Searcher
+              <Filters
                 :column="col"
                 :values="[...columnValues[col] || []]"
                 :selected="filters[col] || new Set([...columnValues[col] || []])"
