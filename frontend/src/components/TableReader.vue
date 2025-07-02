@@ -1,158 +1,30 @@
 <script setup lang="ts">
-import { ref, onMounted, watch, defineEmits, onBeforeUnmount } from 'vue'
-import axios from 'axios'
+import { defineEmits, defineProps } from 'vue'
+import { useTableReader } from '../composables/useTableReader'
+import { ref, watch } from 'vue'
 
-const emit = defineEmits(['added', 'cancelled'])
+const scrollContainer = ref<HTMLElement | null>(null)
 
 const props = defineProps<{
   tableName: string
   apiUrl?: string
   ajouter?: boolean
 }>()
+const emit = defineEmits(['added', 'cancelled'])
 
-const columns = ref<string[]>([])
-const rows = ref<any[]>([])
-const newRow = ref<any>({})
-const adding = ref(false)
-const editingId = ref<number|null>(null)
-const editRow = ref<any>({})
-const fournisseurs = ref<{ id: number, nom: string }[]>([])
-
-const fetchFournisseurs = async () => {
-  if (props.tableName === 'produits') {
-    const res = await axios.get(
-      props.apiUrl
-        ? `${props.apiUrl}/fournisseurs`
-        : `http://localhost:8000/fournisseurs`
-    )
-    fournisseurs.value = res.data
-  }
-}
-
-onMounted(() => {
-  fetchFournisseurs()
-})
-
-
-const fetchData = async () => {
-  const colRes = await axios.get(
-    props.apiUrl
-      ? `${props.apiUrl}/table-columns/${props.tableName}`
-      : `http://localhost:8000/table-columns/${props.tableName}`
-  )
-  columns.value = colRes.data
-
-  const dataRes = await axios.get(
-    props.apiUrl
-      ? `${props.apiUrl}/${props.tableName}`
-      : `http://localhost:8000/${props.tableName}`
-  )
-  rows.value = dataRes.data
-  if (props.tableName === 'produits') {
-    await fetchFournisseurs()
-  }
-}
-
-onMounted(fetchData)
+const {
+  columns, rows, newRow, editingId, editRow, fournisseurs,
+  validateAdd, cancelAdd, startEdit, validateEdit, cancelEdit, deleteRow
+} = useTableReader(props, emit)
 
 watch(() => props.ajouter, (val) => {
-  if (val) startAddRow()
+  if (val && scrollContainer.value) {
+    scrollContainer.value.scrollTop = 0
+  }
 })
 
-function startAddRow() {
-  if (adding.value) return
-  adding.value = true
-    setTimeout(() => {
-    const scrollDiv = document.querySelector('.table-body-scroll')
-    if (scrollDiv) scrollDiv.scrollTop = 0
-  }, 0)
-  newRow.value = {}
-  columns.value.forEach(col => {
-    if (col === 'fournisseur_id' && props.tableName === 'produits') {
-      newRow.value['fournisseur_nom'] = fournisseurs.value[0]?.nom || ''
-    } else {
-      newRow.value[col] = ''
-    }
-  })
-}
-
-async function validateAdd() {
-  try {
-    const dataToSend = { ...newRow.value }
-    // Pour produits, convertir le nom du fournisseur en ID
-    if (props.tableName === 'produits') {
-      const fournisseur = fournisseurs.value.find(f => f.nom === dataToSend.fournisseur_nom)
-      dataToSend.fournisseur_id = fournisseur?.id
-      delete dataToSend.fournisseur_nom
-    }
-    delete dataToSend.id
-    await axios.post(
-      props.apiUrl
-        ? `${props.apiUrl}/${props.tableName}`
-        : `http://localhost:8000/${props.tableName}`,
-      dataToSend
-    )
-    adding.value = false
-    await fetchData()
-    emit('added')
-  } catch (e) {
-    alert("Erreur lors de l'ajout")
-  }
-}
-
-function cancelAdd() {
-  adding.value = false
-  emit('cancelled')
-}
-
-function startEdit(row: any) {
-  editingId.value = row.id
-  editRow.value = { ...row }
-  // Pour produits, ajouter fournisseur_nom pour l'édition
-  if (props.tableName === 'produits' && 'fournisseur_id' in row) {
-    const fournisseur = fournisseurs.value.find(f => f.id === row.fournisseur_id)
-    editRow.value.fournisseur_nom = fournisseur?.nom || ''
-  }
-}
-
-async function validateEdit(rowId: number) {
-  try {
-    const dataToSend = { ...editRow.value }
-    if (props.tableName === 'produits') {
-      const fournisseur = fournisseurs.value.find(f => f.nom === dataToSend.fournisseur_nom)
-      dataToSend.fournisseur_id = fournisseur?.id
-      delete dataToSend.fournisseur_nom
-    }
-    await axios.put(
-      props.apiUrl
-        ? `${props.apiUrl}/${props.tableName}/${rowId}`
-        : `http://localhost:8000/${props.tableName}/${rowId}`,
-      dataToSend
-    )
-    editingId.value = null
-    await fetchData()
-  } catch (e) {
-    alert("Erreur lors de la modification")
-  }
-}
-
-function cancelEdit() {
-  editingId.value = null
-}
-
-async function deleteRow(rowId: number) {
-  try {
-    await axios.delete(
-      props.apiUrl
-        ? `${props.apiUrl}/${props.tableName}/${rowId}`
-        : `http://localhost:8000/${props.tableName}/${rowId}`
-    )
-    await fetchData()
-  } catch (e) {
-    alert("Erreur lors de la suppression")
-  }
-}
 </script>
+
 
 <template>
   <div class="table-container">
@@ -173,11 +45,11 @@ async function deleteRow(rowId: number) {
       </thead>
     </table>
     <!-- Table scrollable pour le corps -->
-    <div class="table-body-scroll">
+    <div class="table-body-scroll" ref="scrollContainer">
       <table>
         <tbody>
           <!-- Ligne d'ajout -->
-          <tr v-if="adding">
+          <tr v-if="ajouter">
             <td v-for="col in columns" :key="col">
               <template v-if="col === 'fournisseur_id' && props.tableName === 'produits'">
                 <select v-model="newRow.fournisseur_nom">
