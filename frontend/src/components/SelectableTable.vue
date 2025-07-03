@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref, computed, defineProps, defineEmits, onMounted, watch } from 'vue'
+import { ref, computed, defineProps, defineEmits, onMounted } from 'vue'
 import axios from 'axios'
 import Filters from '../components/Filters.vue'
 
@@ -105,12 +105,6 @@ function updateFilter(col: string, values: Set<any>) {
   filters.value[col] = values
 }
 
-// Scroll en haut si ajouter devient true
-watch(() => props.ajouter, (val) => {
-  if (val && scrollContainer.value) {
-    scrollContainer.value.scrollTop = 0
-  }
-})
 </script>
 
 <template>

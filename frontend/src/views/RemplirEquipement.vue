@@ -2,10 +2,12 @@
 import { ref, onMounted } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import axios from 'axios'
+import TextSearch from '../components/TextSearch.vue'
 import SelectableTable from '../components/SelectableTable.vue'
 
 const route = useRoute()
 const router = useRouter()
+const searchTerm = ref('')
 
 const equipementId = Number(route.params.id)
 const produitsAssocies = ref<Set<number>>(new Set())
@@ -30,23 +32,24 @@ onMounted(async () => {
 </script>
 
 <template>
-  <div class="remplir-container">
+<div class="remplir-container">
     <h2>Lier des produits à l'équipement n°{{ equipementId }}</h2>
 
     <div v-if="loading">Chargement...</div>
     <div v-else>
-      <SelectableTable
+    <SelectableTable
         tableName="produits"
         :selectedIds="produitsAssocies"
+        :search="searchTerm"
         @selection-changed="produitsAssocies = $event"
-      />
-
-      <div class="actions">
+    />
+    <TextSearch v-model="searchTerm"/>
+    <div class="actions">
         <button @click="enregistrer">Enregistrer</button>
-        <button @click="router.back()">Annuler</button>
-      </div>
+        <button @click="router.back()">Retour</button>
     </div>
-  </div>
+    </div>
+</div>
 </template>
 
 <style scoped>
