@@ -2,33 +2,18 @@
 import { ref, onMounted } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import axios from 'axios'
+import SelectableTable from '../components/SelectableTable.vue'
 
 const route = useRoute()
 const router = useRouter()
 
 const equipementId = Number(route.params.id)
-const produits = ref<{ id: number, nom: string }[]>([])
 const produitsAssocies = ref<Set<number>>(new Set())
 const loading = ref(true)
-
-
-
-async function fetchProduits() {
-  const res = await axios.get(`http://localhost:8000/produits`)
-  produits.value = res.data
-}
 
 async function fetchAssociations() {
   const res = await axios.get(`http://localhost:8000/groupeproduit/${equipementId}`)
   produitsAssocies.value = new Set(res.data.map((p: any) => p.produit_id))
-}
-
-function toggleProduit(id: number) {
-  if (produitsAssocies.value.has(id)) {
-    produitsAssocies.value.delete(id)
-  } else {
-    produitsAssocies.value.add(id)
-  }
 }
 
 async function enregistrer() {
@@ -39,7 +24,6 @@ async function enregistrer() {
 
 onMounted(async () => {
   loading.value = true
-  await fetchProduits()
   await fetchAssociations()
   loading.value = false
 })
@@ -51,14 +35,11 @@ onMounted(async () => {
 
     <div v-if="loading">Chargement...</div>
     <div v-else>
-      <ul class="produit-list">
-        <li v-for="p in produits" :key="p.id">
-          <label>
-            <input type="checkbox" :checked="produitsAssocies.has(p.id)" @change="() => toggleProduit(p.id)" />
-            {{ p.nom }}
-          </label>
-        </li>
-      </ul>
+      <SelectableTable
+        tableName="produits"
+        :selectedIds="produitsAssocies"
+        @selection-changed="produitsAssocies = $event"
+      />
 
       <div class="actions">
         <button @click="enregistrer">Enregistrer</button>
@@ -72,16 +53,22 @@ onMounted(async () => {
 .remplir-container {
   padding: 2rem;
 }
-.produit-list {
-  list-style: none;
-  padding: 0;
-}
-.produit-list li {
-  margin: 0.5rem 0;
-}
 .actions {
   margin-top: 1.5rem;
   display: flex;
   gap: 1rem;
+}
+button {
+  background-color: #2563eb;
+  color: white;
+  font-weight: 500;
+  font-size: 1rem;
+  padding: 0.6rem 1.2rem;
+  border-radius: 0.375rem;
+  cursor: pointer;
+  border: none;
+}
+button:hover {
+  background-color: #1040e8;
 }
 </style>

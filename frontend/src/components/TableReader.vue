@@ -97,7 +97,6 @@ const valueLabels = computed(() => {
 
 <template>
   <div class="table-container">
-    <!-- Table pour l'en-tête, non scrollable -->
     <table class="table-head">
       <thead>
         <tr>
