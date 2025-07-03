@@ -8,6 +8,7 @@ import Clients from '../views/Clients.vue'
 import FPack from '../views/FPack.vue'
 import Resultats from '../views/Resultats.vue'
 import Parametres from '../views/Parametres.vue'  
+import RemplirEquipement from '../views/RemplirEquipement.vue'
 
 const routes = [
   { path: '/', component: Dashboard },
@@ -18,8 +19,9 @@ const routes = [
   { path: '/fpack', component: FPack },
   { path: '/robots', component: Robots },
   { path: '/resultats', component: Resultats },
-  { path: '/parametres', component: Parametres }
-  
+  { path: '/parametres', component: Parametres },
+  { path: '/remplir/:tableName/:id', name: 'RemplirEquipement', component: RemplirEquipement }
+
 ]
 
 const router = createRouter({

@@ -189,11 +189,12 @@ def delete_groupe(id: int, db: Session = Depends(get_db)):
     return {"ok": True}
 
 # GROUPES PRODUITS
-@router.get("/groupe_produit", response_model=list[schemas.GroupeProduitRead])
-def list_groupe_produit(db: Session = Depends(get_db)):
-    return db.query(models.Groupe_Produit).all()
 
-@router.post("/groupe_produit", response_model=schemas.GroupeProduitRead)
+@router.get("/groupeproduit/{groupe_id}", response_model=list[schemas.GroupeProduitRead])
+def get_groupe_produit_by_groupe(groupe_id: int, db: Session = Depends(get_db)):
+    return db.query(models.Groupe_Produit).filter(models.Groupe_Produit.groupe_id == groupe_id).all()
+
+@router.post("/groupeproduit", response_model=schemas.GroupeProduitRead)
 def create_groupe_produit(groupe_produit: schemas.GroupeProduitCreate, db: Session = Depends(get_db)):
     db_groupe_produit = models.Groupe_Produit(**groupe_produit.dict())
     db.add(db_groupe_produit)
@@ -202,7 +203,7 @@ def create_groupe_produit(groupe_produit: schemas.GroupeProduitCreate, db: Sessi
     return db_groupe_produit
 
 
-@router.delete("/groupe_produit/{id}")
+@router.delete("/groupeproduit/{id}")
 def delete_groupe_produit(id: int, db: Session = Depends(get_db)):
     db_groupe_produit = db.query(models.Groupe_Produit).get(id)
     if not db_groupe_produit:

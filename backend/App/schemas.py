@@ -74,14 +74,12 @@ class GroupeRead(GroupeBase):
         orm_mode = True
 
 class GroupeProduitBase(BaseModel):
-    produit_id: int
     groupe_id: int
+    produit_id: int
 
 class GroupeProduitCreate(GroupeProduitBase):
     pass
 
 class GroupeProduitRead(GroupeProduitBase):
-    id: int
-
     class Config:
         orm_mode = True

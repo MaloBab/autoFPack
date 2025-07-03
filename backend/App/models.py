@@ -44,8 +44,7 @@ class Groupes(Base):
 
 class Groupe_Produit(Base):
     __tablename__ = "groupe_produit"
-    id = Column(Integer, primary_key=True, index=True)
-    produit_id = Column(Integer, ForeignKey("produits.id", ondelete="CASCADE"), nullable=False)
-    groupe_id = Column(Integer, ForeignKey("groupes.id", ondelete="CASCADE"), nullable=False)
+    groupe_id = Column(Integer, ForeignKey("groupes.id"), primary_key=True)
+    produit_id = Column(Integer, ForeignKey("produits.id"), primary_key=True)
     produits = relationship("Produit", back_populates="groupe_produit")
     groupes = relationship("Groupes", back_populates="groupe_produit")
