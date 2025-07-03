@@ -12,12 +12,21 @@ export function useTableReader(
   const editingId = ref<number|null>(null)
   const editRow = ref<any>({})
   const fournisseurs = ref<{ id: number, nom: string }[]>([])
+  const clients = ref<{ id: number, nom: string }[]>([])
 
   const fetchFournisseurs = async () => {
     if (props.tableName === 'produits') {
       const url = props.apiUrl ? `${props.apiUrl}/fournisseurs` : `http://localhost:8000/fournisseurs`
       const res = await axios.get(url)
       fournisseurs.value = res.data
+    }
+  }
+
+  const fetchClients = async () => {
+    if (props.tableName === 'robots') {
+      const url = props.apiUrl ? `${props.apiUrl}/clients` : `http://localhost:8000/clients`
+      const res = await axios.get(url)
+      clients.value = res.data
     }
   }
 
@@ -33,6 +42,7 @@ export function useTableReader(
       filters.value[col] = new Set(rows.value.map(row => row[col]))})
 
     if (props.tableName === 'produits') await fetchFournisseurs()
+    if (props.tableName === 'robots') await fetchClients()
   }
 
   onMounted(fetchData)
@@ -46,7 +56,11 @@ export function useTableReader(
     columns.value.forEach(col => {
       if (col === 'fournisseur_id' && props.tableName === 'produits') {
         newRow.value['fournisseur_nom'] = fournisseurs.value[0]?.nom || ''
-      } else {
+      } 
+      if (col === 'client' && props.tableName === 'robots') {
+        newRow.value['client_nom'] = clients.value[0]?.nom || ''
+      }
+      else {
         newRow.value[col] = ''
       }
     })
@@ -60,6 +74,13 @@ export function useTableReader(
         dataToSend.fournisseur_id = fournisseur?.id
         delete dataToSend.fournisseur_nom
       }
+
+      if (props.tableName === 'robots') {
+        const client = clients.value.find(c => c.nom === dataToSend.client_nom)
+        dataToSend.client = client?.id
+        delete dataToSend.client_nom
+      }
+
       delete dataToSend.id
       const url = props.apiUrl ? `${props.apiUrl}/${props.tableName}` : `http://localhost:8000/${props.tableName}`
       await axios.post(url, dataToSend)
@@ -81,6 +102,12 @@ export function useTableReader(
       const fournisseur = fournisseurs.value.find(f => f.id === row.fournisseur_id)
       editRow.value.fournisseur_nom = fournisseur?.nom || ''
     }
+
+    if (props.tableName === 'robots' && 'client' in row) {
+      const client = clients.value.find(c => c.id === row.client)
+      editRow.value.client_nom = client?.nom || ''
+    }
+
   }
 
   async function validateEdit(rowId: number) {
@@ -91,6 +118,12 @@ export function useTableReader(
         dataToSend.fournisseur_id = fournisseur?.id
         delete dataToSend.fournisseur_nom
       }
+      if (props.tableName === 'robots') {
+        const client = clients.value.find(c => c.nom === dataToSend.client_nom)
+        dataToSend.client = client?.id
+        delete dataToSend.client_nom
+      }
+
       const url = props.apiUrl ? `${props.apiUrl}/${props.tableName}/${rowId}` : `http://localhost:8000/${props.tableName}/${rowId}`
       await axios.put(url, dataToSend)
       editingId.value = null
@@ -115,7 +148,7 @@ export function useTableReader(
   }
 
   return {
-    columns, rows, newRow, editingId, editRow, fournisseurs,
+    columns, rows, newRow, editingId, editRow, fournisseurs, clients,
     validateAdd, cancelAdd, startEdit, validateEdit, cancelEdit, deleteRow
   }
 }

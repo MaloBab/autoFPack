@@ -121,3 +121,92 @@ def delete_client(id: int, db: Session = Depends(get_db)):
     db.delete(db_client)
     db.commit()
     return {"ok": True}
+
+# ROBOTS
+@router.get("/robots", response_model=list[schemas.RobotRead])
+def list_robots(db: Session = Depends(get_db)):
+    return db.query(models.Robots).all()
+
+@router.post("/robots", response_model=schemas.RobotRead)
+def create_robot(robot: schemas.RobotCreate, db: Session = Depends(get_db)):
+    db_robot = models.Robots(**robot.dict())
+    db.add(db_robot)
+    db.commit()
+    db.refresh(db_robot)
+    return db_robot
+
+@router.put("/robots/{id}", response_model=schemas.RobotRead)
+def update_robot(id: int, robot: schemas.RobotCreate, db: Session = Depends(get_db)):
+    db_robot = db.query(models.Robots).get(id)
+    if not db_robot:
+        raise HTTPException(status_code=404, detail="Robot non trouvé")
+    for key, value in robot.dict().items():
+        setattr(db_robot, key, value)
+    db.commit()
+    db.refresh(db_robot)
+    return db_robot
+
+@router.delete("/robots/{id}")
+def delete_robot(id: int, db: Session = Depends(get_db)):
+    db_robot = db.query(models.Robots).get(id)
+    if not db_robot:
+        raise HTTPException(status_code=404, detail="Robot non trouvé")
+    db.delete(db_robot)
+    db.commit()
+    return {"ok": True}
+
+# GROUPES
+@router.get("/groupes", response_model=list[schemas.GroupeRead])
+def list_groupes(db: Session = Depends(get_db)):
+    return db.query(models.Groupes).all()
+
+@router.post("/groupes", response_model=schemas.GroupeRead)
+def create_groupe(groupe: schemas.GroupeCreate, db: Session = Depends(get_db)):
+    db_groupe = models.Groupes(**groupe.dict())
+    db.add(db_groupe)
+    db.commit()
+    db.refresh(db_groupe)
+    return db_groupe
+
+@router.put("/groupes/{id}", response_model=schemas.GroupeRead)
+def update_groupe(id: int, groupe: schemas.GroupeCreate, db: Session = Depends(get_db)):
+    db_groupe = db.query(models.Groupes).get(id)
+    if not db_groupe:
+        raise HTTPException(status_code=404, detail="Groupe non trouvé")
+    for key, value in groupe.dict().items():
+        setattr(db_groupe, key, value)
+    db.commit()
+    db.refresh(db_groupe)
+    return db_groupe
+
+@router.delete("/groupes/{id}")
+def delete_groupe(id: int, db: Session = Depends(get_db)):
+    db_groupe = db.query(models.Groupes).get(id)
+    if not db_groupe:
+        raise HTTPException(status_code=404, detail="Groupe non trouvé")
+    db.delete(db_groupe)
+    db.commit()
+    return {"ok": True}
+
+# GROUPES PRODUITS
+@router.get("/groupe_produit", response_model=list[schemas.GroupeProduitRead])
+def list_groupe_produit(db: Session = Depends(get_db)):
+    return db.query(models.Groupe_Produit).all()
+
+@router.post("/groupe_produit", response_model=schemas.GroupeProduitRead)
+def create_groupe_produit(groupe_produit: schemas.GroupeProduitCreate, db: Session = Depends(get_db)):
+    db_groupe_produit = models.Groupe_Produit(**groupe_produit.dict())
+    db.add(db_groupe_produit)
+    db.commit()
+    db.refresh(db_groupe_produit)
+    return db_groupe_produit
+
+
+@router.delete("/groupe_produit/{id}")
+def delete_groupe_produit(id: int, db: Session = Depends(get_db)):
+    db_groupe_produit = db.query(models.Groupe_Produit).get(id)
+    if not db_groupe_produit:
+        raise HTTPException(status_code=404, detail="Groupe de produit non trouvé")
+    db.delete(db_groupe_produit)
+    db.commit()
+    return {"ok": True}

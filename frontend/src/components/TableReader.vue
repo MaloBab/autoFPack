@@ -16,7 +16,7 @@ const emit = defineEmits(['added', 'cancelled'])
 
 const filters = ref<Record<string, Set<any>>>({})
 const {
-  columns, rows, newRow, editingId, editRow, fournisseurs,
+  columns, rows, newRow, editingId, editRow, fournisseurs, clients,
   validateAdd, cancelAdd, startEdit, validateEdit, cancelEdit, deleteRow
 } = useTableReader(props, emit,filters)
 
@@ -53,6 +53,12 @@ const filteredRows = computed(() =>
         const fournisseur = fournisseurs.value.find(f => f.id === cellValue)
         cellValue = fournisseur?.nom || ''
       }
+      // Si c'est un robot et qu'on est sur la colonne client
+
+      if (props.tableName === 'robots' && col === 'client') {
+        const client = clients.value.find(c => c.id === cellValue)
+        cellValue = client?.nom || ''
+      }
 
       return String(cellValue).toLowerCase().includes(search)
     })})
@@ -74,6 +80,12 @@ const valueLabels = computed(() => {
   if (props.tableName === 'produits') {
     map['fournisseur_id'] = Object.fromEntries(
       fournisseurs.value.map(f => [f.id, f.nom])
+    )
+  }
+
+  if (props.tableName === 'robots') {
+    map['client'] = Object.fromEntries(
+      clients.value.map(c => [c.id, c.nom])
     )
   }
 
@@ -113,11 +125,19 @@ const valueLabels = computed(() => {
         <tbody>
           <tr v-if="ajouter">
             <td v-for="col in columns" :key="col">
+
               <template v-if="col === 'fournisseur_id' && props.tableName === 'produits'">
                 <select v-model="newRow.fournisseur_nom">
                   <option v-for="f in fournisseurs" :key="f.id" :value="f.nom">{{ f.nom }}</option>
                 </select>
               </template>
+
+              <template v-if="col === 'client' && props.tableName === 'robots'">
+                <select v-model="newRow.client_nom">
+                  <option v-for="c in clients" :key="c.id" :value="c.nom">{{ c.nom }}</option>
+                </select>
+              </template>
+
               <template v-else-if="col !== 'id'">
                 <input v-model="newRow[col]" @keyup.enter="validateAdd" />
               </template>
@@ -134,11 +154,19 @@ const valueLabels = computed(() => {
                   <option v-for="f in fournisseurs" :key="f.id" :value="f.nom">{{ f.nom }}</option>
                 </select>
               </template>
+              <template v-if="editingId === row.id && col === 'client' && props.tableName === 'robots'">
+                <select v-model="editRow.client_nom" @keyup.enter="validateEdit(row.id)">
+                  <option v-for="c in clients" :key="c.id" :value="c.nom">{{ c.nom }}</option>
+                </select>
+              </template>
               <template v-else-if="editingId === row.id && col !== 'id'">
                 <input v-model="editRow[col]" @keyup.enter="validateEdit(row.id)" />
               </template>
               <template v-else-if="col === 'fournisseur_id' && props.tableName === 'produits'">
                 {{ fournisseurs.find(f => f.id === row.fournisseur_id)?.nom || row.fournisseur_id }}
+              </template>
+              <template v-else-if="col === 'client' && props.tableName === 'robots'">
+                {{ clients.find(c => c.id === row.client)?.nom || row.client }}
               </template>
               <template v-else>
                 {{ row[col] }}

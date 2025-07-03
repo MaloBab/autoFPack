@@ -4,6 +4,8 @@ const menuItems = [
   { label: 'Dashboard', route: '/', icon: '📊' },
   { label: 'Fournisseurs', route: '/fournisseurs', icon: '🏭' },
   { label: 'Clients', route: '/clients', icon: '👤' },
+  { label: 'Robots', route: '/robots', icon: '🤖' },
+  { label: 'Equipements', route: '/equipements', icon: '🔧' },
   { label: 'Produits', route: '/produits', icon: '🧩' },
   { label: 'F-Pack', route: '/fpack', icon: '📦' },
   { label: 'Résultats', route: '/resultats', icon: '📈' }

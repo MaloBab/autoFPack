@@ -14,6 +14,7 @@ class Client(Base):
     __tablename__ = "clients"
     id = Column(Integer, primary_key=True, index=True)
     nom = Column(String(255), nullable=False)
+    robots = relationship("Robots", back_populates="client_rel", cascade="all, delete-orphan")
 
 class Produit(Base):
     __tablename__ = "produits"
@@ -23,3 +24,28 @@ class Produit(Base):
     fournisseur_id = Column(Integer, ForeignKey("fournisseurs.id", ondelete="CASCADE"), nullable=False)
     type = Column(String(255))
     fournisseur = relationship("Fournisseur", back_populates="produits")
+    groupe_produit = relationship("Groupe_Produit", back_populates="produits", cascade="all, delete-orphan")
+
+class Robots(Base):
+    __tablename__ = "robots"
+    id = Column(Integer, primary_key=True, index=True)
+    nom = Column(String(255), nullable=False)
+    generation = Column(String(255), nullable=False)
+    client = Column(Integer, ForeignKey("clients.id", ondelete="CASCADE"), nullable=False)
+    payload = Column(Integer, nullable=False)
+    range = Column(Integer, nullable=False)
+    client_rel = relationship("Client", back_populates="robots")
+
+class Groupes(Base):
+    __tablename__ = "groupes"
+    id = Column(Integer, primary_key=True, index=True)
+    nom = Column(String(255), nullable=False)
+    groupe_produit = relationship("Groupe_Produit", back_populates="groupes")
+
+class Groupe_Produit(Base):
+    __tablename__ = "groupe_produit"
+    id = Column(Integer, primary_key=True, index=True)
+    produit_id = Column(Integer, ForeignKey("produits.id", ondelete="CASCADE"), nullable=False)
+    groupe_id = Column(Integer, ForeignKey("groupes.id", ondelete="CASCADE"), nullable=False)
+    produits = relationship("Produit", back_populates="groupe_produit")
+    groupes = relationship("Groupes", back_populates="groupe_produit")
