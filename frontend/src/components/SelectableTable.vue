@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref, computed, defineProps, defineEmits, onMounted } from 'vue'
+import { ref, computed, defineProps, defineEmits, onMounted, watch } from 'vue'
 import axios from 'axios'
 import Filters from '../components/Filters.vue'
 
@@ -9,6 +9,7 @@ const props = defineProps<{
   ajouter?: boolean
   search?: string
   selectedIds: Set<number>
+  filterMode?: 'all' | 'selected' | 'unselected'
 }>()
 
 const emit = defineEmits<{
@@ -58,6 +59,10 @@ function toggleSelect(id: number) {
   emit('selection-changed', new Set(selected.value))
 }
 
+watch(() => props.selectedIds, (newVal) => {
+  selected.value = new Set(newVal)
+})
+
 // Valeurs distinctes par colonne
 const columnValues = computed(() => {
   const map: Record<string, Set<any>> = {}
@@ -80,13 +85,15 @@ const valueLabels = computed(() => {
 })
 
 // Filtres et recherche
-const filteredRows = computed(() =>
-  rows.value
+const filteredRows = computed(() => {
+  let data = rows.value
+    // appliquer les filtres colonnes
     .filter(row =>
       columns.value.every(col =>
         !filters.value[col] || filters.value[col].has(row[col])
       )
     )
+    // appliquer la recherche
     .filter(row => {
       if (!props.search) return true
       const search = props.search.toLowerCase()
@@ -99,7 +106,16 @@ const filteredRows = computed(() =>
         return String(cellValue).toLowerCase().includes(search)
       })
     })
-)
+
+  // appliquer filterMode
+  if (props.filterMode === 'selected') {
+    data = data.filter(row => selected.value.has(row.id))
+  } else if (props.filterMode === 'unselected') {
+    data = data.filter(row => !selected.value.has(row.id))
+  }
+
+  return data
+})
 
 function updateFilter(col: string, values: Set<any>) {
   filters.value[col] = values

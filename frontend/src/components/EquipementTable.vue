@@ -101,9 +101,7 @@ function remplir(row: any) {
         <tr>
           <th v-for="col in columns" :key="col">
             <div style="display: flex; align-items: center; gap: 0.3rem;">
-              <span>
-                <template>{{ col }}</template>
-              </span>
+              <span>{{ col }}</span>
               <Filters
                 :column="col"
                 :values="[...columnValues[col] || []]"
@@ -148,7 +146,7 @@ function remplir(row: any) {
               <template v-else>
                 <button title="Éditer" @click="startEdit(row)">✏️</button>
                 <button title="Supprimer" @click="deleteRow(row.id)">🗑️</button>
-                <button title="Remplir" @click="remplir(row)">📌</button>
+                <button title="Remplir" @click="remplir(row)">🗂️</button>
               </template>
             </td>
           </tr>

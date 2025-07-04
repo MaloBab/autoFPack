@@ -190,6 +190,7 @@ def delete_groupe(id: int, db: Session = Depends(get_db)):
 
 # GROUPES PRODUITS
 
+
 @router.get("/groupeproduit/{groupe_id}", response_model=list[schemas.GroupeProduitRead])
 def get_groupe_produit_by_groupe(groupe_id: int, db: Session = Depends(get_db)):
     return db.query(models.Groupe_Produit).filter(models.Groupe_Produit.groupe_id == groupe_id).all()
@@ -211,3 +212,17 @@ def delete_groupe_produit(id: int, db: Session = Depends(get_db)):
     db.delete(db_groupe_produit)
     db.commit()
     return {"ok": True}
+
+@router.delete("/groupeproduit/clear/{groupe_id}")
+def clear_groupe_produits(groupe_id: int, db: Session = Depends(get_db)):
+    db.query(models.Groupe_Produit).filter(models.Groupe_Produit.groupe_id == groupe_id).delete()
+    db.commit()
+    return {"ok": True}
+
+
+@router.get("/groupes/{groupe_id}")
+def get_groupe(groupe_id: int, db: Session = Depends(get_db)):
+    groupe = db.query(models.Groupes).filter(models.Groupes.id == groupe_id).first()
+    if not groupe:
+        raise HTTPException(status_code=404, detail="Groupe not found")
+    return groupe
