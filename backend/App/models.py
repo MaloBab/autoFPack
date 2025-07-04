@@ -60,3 +60,31 @@ class FPack(Base):
     client = Column(Integer, ForeignKey("clients.id"), nullable=False)
     fpack_abbr = Column(String, unique=True)
     client_relfpack = relationship("Client", back_populates="fpacks")
+    
+class Groupes(Base):
+    __tablename__ = "groupes"
+
+    id = Column(Integer, primary_key=True, index=True)
+    nom = Column(String(255), nullable=False)
+    items = relationship("GroupItem", back_populates="groupe", cascade="all, delete-orphan")
+
+
+class GroupItem(Base):
+    __tablename__ = "groupe_items"
+
+    id = Column(Integer, primary_key=True, index=True)
+    group_id = Column(Integer, ForeignKey("groupes.id", ondelete="CASCADE"), nullable=False)
+    type = Column(String(50), nullable=False)  # 'produit' | 'equipement' | 'robot'
+    ref_id = Column(Integer, nullable=False)
+
+    groupe = relationship("Groupes", back_populates="items")
+
+
+class FPackConfigColumn(Base):
+    __tablename__ = "fpack_config_columns"
+
+    id = Column(Integer, primary_key=True, index=True)
+    fpack_id = Column(Integer, ForeignKey("fpacks.id", ondelete="CASCADE"), nullable=False)
+    ordre = Column(Integer, nullable=False)
+    type = Column(String(50), nullable=False)  # 'produit' | 'equipement' | 'group'
+    ref_id = Column(Integer, nullable=True)

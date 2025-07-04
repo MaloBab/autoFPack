@@ -260,3 +260,61 @@ def delete_fpack(id: int, db: Session = Depends(get_db)):
     db.delete(db_fpack)
     db.commit()
     return {"ok": True}
+
+# GROUPS
+@router.get("/groupes", response_model=list[schemas.GroupesRead])
+def list_groupes(db: Session = Depends(get_db)):
+    return db.query(models.Groupes).all()
+
+@router.post("/groupes", response_model=schemas.GroupesRead)
+def create_groupe(group: schemas.GroupesCreate, db: Session = Depends(get_db)):
+    db_group = models.Groupes(**group.dict())
+    db.add(db_group)
+    db.commit()
+    db.refresh(db_group)
+    return db_group
+
+@router.get("/groupe_items/{groupe_id}", response_model=list[schemas.GroupeItemRead])
+def list_groupe_items(groupe_id: int, db: Session = Depends(get_db)):
+    return db.query(models.GroupeItem).filter(models.GroupeItem.group_id == groupe_id).all()
+
+@router.post("/groupe_items", response_model=schemas.GroupeItemRead)
+def create_groupe_item(item: schemas.GroupeItemCreate, db: Session = Depends(get_db)):
+    db_item = models.GroupeItem(**item.dict())
+    db.add(db_item)
+    db.commit()
+    db.refresh(db_item)
+    return db_item
+
+# FPACK CONFIG COLUMNS
+@router.get("/fpack_config_columns/{fpack_id}", response_model=list[schemas.FPackConfigColumnRead])
+def list_fpack_columns(fpack_id: int, db: Session = Depends(get_db)):
+    return db.query(models.FPackConfigColumn).filter(models.FPackConfigColumn.fpack_id == fpack_id).order_by(models.FPackConfigColumn.ordre).all()
+
+@router.post("/fpack_config_columns", response_model=schemas.FPackConfigColumnRead)
+def create_fpack_column(col: schemas.FPackConfigColumnCreate, db: Session = Depends(get_db)):
+    db_col = models.FPackConfigColumn(**col.dict())
+    db.add(db_col)
+    db.commit()
+    db.refresh(db_col)
+    return db_col
+
+@router.put("/fpack_config_columns/{id}", response_model=schemas.FPackConfigColumnRead)
+def update_fpack_column(id: int, col: schemas.FPackConfigColumnCreate, db: Session = Depends(get_db)):
+    db_col = db.query(models.FPackConfigColumn).get(id)
+    if not db_col:
+        raise HTTPException(status_code=404, detail="Colonne de configuration non trouvée")
+    for key, value in col.dict().items():
+        setattr(db_col, key, value)
+    db.commit()
+    db.refresh(db_col)
+    return db_col
+
+@router.delete("/fpack_config_columns/{id}")
+def delete_fpack_column(id: int, db: Session = Depends(get_db)):
+    db_col = db.query(models.FPackConfigColumn).get(id)
+    if not db_col:
+        raise HTTPException(status_code=404, detail="Colonne de configuration non trouvée")
+    db.delete(db_col)
+    db.commit()
+    return {"ok": True}

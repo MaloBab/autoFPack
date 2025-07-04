@@ -97,3 +97,43 @@ class FPackRead(FPackBase):
 
     class Config:
         orm_mode = True
+        
+# GROUPS
+class GroupesBase(BaseModel):
+    nom: str
+
+class GroupesCreate(GroupesBase):
+    pass
+
+class GroupesRead(GroupesBase):
+    id: int
+    class Config:
+        orm_mode = True
+
+class GroupeItemBase(BaseModel):
+    group_id: int
+    type: str  # 'produit' | 'equipement' | 'robot'
+    ref_id: int
+
+class GroupeItemCreate(GroupeItemBase):
+    pass
+
+class GroupeItemRead(GroupeItemBase):
+    id: int
+    class Config:
+        orm_mode = True
+
+# FPACK CONFIG COLUMNS
+class FPackConfigColumnBase(BaseModel):
+    fpack_id: int
+    ordre: int
+    type: str  # 'produit' | 'equipement' | 'group'
+    ref_id: Optional[int] = None
+
+class FPackConfigColumnCreate(FPackConfigColumnBase):
+    pass
+
+class FPackConfigColumnRead(FPackConfigColumnBase):
+    id: int
+    class Config:
+        orm_mode = True
