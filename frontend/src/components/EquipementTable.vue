@@ -171,13 +171,11 @@ function remplir(row: any) {
   background: #1d4ed8;
 }
 
-/* Conteneur principal du tableau */
 .table-container {
   width: 100%;
   background: #f7f7f7;
 }
 
-/* Table d'en-tête (fixe) */
 .table-head {
   width: 90%;
   margin-top: 3%;
@@ -191,7 +189,6 @@ function remplir(row: any) {
   table-layout: fixed;
 }
 
-/* Corps scrollable */
 .table-body-scroll {
   width: 90%;
   margin-left: 2%;
@@ -216,7 +213,6 @@ function remplir(row: any) {
   background: #4d4e4f;
 }
 
-/* Table du corps */
 .table-body-scroll table {
   width: 100%;
   border-collapse: separate;
