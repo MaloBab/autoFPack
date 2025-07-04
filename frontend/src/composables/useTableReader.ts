@@ -15,19 +15,15 @@ export function useTableReader(
   const clients = ref<{ id: number, nom: string }[]>([])
 
   const fetchFournisseurs = async () => {
-    if (props.tableName === 'produits') {
       const url = props.apiUrl ? `${props.apiUrl}/fournisseurs` : `http://localhost:8000/fournisseurs`
       const res = await axios.get(url)
       fournisseurs.value = res.data
-    }
   }
 
   const fetchClients = async () => {
-    if (props.tableName === 'robots') {
       const url = props.apiUrl ? `${props.apiUrl}/clients` : `http://localhost:8000/clients`
       const res = await axios.get(url)
       clients.value = res.data
-    }
   }
 
   const fetchData = async () => {
@@ -41,8 +37,8 @@ export function useTableReader(
     columns.value.forEach(col => {
       filters.value[col] = new Set(rows.value.map(row => row[col]))})
 
-    if (props.tableName === 'produits') await fetchFournisseurs()
-    if (props.tableName === 'robots') await fetchClients()
+    await fetchFournisseurs()
+    await fetchClients()
   }
 
   onMounted(fetchData)
@@ -54,10 +50,10 @@ export function useTableReader(
   function startAddRow() {
     newRow.value = {}
     columns.value.forEach(col => {
-      if (col === 'fournisseur_id' && props.tableName === 'produits') {
+      if (col === 'fournisseur_id') {
         newRow.value['fournisseur_nom'] = fournisseurs.value[0]?.nom || ''
       } 
-      if (col === 'client' && props.tableName === 'robots') {
+      if (col === 'client') {
         newRow.value['client_nom'] = clients.value[0]?.nom || ''
       }
       else {
@@ -75,7 +71,7 @@ export function useTableReader(
         delete dataToSend.fournisseur_nom
       }
 
-      if (props.tableName === 'robots') {
+      if (props.tableName === 'robots' || props.tableName === 'fpacks') {
         const client = clients.value.find(c => c.nom === dataToSend.client_nom)
         dataToSend.client = client?.id
         delete dataToSend.client_nom
@@ -103,7 +99,7 @@ export function useTableReader(
       editRow.value.fournisseur_nom = fournisseur?.nom || ''
     }
 
-    if (props.tableName === 'robots' && 'client' in row) {
+    if ((props.tableName === 'robots' || props.tableName === 'fpacks') && 'client' in row) {
       const client = clients.value.find(c => c.id === row.client)
       editRow.value.client_nom = client?.nom || ''
     }
@@ -118,7 +114,7 @@ export function useTableReader(
         dataToSend.fournisseur_id = fournisseur?.id
         delete dataToSend.fournisseur_nom
       }
-      if (props.tableName === 'robots') {
+      if (props.tableName === 'robots' || props.tableName === 'fpacks') {
         const client = clients.value.find(c => c.nom === dataToSend.client_nom)
         dataToSend.client = client?.id
         delete dataToSend.client_nom

@@ -46,12 +46,7 @@ const filteredRows = computed(() =>
       return columns.value.some(col => {
         let cellValue = row[col]
 
-        if (props.tableName === 'produits' && col === 'fournisseur_id') {
-          const fournisseur = fournisseurs.value.find(f => f.id === cellValue)
-          cellValue = fournisseur?.nom || ''
-        }
-
-        if (props.tableName === 'robots' && col === 'client') {
+        if (props.tableName === 'fpacks' && col === 'client') {
           const client = clients.value.find(c => c.id === cellValue)
           cellValue = client?.nom || ''
         }
@@ -80,7 +75,7 @@ const valueLabels = computed(() => {
     )
   }
 
-  if (props.tableName === 'robots') {
+  if (props.tableName === 'fpacks') {
     map['client'] = Object.fromEntries(
       clients.value.map(c => [c.id, c.nom])
     )
@@ -123,9 +118,16 @@ function remplirFPack(row: any) {
         <tbody>
           <tr v-if="ajouter">
             <td v-for="col in columns" :key="col">
-              <template v-if="col !== 'id'">
+              <template v-if="col === 'client' && props.tableName === 'fpacks'">
+                <select v-model="newRow.client_nom">
+                  <option v-for="c in clients" :key="c.id" :value="c.nom">{{ c.nom }}</option>
+                </select>
+              </template>
+
+                <template v-else-if="col !== 'id'">
                 <input v-model="newRow[col]" @keyup.enter="validateAdd" />
               </template>
+
             </td>
             <td class="actions">
               <button @click="validateAdd">✅</button>
@@ -134,8 +136,18 @@ function remplirFPack(row: any) {
           </tr>
           <tr v-for="row in filteredRows" :key="row.id">
             <td v-for="col in columns" :key="col">
-              <template v-if="editingId === row.id && col !== 'id'">
+
+              <template v-if="editingId === row.id && col === 'client' && props.tableName === 'fpacks'">
+                <select v-model="editRow.client_nom" @keyup.enter="validateEdit(row.id)">
+                  <option v-for="c in clients" :key="c.id" :value="c.nom">{{ c.nom }}</option>
+                </select>
+              </template>
+
+              <template v-else-if="editingId === row.id && col !== 'id'">
                 <input v-model="editRow[col]" @keyup.enter="validateEdit(row.id)" />
+              </template>
+              <template v-else-if="col === 'client' && props.tableName === 'fpacks'">
+                {{ clients.find(c => c.id === row.client)?.nom || row.client }}
               </template>
               <template v-else>
                 {{ row[col] }}
