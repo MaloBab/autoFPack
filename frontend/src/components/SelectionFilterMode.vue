@@ -17,11 +17,6 @@ function toggleMode() {
   emit('update:modelValue', modes[nextIndex])
 }
 
-function setMode(mode: 'all' | 'selected' | 'unselected') {
-  emit('update:modelValue', mode)
-}
-
-
 </script>
 
 <template>

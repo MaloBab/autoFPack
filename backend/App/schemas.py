@@ -60,26 +60,40 @@ class RobotRead(RobotBase):
     class Config:
         orm_mode = True
 
-class GroupeBase(BaseModel):
+class EquipementBase(BaseModel):
     nom: str
 
-class GroupeCreate(GroupeBase):
+class EquipementCreate(EquipementBase):
     pass
 
-class GroupeRead(GroupeBase):
+class EquipementRead(EquipementBase):
     id: int
-    groupe_produits: List[GroupeProduitRead] = []
+    equipement_produits: List[EquipementProduitRead] = []
 
     class Config:
         orm_mode = True
 
-class GroupeProduitBase(BaseModel):
-    groupe_id: int
+class EquipementProduitBase(BaseModel):
+    equipement_id: int
     produit_id: int
 
-class GroupeProduitCreate(GroupeProduitBase):
+class EquipementProduitCreate(EquipementProduitBase):
     pass
 
-class GroupeProduitRead(GroupeProduitBase):
+class EquipementProduitRead(EquipementProduitBase):
+    class Config:
+        orm_mode = True
+        
+class FPackBase(BaseModel):
+    nom: str
+    client: int
+    fpack_abbr: str
+
+class FPackCreate(FPackBase):
+    pass
+
+class FPackRead(FPackBase):
+    id: int
+
     class Config:
         orm_mode = True

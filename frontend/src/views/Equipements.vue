@@ -2,7 +2,7 @@
 import { ref } from 'vue'
 import PageHeader from '../components/PageHeader.vue'
 import TextSearch from '../components/TextSearch.vue'
-import EquipementTable from '../components/EquipementTable.vue'
+import TopLevelTable from '../components/TopLevelTable.vue'
 
 const ajouter = ref(false)
 const searchTerm = ref('')
@@ -17,8 +17,8 @@ function resetAjouter() {
   <div>
     <PageHeader titre="Equipements" @ajouter="ajouter = true" />
 
-    <EquipementTable
-      tableName="groupes"
+    <TopLevelTable
+      tableName="equipements"
       :ajouter="ajouter"
       :search="searchTerm"
       @added="resetAjouter"

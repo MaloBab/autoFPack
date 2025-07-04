@@ -155,74 +155,108 @@ def delete_robot(id: int, db: Session = Depends(get_db)):
     db.commit()
     return {"ok": True}
 
-# GROUPES
-@router.get("/groupes", response_model=list[schemas.GroupeRead])
-def list_groupes(db: Session = Depends(get_db)):
-    return db.query(models.Groupes).all()
+# EQUIPEMENTS
+@router.get("/equipements", response_model=list[schemas.EquipementRead])
+def list_equipements(db: Session = Depends(get_db)):
+    return db.query(models.Equipements).all()
 
-@router.post("/groupes", response_model=schemas.GroupeRead)
-def create_groupe(groupe: schemas.GroupeCreate, db: Session = Depends(get_db)):
-    db_groupe = models.Groupes(**groupe.dict())
-    db.add(db_groupe)
+@router.post("/equipements", response_model=schemas.EquipementRead)
+def create_equipement(equipement: schemas.EquipementCreate, db: Session = Depends(get_db)):
+    db_equipement = models.Equipements(**equipement.dict())
+    db.add(db_equipement)
     db.commit()
-    db.refresh(db_groupe)
-    return db_groupe
+    db.refresh(db_equipement)
+    return db_equipement
 
-@router.put("/groupes/{id}", response_model=schemas.GroupeRead)
-def update_groupe(id: int, groupe: schemas.GroupeCreate, db: Session = Depends(get_db)):
-    db_groupe = db.query(models.Groupes).get(id)
-    if not db_groupe:
-        raise HTTPException(status_code=404, detail="Groupe non trouvé")
-    for key, value in groupe.dict().items():
-        setattr(db_groupe, key, value)
+@router.put("/equipements/{id}", response_model=schemas.EquipementRead)
+def update_equipement(id: int, equipement: schemas.EquipementCreate, db: Session = Depends(get_db)):
+    db_equipement = db.query(models.Equipements).get(id)
+    if not db_equipement:
+        raise HTTPException(status_code=404, detail="Equipement non trouvé")
+    for key, value in equipement.dict().items():
+        setattr(db_equipement, key, value)
     db.commit()
-    db.refresh(db_groupe)
-    return db_groupe
+    db.refresh(db_equipement)
+    return db_equipement
 
-@router.delete("/groupes/{id}")
-def delete_groupe(id: int, db: Session = Depends(get_db)):
-    db_groupe = db.query(models.Groupes).get(id)
-    if not db_groupe:
-        raise HTTPException(status_code=404, detail="Groupe non trouvé")
-    db.delete(db_groupe)
-    db.commit()
-    return {"ok": True}
-
-# GROUPES PRODUITS
-
-
-@router.get("/groupeproduit/{groupe_id}", response_model=list[schemas.GroupeProduitRead])
-def get_groupe_produit_by_groupe(groupe_id: int, db: Session = Depends(get_db)):
-    return db.query(models.Groupe_Produit).filter(models.Groupe_Produit.groupe_id == groupe_id).all()
-
-@router.post("/groupeproduit", response_model=schemas.GroupeProduitRead)
-def create_groupe_produit(groupe_produit: schemas.GroupeProduitCreate, db: Session = Depends(get_db)):
-    db_groupe_produit = models.Groupe_Produit(**groupe_produit.dict())
-    db.add(db_groupe_produit)
-    db.commit()
-    db.refresh(db_groupe_produit)
-    return db_groupe_produit
-
-
-@router.delete("/groupeproduit/{id}")
-def delete_groupe_produit(id: int, db: Session = Depends(get_db)):
-    db_groupe_produit = db.query(models.Groupe_Produit).get(id)
-    if not db_groupe_produit:
-        raise HTTPException(status_code=404, detail="Groupe de produit non trouvé")
-    db.delete(db_groupe_produit)
+@router.delete("/equipements/{id}")
+def delete_equipement(id: int, db: Session = Depends(get_db)):
+    db_equipement = db.query(models.Equipements).get(id)
+    if not db_equipement:
+        raise HTTPException(status_code=404, detail="Equipement non trouvé")
+    db.delete(db_equipement)
     db.commit()
     return {"ok": True}
 
-@router.delete("/groupeproduit/clear/{groupe_id}")
-def clear_groupe_produits(groupe_id: int, db: Session = Depends(get_db)):
-    db.query(models.Groupe_Produit).filter(models.Groupe_Produit.groupe_id == groupe_id).delete()
+# EQUIPEMENTS PRODUITS
+
+
+@router.get("/equipementproduit/{equipement_id}", response_model=list[schemas.EquipementProduitRead])
+def get_equipement_produit_by_equipement(equipement_id: int, db: Session = Depends(get_db)):
+    return db.query(models.Equipement_Produit).filter(models.Equipement_Produit.equipement_id == equipement_id).all()
+
+@router.post("/equipementproduit", response_model=schemas.EquipementProduitRead)
+def create_equipement_produit(equipement_produit: schemas.EquipementProduitCreate, db: Session = Depends(get_db)):
+    db_equipement_produit = models.Equipement_Produit(**equipement_produit.dict())
+    db.add(db_equipement_produit)
+    db.commit()
+    db.refresh(db_equipement_produit)
+    return db_equipement_produit
+
+
+@router.delete("/equipementproduit/{id}")
+def delete_equipement_produit(id: int, db: Session = Depends(get_db)):
+    db_equipement_produit = db.query(models.Equipement_Produit).get(id)
+    if not db_equipement_produit:
+        raise HTTPException(status_code=404, detail="Equipement de produit non trouvé")
+    db.delete(db_equipement_produit)
+    db.commit()
+    return {"ok": True}
+
+@router.delete("/equipementproduit/clear/{equipement_id}")
+def clear_equipement_produits(equipement_id: int, db: Session = Depends(get_db)):
+    db.query(models.Equipement_Produit).filter(models.Equipement_Produit.equipement_id == equipement_id).delete()
     db.commit()
     return {"ok": True}
 
 
-@router.get("/groupes/{groupe_id}")
-def get_groupe(groupe_id: int, db: Session = Depends(get_db)):
-    groupe = db.query(models.Groupes).filter(models.Groupes.id == groupe_id).first()
-    if not groupe:
-        raise HTTPException(status_code=404, detail="Groupe not found")
-    return groupe
+@router.get("/equipements/{equipement_id}")
+def get_equipement(equipement_id: int, db: Session = Depends(get_db)):
+    equipement = db.query(models.Equipements).filter(models.Equipements.id == equipement_id).first()
+    if not equipement:
+        raise HTTPException(status_code=404, detail="Equipement not found")
+    return equipement
+
+
+# FPACKS
+@router.get("/fpacks", response_model=list[schemas.FPackRead])
+def list_fpacks(db: Session = Depends(get_db)):
+    return db.query(models.FPack).all()
+
+@router.post("/fpacks", response_model=schemas.FPackRead)
+def create_fpack(fpack: schemas.FPackCreate, db: Session = Depends(get_db)):
+    db_fpack = models.FPack(**fpack.dict())
+    db.add(db_fpack)
+    db.commit()
+    db.refresh(db_fpack)
+    return db_fpack
+
+@router.put("/fpacks/{id}", response_model=schemas.FPackRead)
+def update_fpack(id: int, fpack: schemas.FPackCreate, db: Session = Depends(get_db)):
+    db_fpack = db.query(models.FPack).get(id)
+    if not db_fpack:
+        raise HTTPException(status_code=404, detail="FPack non trouvé")
+    for key, value in fpack.dict().items():
+        setattr(db_fpack, key, value)
+    db.commit()
+    db.refresh(db_fpack)
+    return db_fpack
+
+@router.delete("/fpacks/{id}")
+def delete_fpack(id: int, db: Session = Depends(get_db)):
+    db_fpack = db.query(models.FPack).get(id)
+    if not db_fpack:
+        raise HTTPException(status_code=404, detail="FPack non trouvé")
+    db.delete(db_fpack)
+    db.commit()
+    return {"ok": True}

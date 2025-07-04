@@ -89,8 +89,11 @@ const valueLabels = computed(() => {
   return map
 })
 
-function remplir(row: any) {
+function remplirEquipement(row: any) {
   router.push(`/remplir/${props.tableName}/${row.id}`)
+}
+function remplirFPack(row: any) {
+  router.push(`/configure/${props.tableName}/${row.id}`)
 }
 </script>
 
@@ -146,7 +149,13 @@ function remplir(row: any) {
               <template v-else>
                 <button title="Éditer" @click="startEdit(row)">✏️</button>
                 <button title="Supprimer" @click="deleteRow(row.id)">🗑️</button>
-                <button title="Remplir" @click="remplir(row)">🗂️</button>
+                <span v-if="props.tableName === 'equipements'">
+                  <button title="Remplir" @click="remplirEquipement(row)">🗂️</button>
+                </span>
+                <span v-if="props.tableName === 'fpacks'">
+                  <button title="Remplir" @click="remplirFPack(row)">🛠️</button>
+                </span>
+                
               </template>
             </td>
           </tr>

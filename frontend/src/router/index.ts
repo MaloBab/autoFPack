@@ -9,6 +9,7 @@ import FPack from '../views/FPack.vue'
 import Resultats from '../views/Resultats.vue'
 import Parametres from '../views/Parametres.vue'  
 import RemplirEquipement from '../views/RemplirEquipement.vue'
+import ConfigureFPack from '../views/ConfigureFPack.vue'
 
 const routes = [
   { path: '/', component: Dashboard },
@@ -20,7 +21,8 @@ const routes = [
   { path: '/robots', component: Robots },
   { path: '/resultats', component: Resultats },
   { path: '/parametres', component: Parametres },
-  { path: '/remplir/:tableName/:id', name: 'RemplirEquipement', component: RemplirEquipement }
+  { path: '/remplir/:tableName/:id', name: 'RemplirEquipement', component: RemplirEquipement },
+  { path: '/configure/:tableName/:id', name: 'ConfigureFPack', component: ConfigureFPack}
 
 ]
 

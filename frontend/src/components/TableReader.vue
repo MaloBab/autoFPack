@@ -131,7 +131,7 @@ const valueLabels = computed(() => {
                 </select>
               </template>
 
-              <template v-if="col === 'client' && props.tableName === 'robots'">
+              <template v-else-if="col === 'client' && props.tableName === 'robots'">
                 <select v-model="newRow.client_nom">
                   <option v-for="c in clients" :key="c.id" :value="c.nom">{{ c.nom }}</option>
                 </select>

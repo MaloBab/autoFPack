@@ -15,6 +15,7 @@ class Client(Base):
     id = Column(Integer, primary_key=True, index=True)
     nom = Column(String(255), nullable=False)
     robots = relationship("Robots", back_populates="client_rel", cascade="all, delete-orphan")
+    fpacks = relationship("FPack", back_populates="client_relfpack")
 
 class Produit(Base):
     __tablename__ = "produits"
@@ -24,7 +25,7 @@ class Produit(Base):
     fournisseur_id = Column(Integer, ForeignKey("fournisseurs.id", ondelete="CASCADE"), nullable=False)
     type = Column(String(255))
     fournisseur = relationship("Fournisseur", back_populates="produits")
-    groupe_produit = relationship("Groupe_Produit", back_populates="produits", cascade="all, delete-orphan")
+    equipement_produit = relationship("Equipement_Produit", back_populates="produits", cascade="all, delete-orphan")
 
 class Robots(Base):
     __tablename__ = "robots"
@@ -36,15 +37,26 @@ class Robots(Base):
     range = Column(Integer, nullable=False)
     client_rel = relationship("Client", back_populates="robots")
 
-class Groupes(Base):
-    __tablename__ = "groupes"
+class Equipements(Base):
+    __tablename__ = "equipements"
     id = Column(Integer, primary_key=True, index=True)
     nom = Column(String(255), nullable=False)
-    groupe_produit = relationship("Groupe_Produit", back_populates="groupes")
+    equipement_produit = relationship("Equipement_Produit", back_populates="equipements")
 
-class Groupe_Produit(Base):
-    __tablename__ = "groupe_produit"
-    groupe_id = Column(Integer, ForeignKey("groupes.id"), primary_key=True)
+class Equipement_Produit(Base):
+    __tablename__ = "equipement_produit"
+    equipement_id = Column(Integer, ForeignKey("equipements.id"), primary_key=True)
     produit_id = Column(Integer, ForeignKey("produits.id"), primary_key=True)
-    produits = relationship("Produit", back_populates="groupe_produit")
-    groupes = relationship("Groupes", back_populates="groupe_produit")
+    produits = relationship("Produit", back_populates="equipement_produit")
+    equipements = relationship("Equipements", back_populates="equipement_produit")
+    
+#FPACK
+
+class FPack(Base):
+    __tablename__ = "fpacks"
+
+    id = Column(Integer, primary_key=True, index=True)
+    nom = Column(String)
+    client = Column(Integer, ForeignKey("clients.id"), nullable=False)
+    fpack_abbr = Column(String, unique=True)
+    client_relfpack = relationship("Client", back_populates="fpacks")

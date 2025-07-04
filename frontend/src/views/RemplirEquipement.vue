@@ -11,26 +11,26 @@ const route = useRoute()
 const router = useRouter()
 const searchTerm = ref('')
 
-const groupeId = Number(route.params.id)
-const nomGroupe = ref('')
+const equipementId = Number(route.params.id)
+const nomEquipement = ref('')
 const produitsAssocies = ref<Set<number>>(new Set())
 const loading = ref(true)
 
-async function fetchNomGroupe() {
-  const res = await axios.get(`http://localhost:8000/groupes/${groupeId}`)
-  nomGroupe.value = res.data.nom 
+async function fetchNomEquipement() {
+  const res = await axios.get(`http://localhost:8000/equipements/${equipementId}`)
+  nomEquipement.value = res.data.nom 
 }
 
 async function fetchAssociations() {
-  const res = await axios.get(`http://localhost:8000/groupeproduit/${groupeId}`)
+  const res = await axios.get(`http://localhost:8000/equipementproduit/${equipementId}`)
   produitsAssocies.value = new Set(res.data.map((p: any) => p.produit_id))
 }
 
 async function enregistrer() {
-  await axios.delete(`http://localhost:8000/groupeproduit/clear/${groupeId}`)
+  await axios.delete(`http://localhost:8000/equipementproduit/clear/${equipementId}`)
   for (const produitId of produitsAssocies.value) {
-    await axios.post(`http://localhost:8000/groupeproduit`, {
-      groupe_id: groupeId,
+    await axios.post(`http://localhost:8000/equipementproduit`, {
+      equipement_id: equipementId,
       produit_id: produitId
     })
   }
@@ -39,7 +39,7 @@ async function enregistrer() {
 
 onMounted(async () => {
   loading.value = true
-  await fetchNomGroupe()
+  await fetchNomEquipement()
   await fetchAssociations()
   loading.value = false
 })
@@ -47,7 +47,7 @@ onMounted(async () => {
 
 <template>
   <div class="remplir-container">
-    <h2>Contenu de l'équipement <span class="title">{{ nomGroupe }}</span></h2>
+    <h2>Contenu de l'équipement <span class="title">{{ nomEquipement }}</span></h2>
     <SelectableTable
       tableName="produits"
       :selectedIds="produitsAssocies"
