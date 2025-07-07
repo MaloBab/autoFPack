@@ -8,6 +8,7 @@ const router = useRouter()
 
 const props = defineProps<{
   fpackId: number
+  fpackName: string
 }>()
 
 type GroupItem = {
@@ -215,7 +216,9 @@ async function saveConfiguration() {
 
 <template>
   <div class="fpack-config-table">
-    <h2>Configuration de la F-Pack</h2>
+    <h2>
+      Configuration de la F-Pack <span class="fpack-nom">{{ props.fpackName }}</span>
+    </h2>
 
     <div class="actions">
       <button @click="startAdd('produit')"><img src="../assets/plus.png" alt="Plus" class = "icon-plus"> Produit 🧩</button>
@@ -344,6 +347,12 @@ h2 {
   width: 1.1rem;
   height: 1.1rem;
   vertical-align: middle;
+}
+
+.fpack-nom {
+  color: #3b82f6;
+  font-weight: 700;
+  margin-left: 0.5rem;
 }
 
 .columns-row {
