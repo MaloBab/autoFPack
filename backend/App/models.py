@@ -64,15 +64,15 @@ class FPack(Base):
 class Groupes(Base):
     __tablename__ = "groupes"
 
-    id = Column(Integer, primary_key=True, index=True)
+    id = Column(Integer, primary_key=True,index= True, autoincrement=True)
     nom = Column(String(255), nullable=False)
-    items = relationship("GroupItem", back_populates="groupe", cascade="all, delete-orphan")
+    items = relationship("GroupeItem", back_populates="groupe", cascade="all, delete-orphan")
 
 
-class GroupItem(Base):
+class GroupeItem(Base):
     __tablename__ = "groupe_items"
 
-    id = Column(Integer, primary_key=True, index=True)
+    id = Column(Integer, primary_key=True, index = True, autoincrement=True)
     group_id = Column(Integer, ForeignKey("groupes.id", ondelete="CASCADE"), nullable=False)
     type = Column(String(50), nullable=False)  # 'produit' | 'equipement' | 'robot'
     ref_id = Column(Integer, nullable=False)
@@ -83,7 +83,7 @@ class GroupItem(Base):
 class FPackConfigColumn(Base):
     __tablename__ = "fpack_config_columns"
 
-    id = Column(Integer, primary_key=True, index=True)
+    id = Column(Integer, primary_key=True, index=True, autoincrement=True)
     fpack_id = Column(Integer, ForeignKey("fpacks.id", ondelete="CASCADE"), nullable=False)
     ordre = Column(Integer, nullable=False)
     type = Column(String(50), nullable=False)  # 'produit' | 'equipement' | 'group'
