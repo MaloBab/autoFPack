@@ -1,3 +1,9 @@
+<script setup>
+import { ref, onMounted } from 'vue'
+import ConfigureFPackTable from '../components/ConfigureFPackTable.vue'
+
+</script>
+
 <template>
-    <h1>Configurer FPack</h1>
+    <ConfigureFPackTable :fpackId="fpackId" />
 </template>
