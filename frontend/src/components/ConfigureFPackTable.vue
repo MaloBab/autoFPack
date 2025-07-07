@@ -74,7 +74,7 @@ async function fetchConfiguration() {
         enriched.push({
           ...col,
           display_name: eq.nom,
-          produits_count: eq.equipement_produits?.length ?? 0
+          produits_count: eq.equipement_produit?.length ?? 0
         })
       } catch {
         enriched.push(col)

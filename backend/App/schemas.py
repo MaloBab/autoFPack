@@ -69,7 +69,7 @@ class EquipementCreate(EquipementBase):
 class EquipementRead(BaseModel):
     id: int
     nom: str
-    equipement_produits: list[EquipementProduitRead] = []
+    equipement_produit: list[EquipementProduitRead] = []
 
     class Config:
         orm_mode = True
