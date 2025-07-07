@@ -22,6 +22,11 @@ type ConfigColumn = {
   ref_id: number
   ordre: number
   display_name: string
+  type_detail?: string
+  description?: string
+  fournisseur_nom?: string
+  produits_count?: number
+  group_summary?: { produit: number; equipement: number; robot: number }
   group_items?: GroupItem[]
 }
 
@@ -34,22 +39,56 @@ const selectedRefId = ref<number | null>(null)
 const editingIndex = ref<number | null>(null)
 const editingGroupIndex = ref<number | null>(null)
 
+const columnsRowRef = ref<HTMLElement | null>(null)
 
-function asGroupProp(col: ConfigColumn | undefined) {
-  if (!col || col.type !== 'group' || !col.group_items) return undefined
-  return {
-    display_name: col.display_name,
-    group_items: col.group_items
-  }
+function summarizeGroupItems(items: GroupItem[]) {
+  const summary = { produit: 0, equipement: 0, robot: 0 }
+  items.forEach(item => summary[item.type]++)
+  return summary
 }
 
 async function fetchConfiguration() {
   if (typeof props.fpackId !== 'number' || isNaN(props.fpackId)) return
   const res = await axios.get(`http://localhost:8000/fpack_config_columns/${props.fpackId}`)
-  columns.value = res.data.map((col: any, index: number) => ({
-    ...col,
-    ordre: index
-  }))
+  const enriched: ConfigColumn[] = []
+
+  for (const col of res.data) {
+    if (col.type === 'produit') {
+      try {
+        const prodRes = await axios.get(`http://localhost:8000/produits/${col.ref_id}`)
+        const p = prodRes.data
+        enriched.push({
+          ...col,
+          display_name: p.nom,
+          type_detail: p.type,
+          description: p.description,
+          fournisseur_nom: p.fournisseur?.nom ?? ''
+        })
+      } catch {
+        enriched.push(col)
+      }
+    } else if (col.type === 'equipement') {
+      try {
+        const eqRes = await axios.get(`http://localhost:8000/equipements/${col.ref_id}`)
+        const eq = eqRes.data
+        enriched.push({
+          ...col,
+          display_name: eq.nom,
+          produits_count: eq.equipement_produits?.length ?? 0
+        })
+      } catch {
+        enriched.push(col)
+      }
+    } else if (col.type === 'group') {
+      enriched.push({
+        ...col,
+        group_summary: summarizeGroupItems(col.group_items || [])
+      })
+    } else {
+      enriched.push(col)
+    }
+  }
+  columns.value = enriched
 }
 
 async function fetchProduitsEtEquipements() {
@@ -61,38 +100,17 @@ async function fetchProduitsEtEquipements() {
   equipements.value = eq.data
 }
 
-const columnsRowRef = ref<HTMLElement | null>(null)
-
 function handleWheel(e: WheelEvent) {
   const target = e.target as HTMLElement
   const columnBox = target.closest('.column-box') as HTMLElement | null
   if (columnBox) {
-    const canScrollVertically =
-      columnBox.scrollHeight > columnBox.clientHeight
+    const canScrollVertically = columnBox.scrollHeight > columnBox.clientHeight
     const isScrollingVertically = Math.abs(e.deltaY) > Math.abs(e.deltaX)
-    if (isScrollingVertically && canScrollVertically) {
-      return
-    }
+    if (isScrollingVertically && canScrollVertically) return
   }
   e.preventDefault()
-  if (columnsRowRef.value) {
-    columnsRowRef.value.scrollLeft += e.deltaY
-  }
+  if (columnsRowRef.value) columnsRowRef.value.scrollLeft += e.deltaY
 }
-
-onMounted(async () => {
-  await fetchProduitsEtEquipements()
-  await fetchConfiguration()
-  if (columnsRowRef.value) {
-    columnsRowRef.value.addEventListener('wheel', handleWheel, { passive: false })
-  }
-})
-
-onUnmounted(() => {
-  if (columnsRowRef.value) {
-    columnsRowRef.value.removeEventListener('wheel', handleWheel)
-  }
-})
 
 function moveLeft(index: number) {
   if (index === 0) return
@@ -149,15 +167,8 @@ function validerAjoutOuModif() {
   editingIndex.value = null
 }
 
-async function handleGroupUpdate(group: {
-  type: 'group'
-  ref_id: null
-  display_name: string
-  group_items: GroupItem[]
-}) {
-  const resGroup = await axios.post('http://localhost:8000/groupes', {
-    nom: group.display_name
-  })
+async function handleGroupUpdate(group: { type: 'group'; ref_id: null; display_name: string; group_items: GroupItem[] }) {
+  const resGroup = await axios.post('http://localhost:8000/groupes', { nom: group.display_name })
   const groupe_id = resGroup.data.id
   await Promise.all(
     group.group_items.map(item =>
@@ -174,7 +185,8 @@ async function handleGroupUpdate(group: {
     ref_id: groupe_id,
     display_name: group.display_name,
     ordre: editingGroupIndex.value ?? columns.value.length,
-    group_items: group.group_items
+    group_items: group.group_items,
+    group_summary: summarizeGroupItems(group.group_items)
   }
 
   if (editingGroupIndex.value !== null) {
@@ -192,13 +204,13 @@ function handleGroupModalClose() {
 }
 
 async function resetFPack() {
-  columns.value = [];
+  columns.value = []
 }
 
 async function saveConfiguration() {
-    if (typeof props.fpackId !== 'number' || isNaN(props.fpackId)) {
-    alert("Erreur : FPack ID non défini. Impossible de sauvegarder.");
-    return;
+  if (typeof props.fpackId !== 'number' || isNaN(props.fpackId)) {
+    alert("Erreur : FPack ID non défini. Impossible de sauvegarder.")
+    return
   }
   await axios.delete(`http://localhost:8000/fpack_config_columns/clear/${props.fpackId}`)
   for (let i = 0; i < columns.value.length; i++) {
@@ -212,18 +224,30 @@ async function saveConfiguration() {
   }
   router.back()
 }
+
+onMounted(async () => {
+  await fetchProduitsEtEquipements()
+  await fetchConfiguration()
+  if (columnsRowRef.value) {
+    columnsRowRef.value.addEventListener('wheel', handleWheel, { passive: false })
+  }
+})
+
+onUnmounted(() => {
+  if (columnsRowRef.value) {
+    columnsRowRef.value.removeEventListener('wheel', handleWheel)
+  }
+})
 </script>
 
 <template>
   <div class="fpack-config-table">
-    <h2>
-      Configuration de la F-Pack <span class="fpack-nom">{{ props.fpackName }}</span>
-    </h2>
+    <h2>Configuration de la F-Pack <span class="fpack-nom">{{ props.fpackName }}</span></h2>
 
     <div class="actions">
-      <button @click="startAdd('produit')"><img src="../assets/plus.png" alt="Plus" class = "icon-plus"> Produit 🧩</button>
-      <button @click="startAdd('equipement')"><img src="../assets/plus.png" alt="Plus" class = "icon-plus"> Équipement 🔧</button>
-      <button @click="showAddGroupModal = true"><img src="../assets/plus.png" alt="Plus" class = "icon-plus"> Groupe 👥</button>
+      <button @click="startAdd('produit')">🧩 Ajouter Produit</button>
+      <button @click="startAdd('equipement')">🔧 Ajouter Équipement</button>
+      <button @click="showAddGroupModal = true">👥 Ajouter Groupe</button>
     </div>
 
     <div ref="columnsRowRef" class="columns-row">
@@ -234,29 +258,38 @@ async function saveConfiguration() {
           <span v-else-if="col.type === 'group'">👥</span>
           {{ col.display_name }}
         </strong>
+
         <div class="controls">
           <button @click="moveLeft(index)">◀️</button>
           <button @click="startEdit(index)">✏️</button>
           <button @click="columns.splice(index, 1)">🗑️</button>
           <button @click="moveRight(index)">▶️</button>
         </div>
+
+        <div class="details" v-if="col.type === 'produit'">
+          <p v-if="col.type_detail">Type: {{ col.type_detail }}</p>
+          <p v-if="col.fournisseur_nom">Fournisseur: {{ col.fournisseur_nom }}</p>
+          <p v-if="col.description">Description: {{ col.description }}</p>
+        </div>
+
+        <div class="details" v-else-if="col.type === 'equipement'">
+          <p>{{ col.produits_count }} produits associés</p>
+        </div>
+
+        <div class="details" v-else-if="col.type === 'group' && col.group_summary">
+          <p>{{ col.group_summary.produit }} produits, {{ col.group_summary.equipement }} équipements, {{ col.group_summary.robot }} robots</p>
+        </div>
+
         <div v-if="col.type === 'group'" class="group-details">
           <p v-for="item in col.group_items" :key="item.ref_id">- {{ item.label }}</p>
         </div>
       </div>
     </div>
 
-
     <div v-if="modeAjout" class="ajout-inline">
       <select v-model="selectedRefId">
         <option :value="null" disabled>Choisir un {{ modeAjout }}</option>
-        <option
-          v-for="item in modeAjout === 'produit' ? produits : equipements"
-          :key="item.id"
-          :value="item.id"
-        >
-          {{ item.nom }}
-        </option>
+        <option v-for="item in modeAjout === 'produit' ? produits : equipements" :key="item.id" :value="item.id">{{ item.nom }}</option>
       </select>
       <button @click="validerAjoutOuModif">✅</button>
       <button @click="modeAjout = null">❌</button>
@@ -264,20 +297,25 @@ async function saveConfiguration() {
 
     <AddGroupModal
       v-if="showAddGroupModal"
-      :initialGroup="asGroupProp(columns[editingGroupIndex ?? -1])"
+      :initialGroup="editingGroupIndex !== null ? { display_name: columns[editingGroupIndex].display_name, group_items: columns[editingGroupIndex].group_items || [] } : undefined"
       @close="handleGroupModalClose"
       @created="handleGroupUpdate"
     />
 
-  <div class = "save-button">
-    <button @click="saveConfiguration">Sauvegarder</button>
-    <button @click="resetFPack">Effacer tout</button>
+    <div class="save-button">
+      <button @click="saveConfiguration">Sauvegarder</button>
+      <button @click="resetFPack">Effacer tout</button>
+    </div>
   </div>
-  </div>
-
 </template>
 
 <style scoped>
+.details {
+  font-size: 0.85rem;
+  color: #4b5563;
+  margin-top: 0.3rem;
+  line-height: 1.2;
+}
 .fpack-config-table {
   display: flex;
   flex-direction: column;

@@ -3,6 +3,7 @@ from sqlalchemy.orm import Session # type: ignore
 from .database import SessionLocal
 from . import models, schemas
 from sqlalchemy import inspect # type: ignore
+from sqlalchemy.orm import selectinload #type: ignore
 
 router = APIRouter()
 
@@ -53,6 +54,13 @@ def delete_produit(id: int, db: Session = Depends(get_db)):
     db.delete(db_produit)
     db.commit()
     return {"ok": True}
+
+@router.get("/produits/{id}", response_model=schemas.ProduitRead)
+def get_produit(id: int, db: Session = Depends(get_db)):
+    produit = db.query(models.Produit).get(id)
+    if not produit:
+        raise HTTPException(status_code=404, detail="Produit non trouvé")
+    return produit
 
 # FOURNISSEURS
 @router.get("/fournisseurs", response_model=list[schemas.FournisseurRead])
@@ -188,6 +196,17 @@ def delete_equipement(id: int, db: Session = Depends(get_db)):
     db.commit()
     return {"ok": True}
 
+
+@router.get("/equipements/{id}", response_model=schemas.EquipementRead)
+def get_equipement(id: int, db: Session = Depends(get_db)):
+    equipement = db.query(models.Equipements)\
+        .options(selectinload(models.Equipements.equipement_produit))\
+        .filter(models.Equipements.id == id)\
+        .first()
+    if not equipement:
+        raise HTTPException(status_code=404, detail="Équipement non trouvé")
+    return equipement
+
 # EQUIPEMENTS PRODUITS
 
 
@@ -260,6 +279,13 @@ def delete_fpack(id: int, db: Session = Depends(get_db)):
     db.delete(db_fpack)
     db.commit()
     return {"ok": True}
+
+@router.get("/fpacks/{id}", response_model=schemas.FPackRead)
+def get_fpack(id: int, db: Session = Depends(get_db)):
+    db_fpack = db.query(models.FPack).get(id)
+    if not db_fpack:
+        raise HTTPException(status_code=404, detail="FPack non trouvé")
+    return db_fpack
 
 # GROUPS
 @router.get("/groupes", response_model=list[schemas.GroupesRead])

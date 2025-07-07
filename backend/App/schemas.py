@@ -66,9 +66,10 @@ class EquipementBase(BaseModel):
 class EquipementCreate(EquipementBase):
     pass
 
-class EquipementRead(EquipementBase):
+class EquipementRead(BaseModel):
     id: int
-    equipement_produits: List[EquipementProduitRead] = []
+    nom: str
+    equipement_produits: list[EquipementProduitRead] = []
 
     class Config:
         orm_mode = True
@@ -80,7 +81,9 @@ class EquipementProduitBase(BaseModel):
 class EquipementProduitCreate(EquipementProduitBase):
     pass
 
-class EquipementProduitRead(EquipementProduitBase):
+class EquipementProduitRead(BaseModel):
+    produit_id: int
+
     class Config:
         orm_mode = True
         
