@@ -397,3 +397,14 @@ def clear_fpack_config_columns(fpack_id: int, db: Session = Depends(get_db)):
     db.query(models.FPackConfigColumn).filter(models.FPackConfigColumn.fpack_id == fpack_id).delete()
     db.commit()
     return {"ok": True}
+
+@router.get("/dashboard/stats")
+def dashboard_stats(db: Session = Depends(get_db)):
+    return {
+        "produits": db.query(models.Produit).count(),
+        "equipements": db.query(models.Equipements).count(),
+        "robots": db.query(models.Robots).count(),
+        "clients": db.query(models.Client).count(),
+        "fournisseurs": db.query(models.Fournisseur).count(),
+        "fpacks": db.query(models.FPack).count()
+    }

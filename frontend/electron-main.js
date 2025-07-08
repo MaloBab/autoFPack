@@ -1,52 +1,37 @@
-import { app, BrowserWindow } from 'electron'
-import path from 'node:path'
-import { fileURLToPath } from 'node:url'
-import { dirname } from 'node:path'
+import { spawn } from 'child_process'
+import path from 'path'
 
-const __filename = fileURLToPath(import.meta.url)
-const __dirname = dirname(__filename)
-
-let win = null
+let backendProcess = null
 
 function createWindow() {
-  win = new BrowserWindow({
+  const win = new BrowserWindow({
     width: 1000,
     height: 700,
     minWidth: 1000,
-    minHeight: 700, 
+    minHeight:700,
     webPreferences: {
       preload: path.join(__dirname, 'preload.js'),
-      contextIsolation: true,
-      nodeIntegration: false
     }
   })
 
-  const devServerUrl = process.env.VITE_DEV_SERVER_URL || 'http://localhost:5173'
-
-  console.log('======== Electron DEBUG ========')
-  console.log('App is packaged:', app.isPackaged)
-  console.log('Dev server URL:', devServerUrl)
-  console.log('================================')
-
   if (app.isPackaged) {
-    win.loadFile(path.join(__dirname, 'dist', 'index.html'))
+    win.loadFile(path.join(__dirname, 'dist/index.html'))
+
+    const backendPath = path.join(__dirname, '../backend/App/main.py')
+    backendProcess = spawn('python', [backendPath], {
+      cwd: path.dirname(backendPath),
+      shell: true
+    })
+
+    backendProcess.stdout.on('data', (data) => {
+      console.log(`[FASTAPI] ${data}`)
+    })
+
+    backendProcess.stderr.on('data', (data) => {
+      console.error(`[FASTAPI-ERR] ${data}`)
+    })
+
   } else {
-
-    win.loadURL(devServerUrl)
+    win.loadURL('http://localhost:5173')
   }
-
-  win.on('closed', () => {
-    win = null
-  })
 }
-
-
-app.whenReady().then(createWindow)
-
-app.on('activate', () => {
-  if (BrowserWindow.getAllWindows().length === 0) createWindow()
-})
-
-app.on('window-all-closed', () => {
-  if (process.platform !== 'darwin') app.quit()
-})

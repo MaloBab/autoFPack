@@ -1,7 +1,7 @@
 <script setup>
 defineProps({ open: Boolean })
 const menuItems = [
-  { label: 'Dashboard', route: '/', icon: '📊' },
+  { label: 'Tableau de Bord', route: '/', icon: '📊' },
   { label: 'Fournisseurs', route: '/fournisseurs', icon: '🏭' },
   { label: 'Clients', route: '/clients', icon: '👤' },
   { label: 'Robots', route: '/robots', icon: '🤖' },

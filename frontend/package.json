@@ -9,7 +9,9 @@
     "electron": "electron .",
     "dev:electron": "concurrently \"npm run dev\" \"wait-on http://localhost:5173 && npm run electron\"",
     "build": "vite build",
-    "start": "electron ."
+    "start": "electron .",
+    "build:electron": "npm run build && electron-builder",
+    "postinstall": "electron-builder install-app-deps"
   },
   "dependencies": {
     "vue": "^3.5.17",
@@ -24,5 +26,24 @@
     "vite": "^7.0.0",
     "vue-tsc": "^2.2.10",
     "wait-on": "^8.0.3"
+  },
+
+"build": {
+  "appId": "com.fpack.app",
+  "productName": "F-Pack App",
+  "files": [
+    "dist/",
+    "electron-main.js",
+    "package.json",
+    "../backend/**"
+  ],
+  "directories": {
+    "buildResources": "build"
+  },
+  "win": {
+    "target": "nsis",
+    "icon": "build/icon.ico",
+    "sign": false
   }
+}
 }
