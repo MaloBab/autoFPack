@@ -325,7 +325,6 @@ def get_config_columns(fpack_id: int, db: Session = Depends(get_db)):
             "ordre": col.ordre
         }
 
-        # Ajout du display_name selon le type
         if col.type == "produit":
             produit = db.query(models.Produit).filter_by(id=col.ref_id).first()
             entry["display_name"] = produit.nom if produit else f"(produit {col.ref_id})"

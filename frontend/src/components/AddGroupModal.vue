@@ -27,10 +27,17 @@ const emit = defineEmits<{
   }): void
 }>()
 
+type SelectedItem = {
+  type: 'produit' | 'equipement' | 'robot'
+  ref_id: number
+  label: string
+  description?: string
+  generation?: string
+}
+
 const nomGroupe = ref(props.initialGroup?.display_name ?? '')
-const selectedItems = ref(
-  props.initialGroup?.group_items ? [...props.initialGroup.group_items] : []
-)
+const selectedItems = ref<SelectedItem[]>(props.initialGroup?.group_items ? [...props.initialGroup.group_items] : [])
+
 
 const produits = ref<any[]>([])
 const equipements = ref<any[]>([])
@@ -67,7 +74,13 @@ function addItem(type: 'produit' | 'equipement' | 'robot', id: number) {
   if (!item) return
   const alreadyAdded = selectedItems.value.some(e => e.type === type && e.ref_id === id)
   if (!alreadyAdded) {
-    selectedItems.value.push({ type, ref_id: id, label: item.nom })
+    selectedItems.value.push({ 
+      type, 
+      ref_id: id, 
+      label: item.nom,
+      description: item.description,
+      generation: item.generation      
+    })
   }
 }
 
@@ -121,7 +134,8 @@ function valider() {
       <div class="selectors">
       <select :value="''" @change="onProduitChange">
         <option value="">➕ Produit</option>
-        <option v-for="p in produits" :key="p.id" :value="p.id">{{ p.nom }}</option>
+        <option v-for="p in produits" :key="p.id" :value="p.id">
+  {{ p.nom }} - {{p.description ? p.description.length > 6 ? p.description.slice(0,6) + '...': p.description: ''}}</option>
       </select>
 
       <select :value="''" @change="onEquipementChange">
@@ -131,19 +145,24 @@ function valider() {
 
       <select :value="''" @change="onRobotChange">
         <option value="">➕ Robot</option>
-        <option v-for="r in robots" :key="r.id" :value="r.id">{{ r.nom }}</option>
+        <option v-for="r in robots" :key="r.id" :value="r.id"> {{ r.nom}}{{r.generation ? r.generation.length > 6 ? r.generation.slice(0,6) + '...': r.generation: ''}} </option>
       </select>
       </div>
 
-      <div class="preview">
-        <h4>Éléments du groupe :</h4>
-        <ul>
-          <li v-for="(item, i) in selectedItems" :key="i">
-            {{ item.label }} ({{ item.type }})
-            <button @click="removeItem(i)">❌</button>
-          </li>
-        </ul>
-      </div>
+<div class="preview">
+  <h4>Éléments du groupe :</h4>
+  <ul>
+    <li v-for="(item, i) in selectedItems" :key="i">
+      {{ item.label }}
+      <template v-if="item.type === 'produit' && item.description">
+        - {{ item.description.length > 10 ? item.description.slice(0, 10) + '…' : item.description }}
+      </template>
+      <template v-else-if="item.type === 'robot' && item.generation">{{ item.generation }}</template>
+      ({{ item.type }})
+      <button @click="removeItem(i)">❌</button>
+    </li>
+  </ul>
+</div>
 
       <div class="actions">
         <button @click="valider">✅ {{ props.initialGroup ? 'Modifier' : 'Créer' }}</button>
@@ -185,7 +204,7 @@ function valider() {
 h3 {
   font-size: 1.8rem;
   font-weight: 700;
-  color: #1e293b; /* gris bleu foncé */
+  color: #1e293b;
   margin-bottom: 0.5rem;
   text-align: center;
   letter-spacing: 0.03em;
@@ -193,7 +212,7 @@ h3 {
 
 label {
   font-weight: 600;
-  color: #475569; /* gris moyen */
+  color: #475569;
   margin-bottom: 0.25rem;
   user-select: none;
 }
@@ -202,15 +221,15 @@ input {
   padding: 0.6rem 1rem;
   font-size: 1rem;
   border-radius: 8px;
-  border: 1.5px solid #cbd5e1; /* gris clair */
+  border: 1.5px solid #cbd5e1;
   transition: border-color 0.3s ease;
   outline-offset: 2px;
   outline-color: transparent;
 }
 
 input:focus {
-  border-color: #3b82f6; /* bleu vif */
-  outline-color: #bfdbfe; /* bleu clair */
+  border-color: #3b82f6;
+  outline-color: #bfdbfe;
   box-shadow: 0 0 8px #bfdbfeaa;
 }
 

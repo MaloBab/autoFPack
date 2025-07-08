@@ -22,7 +22,6 @@ const {
 
 
 
-// Valeurs distinctes pour chaque colonne
 const columnValues = computed(() => {
   const map: Record<string, Set<any>> = {}
   for (const row of rows.value) {
@@ -34,7 +33,6 @@ const columnValues = computed(() => {
   return map
 })
 
-// Filtrage
 const filteredRows = computed(() =>
   rows.value
     .filter(row =>
@@ -48,12 +46,10 @@ const filteredRows = computed(() =>
       return columns.value.some(col => {
       let cellValue = row[col]
 
-      // Si c'est un produit et qu'on est sur la colonne fournisseur_id
       if (props.tableName === 'produits' && col === 'fournisseur_id') {
         const fournisseur = fournisseurs.value.find(f => f.id === cellValue)
         cellValue = fournisseur?.nom || ''
       }
-      // Si c'est un robot et qu'on est sur la colonne client
 
       if (props.tableName === 'robots' && col === 'client') {
         const client = clients.value.find(c => c.id === cellValue)
@@ -153,7 +149,7 @@ const valueLabels = computed(() => {
                   <option v-for="f in fournisseurs" :key="f.id" :value="f.nom">{{ f.nom }}</option>
                 </select>
               </template>
-              <template v-if="editingId === row.id && col === 'client' && props.tableName === 'robots'">
+              <template v-else-if="editingId === row.id && col === 'client' && props.tableName === 'robots'">
                 <select v-model="editRow.client_nom" @keyup.enter="validateEdit(row.id)">
                   <option v-for="c in clients" :key="c.id" :value="c.nom">{{ c.nom }}</option>
                 </select>
@@ -203,13 +199,11 @@ const valueLabels = computed(() => {
   background: #1d4ed8;
 }
 
-/* Conteneur principal du tableau */
 .table-container {
   width: 100%;
   background: #f7f7f7;
 }
 
-/* Table d'en-tête (fixe) */
 .table-head {
   width: 90%;
   margin-top: 3%;
@@ -223,7 +217,6 @@ const valueLabels = computed(() => {
   table-layout: fixed;
 }
 
-/* Corps scrollable */
 .table-body-scroll {
   width: 90%;
   margin-left: 2%;
@@ -248,7 +241,6 @@ const valueLabels = computed(() => {
   background: #4d4e4f;
 }
 
-/* Table du corps */
 .table-body-scroll table {
   width: 100%;
   border-collapse: separate;

@@ -15,6 +15,8 @@ type GroupItem = {
   type: 'produit' | 'equipement' | 'robot'
   ref_id: number
   label: string
+  description?: string
+  generation?: string
 }
 
 type ConfigColumn = {
@@ -32,7 +34,9 @@ type ConfigColumn = {
 
 const columns = ref<ConfigColumn[]>([])
 const produits = ref<any[]>([])
+const fournisseurs = ref<any[]>([])
 const equipements = ref<any[]>([])
+const robots = ref<any[]>([])
 const showAddGroupModal = ref(false)
 const modeAjout = ref<'produit' | 'equipement' | null>(null)
 const selectedRefId = ref<number | null>(null)
@@ -40,6 +44,7 @@ const editingIndex = ref<number | null>(null)
 const editingGroupIndex = ref<number | null>(null)
 
 const columnsRowRef = ref<HTMLElement | null>(null)
+
 
 function summarizeGroupItems(items: GroupItem[]) {
   const summary = { produit: 0, equipement: 0, robot: 0 }
@@ -57,12 +62,13 @@ async function fetchConfiguration() {
       try {
         const prodRes = await axios.get(`http://localhost:8000/produits/${col.ref_id}`)
         const p = prodRes.data
+        const fournisseur = fournisseurs.value.find(f => f.id === p.fournisseur_id)
         enriched.push({
           ...col,
           display_name: p.nom,
           type_detail: p.type,
           description: p.description,
-          fournisseur_nom: p.fournisseur?.nom ?? ''
+          fournisseur_nom: fournisseur?.nom ?? ''
         })
       } catch {
         enriched.push(col)
@@ -92,24 +98,42 @@ async function fetchConfiguration() {
 }
 
 async function fetchProduitsEtEquipements() {
-  const [prod, eq] = await Promise.all([
+  const [prod, eq, rob, four] = await Promise.all([
     axios.get('http://localhost:8000/produits'),
-    axios.get('http://localhost:8000/equipements')
+    axios.get('http://localhost:8000/equipements'),
+    axios.get('http://localhost:8000/robots'),
+    axios.get('http://localhost:8000/fournisseurs')
   ])
   produits.value = prod.data
   equipements.value = eq.data
+  robots.value = rob.data
+  fournisseurs.value = four.data
 }
 
 function handleWheel(e: WheelEvent) {
   const target = e.target as HTMLElement
-  const columnBox = target.closest('.column-box') as HTMLElement | null
+  const inGroupList = target.closest('.group-list') as HTMLElement | null
+  if (inGroupList) {
+    const canScrollVertically = inGroupList.scrollHeight > inGroupList.clientHeight
+    const isScrollingVertically = Math.abs(e.deltaY) > Math.abs(e.deltaX)
+    if (isScrollingVertically && canScrollVertically) {
+      return
+    }
+  }
+
+  const columnBox = target.closest('.column-card') as HTMLElement | null
   if (columnBox) {
     const canScrollVertically = columnBox.scrollHeight > columnBox.clientHeight
     const isScrollingVertically = Math.abs(e.deltaY) > Math.abs(e.deltaX)
-    if (isScrollingVertically && canScrollVertically) return
+    if (isScrollingVertically && canScrollVertically) {
+      return
+    }
   }
+
   e.preventDefault()
-  if (columnsRowRef.value) columnsRowRef.value.scrollLeft += e.deltaY
+  if (columnsRowRef.value) {
+    columnsRowRef.value.scrollLeft += e.deltaY
+  }
 }
 
 function moveLeft(index: number) {
@@ -155,6 +179,16 @@ function validerAjoutOuModif() {
     display_name: item.nom,
     ordre: editingIndex.value ?? columns.value.length
   }
+    if (modeAjout.value === "produit") {
+      col.type_detail = item.type
+      col.description = item.description
+      const fournisseur = fournisseurs.value.find(f => f.id === item.fournisseur_id)
+      col.fournisseur_nom = fournisseur?.nom ?? ''
+  }
+
+    if (modeAjout.value === "equipement") {
+    col.produits_count = item.equipement_produit?.length ?? 0
+  }
 
   if (editingIndex.value !== null) {
     columns.value[editingIndex.value] = col
@@ -168,10 +202,28 @@ function validerAjoutOuModif() {
 }
 
 async function handleGroupUpdate(group: { type: 'group'; ref_id: null; display_name: string; group_items: GroupItem[] }) {
+  const enrichedGroupItems = group.group_items.map(item => {
+    if (item.type === 'produit') {
+      const produit = produits.value.find(p => p.id === item.ref_id)
+      return {
+        ...item,
+        description: produit?.description ?? ''
+      }
+    } else if (item.type === 'robot') {
+      const robot = robots.value.find(r => r.id === item.ref_id)
+      return {
+        ...item,
+        generation: robot?.generation ?? ''
+      }
+    }
+    return item
+  })
+
   const resGroup = await axios.post('http://localhost:8000/groupes', { nom: group.display_name })
   const groupe_id = resGroup.data.id
+
   await Promise.all(
-    group.group_items.map(item =>
+    enrichedGroupItems.map(item =>
       axios.post('http://localhost:8000/groupe_items', {
         group_id: groupe_id,
         type: item.type,
@@ -185,8 +237,8 @@ async function handleGroupUpdate(group: { type: 'group'; ref_id: null; display_n
     ref_id: groupe_id,
     display_name: group.display_name,
     ordre: editingGroupIndex.value ?? columns.value.length,
-    group_items: group.group_items,
-    group_summary: summarizeGroupItems(group.group_items)
+    group_items: enrichedGroupItems,
+    group_summary: summarizeGroupItems(enrichedGroupItems)
   }
 
   if (editingGroupIndex.value !== null) {
@@ -197,6 +249,7 @@ async function handleGroupUpdate(group: { type: 'group'; ref_id: null; display_n
 
   handleGroupModalClose()
 }
+
 
 function handleGroupModalClose() {
   showAddGroupModal.value = false
@@ -241,55 +294,81 @@ onUnmounted(() => {
 </script>
 
 <template>
-  <div class="fpack-config-table">
-    <h2>Configuration de la F-Pack <span class="fpack-nom">{{ props.fpackName }}</span></h2>
+  <div class="fpack-config-wrapper">
+    <h2 class="fpack-title">
+      Configuration de la F-Pack :
+      <span class="fpack-name">{{ props.fpackName }}</span>
+    </h2>
 
-    <div class="actions">
-      <button @click="startAdd('produit')">🧩 Ajouter Produit</button>
-      <button @click="startAdd('equipement')">🔧 Ajouter Équipement</button>
-      <button @click="showAddGroupModal = true">👥 Ajouter Groupe</button>
+    <div class="toolbar">
+      <button @click="startAdd('produit')" class="addProduit">🧩 Ajouter Produit</button>
+      <button @click="startAdd('equipement')" class="addEquipement">🔧 Ajouter Équipement</button>
+      <button @click="showAddGroupModal = true" class="addGroupe">👥 Ajouter Groupe</button>
     </div>
 
-    <div ref="columnsRowRef" class="columns-row">
-      <div class="column-box" v-for="(col, index) in columns" :key="index">
-        <strong class="title-col">
-          <span v-if="col.type === 'produit'">🧩</span>
-          <span v-else-if="col.type === 'equipement'">🔧</span>
-          <span v-else-if="col.type === 'group'">👥</span>
-          {{ col.display_name }}
-        </strong>
+    <div ref="columnsRowRef" class="columns-scroll-container">
+      <div class="column-card" v-for="(col, index) in columns" :key="index">
+        <div class="card-header">
+          <span class="badge" :class="col.type">
+            <template v-if="col.type === 'produit'">🧩 Produit</template>
+            <template v-else-if="col.type === 'equipement'">🔧 Équipement</template>
+            <template v-else>👥 Groupe</template>
+          </span>
+          <strong class="title">{{ col.display_name }}</strong>
+        </div>
 
-        <div class="controls">
+        <div class="card-content">
+          <div class="info-line" v-if="col.type === 'produit'">
+            <p v-if="col.type_detail"><strong>Type :</strong> {{ col.type_detail }}</p>
+            <p v-if="col.fournisseur_nom"><strong>Fournisseur :</strong> {{ col.fournisseur_nom }}</p>
+            <p v-if="col.description"><strong>Description :</strong> {{ col.description }}</p>
+          </div>
+
+          <div class="info-line" v-else-if="col.type === 'equipement'">
+            <p><strong>Produits associés :</strong> {{ col.produits_count }}</p>
+          </div>
+
+          <div class="info-line" v-else-if="col.type === 'group' && col.group_summary">
+            <p>
+              <strong>Contenu :</strong>
+              {{ col.group_summary.produit }}🧩 /
+              {{ col.group_summary.equipement }}🔧 /
+              {{ col.group_summary.robot }}🤖
+            </p>
+          </div>
+
+          <ul v-if="col.type === 'group'" class="group-list">
+            <li v-for="item in col.group_items" :key="item.ref_id">
+              {{ item.label }}
+              <template v-if="item.type === 'produit' && item.description">
+                - {{ item.description.length > 10 ? item.description.slice(0, 10) + '…' : item.description }}
+              </template>
+              <template v-else-if="item.type === 'robot' && item.generation">
+                {{item.generation.length > 6 ? item.generation.slice(0,6) + '...' : item.generation }}
+              </template>
+            </li>
+          </ul>
+        </div>
+
+        <div class="card-actions">
           <button @click="moveLeft(index)">◀️</button>
           <button @click="startEdit(index)">✏️</button>
           <button @click="columns.splice(index, 1)">🗑️</button>
           <button @click="moveRight(index)">▶️</button>
         </div>
-
-        <div class="details" v-if="col.type === 'produit'">
-          <p v-if="col.type_detail">Type: {{ col.type_detail }}</p>
-          <p v-if="col.fournisseur_nom">Fournisseur: {{ col.fournisseur_nom }}</p>
-          <p v-if="col.description">Description: {{ col.description }}</p>
-        </div>
-
-        <div class="details" v-else-if="col.type === 'equipement'">
-          <p>{{ col.produits_count }} produits associés</p>
-        </div>
-
-        <div class="details" v-else-if="col.type === 'group' && col.group_summary">
-          <p>{{ col.group_summary.produit }} produits, {{ col.group_summary.equipement }} équipements, {{ col.group_summary.robot }} robots</p>
-        </div>
-
-        <div v-if="col.type === 'group'" class="group-details">
-          <p v-for="item in col.group_items" :key="item.ref_id">- {{ item.label }}</p>
-        </div>
       </div>
     </div>
 
-    <div v-if="modeAjout" class="ajout-inline">
+    <div v-if="modeAjout" class="add-select-inline">
       <select v-model="selectedRefId">
         <option :value="null" disabled>Choisir un {{ modeAjout }}</option>
-        <option v-for="item in modeAjout === 'produit' ? produits : equipements" :key="item.id" :value="item.id">{{ item.nom }}</option>
+        <option
+          v-for="item in modeAjout === 'produit' ? produits : equipements"
+          :key="item.id"
+          :value="item.id"
+        >
+          {{ item.nom }}
+        </option>
       </select>
       <button @click="validerAjoutOuModif">✅</button>
       <button @click="modeAjout = null">❌</button>
@@ -302,281 +381,278 @@ onUnmounted(() => {
       @created="handleGroupUpdate"
     />
 
-    <div class="save-button">
-      <button @click="saveConfiguration">Sauvegarder</button>
-      <button @click="resetFPack">Effacer tout</button>
+    <div class="footer-actions">
+      <button class="save" @click="saveConfiguration">Sauvegarder</button>
+      <button class="clear" @click="resetFPack">Effacer tout</button>
     </div>
   </div>
 </template>
 
+
 <style scoped>
-.details {
-  font-size: 0.85rem;
-  color: #4b5563;
-  margin-top: 0.3rem;
-  line-height: 1.2;
-}
-.fpack-config-table {
+.fpack-config-wrapper {
+  padding: 0rem 2rem 2rem 2rem;
+  background-color: #f1f5f9;
+  height: 90dvh;
   display: flex;
   flex-direction: column;
   box-sizing: border-box;
-  padding: 2rem;
-  background: #f7f7f7;
-  color: #1f2937;
+  overflow: hidden;
 }
 
-h2 {
+.fpack-title {
   font-size: 1.75rem;
-  margin-bottom: 1.5rem;
+  font-weight: bold;
+  margin-bottom: 1rem;
 }
 
-.title-col {
-  text-align: center;
-}
-
-.actions {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 1rem;
-  margin-bottom: 1.5rem;
-}
-
-.actions button {
-  background-color: #3b82f6;
-  color: white;
-  font-weight: 600;
-  font-size: 0.95rem;
-  padding: 0.65rem 1.2rem;
-  border-radius: 0.5rem;
-  cursor: pointer;
-  border: none;
-  display: flex;
-  align-items: center;
-  gap: 0.5rem;
-  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
-  transition: background-color 0.2s ease;
-}
-
-.save-button {
-  align-self: flex-start;
-  margin-top: 1rem;
-  gap: 1rem;
-}
-.save-button button {
-  background-color: #3b82f6;
-  color: white;
-  margin-top: 0.4rem;
-  font-weight: 600;
-  font-size: 1rem;
-  margin-right: 0.5rem;
-  border-radius: 0.5rem;
-  cursor: pointer;
-  border: none;
-  align-items: center;
-  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
-  transition: background-color 0.2s ease;
-}
-
-.actions button:hover {
-  background-color: #2563eb;
-}
-
-.icon-plus {
-  width: 1.1rem;
-  height: 1.1rem;
-  vertical-align: middle;
-}
-
-.fpack-nom {
-  color: #3b82f6;
+.fpack-name {
+  color: #2563eb;
   font-weight: 700;
   margin-left: 0.5rem;
 }
 
-.columns-row {
-  max-height: 45vh;
-  overflow-x: auto;
+.toolbar {
   display: flex;
-   padding-bottom: 1%;
-   box-sizing: content-box;
   gap: 1rem;
-
+  margin-bottom: 1rem;
+  flex-wrap: wrap;
 }
 
-.columns-row::-webkit-scrollbar {
-  margin-top: 1rem;
-  height: 8px;               
-}
-
-.columns-row::-webkit-scrollbar-thumb {
-  background-color: #94a3b8;
-  border-radius: 4px;
-}
-
-.columns-row::-webkit-scrollbar-track {
-  background-color: #f1f5f9;
-  border-radius: 4px;
-}
-
-.column-box {
-  flex: 0 0 auto;
-  min-width: 220px;
-  max-height: 85%;
-  background-color: #ffffff;
-  border: 1px solid #e5e7eb;
-  border-radius: 0.75rem;
-  padding: 1rem;
-  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.05);
-  transition: transform 0.2s ease;
-  overflow-y: auto;
-  position: relative;
-}
-
-.column-box:hover {
-  transform: translateY(-2px);
-}
-
-.column-box strong {
-  display: block;
-  font-size: 1.1rem;
-  margin-bottom: 0.5rem;
-}
-
-.controls {
-  margin-top: 0.75rem;
-  display: flex;
-  justify-content: center;
-  gap: 0.6rem;
-  background: #FFF;
-  padding: 0.4rem 0.5rem;
-}
-
-.controls button {
-  flex: none;
-  width: 34px;
-  height: 34px;
-  background-color: #e5e7eb;
+.toolbar button {
+  color: white;
+  padding: 0.6rem 1rem;
+  border-radius: 8px;
   border: none;
-  border-radius: 50%;
-  cursor: pointer;
-  font-size: 1.1rem;
-  color: #374151;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  box-shadow: 0 2px 6px rgba(0,0,0,0.1);
-  transition: background-color 0.25s ease, color 0.25s ease, transform 0.15s ease;
-  position: relative;
-}
-
-.controls button:hover {
-  background-color: #3b82f6;
-  color: white;
-  transform: scale(1.1);
-  box-shadow: 0 4px 10px rgba(59, 130, 246, 0.6);
-}
-
-.controls button:nth-child(1) {
-  background-color: #e0f2fe;
-  color: #0284c7;
-}
-.controls button:nth-child(1):hover {
-  background-color: #0284c7;
-  color: white;
-}
-
-.controls button:nth-child(4) {
-  background-color: #e0f2fe;
-  color: #0284c7;
-}
-.controls button:nth-child(4):hover {
-  background-color: #0284c7;
-  color: white;
-}
-
-.controls button:nth-child(2) {
-  background-color: #fef3c7;
-  color: #a16207;
-}
-.controls button:nth-child(2):hover {
-  background-color: #a16207;
-  color: white;
-}
-
-.controls button:nth-child(3) {
-  background-color: #fee2e2;
-  color: #b91c1c;
-}
-.controls button:nth-child(3):hover {
-  background-color: #b91c1c;
-  color: white;
-}
-
-.group-details {
-  margin-top: 0.75rem;
-  font-size: 0.9rem;
-  color: #6b7280;
-  padding-left: 0.5rem;
-  border-left: 2px solid #cbd5e1;
-}
-
-.ajout-inline {
-  display: flex;
-  align-items: center;
-  gap: 0.75rem;
-  margin-top: 1rem;
-}
-
-.ajout-inline select {
-  padding: 0.5rem 1rem;
-  font-size: 1rem;
-  border: 1px solid #d1d5db;
-  border-radius: 0.375rem;
-  background-color: white;
-  color: #374151;
-  appearance: none;
-  max-width: 250px;
-}
-
-.ajout-inline button {
-  background-color: #10b981;
-  color: white;
-  border: none;
-  border-radius: 0.375rem;
-  padding: 0.45rem 0.9rem;
-  font-size: 1rem;
+  font-weight: 600;
+  font-size: 0.95rem;
   cursor: pointer;
   transition: background-color 0.2s ease;
 }
 
-.ajout-inline button:hover {
-  background-color: #059669;
+.addProduit {
+  background-color: #3b82f6;
 }
 
-.ajout-inline button:last-child {
-  background-color: #ef4444;
+.addEquipement {
+  background-color: #f59e0b;
 }
 
-.ajout-inline button:last-child:hover {
-  background-color: #dc2626;
+.addGroupe {
+  background-color: #10b981;
 }
 
-.column-box::-webkit-scrollbar {
+.addProduit:hover {
+  background-color: #2563eb;
+}
+
+.addEquipement:hover {
+  background-color: #df920d;
+}
+
+.addGroupe:hover {
+  background-color: #0d9b6c;
+}
+
+.columns-scroll-container {
+  display: flex;
+  overflow-x: auto;
+  gap: 1rem;
+  padding-bottom: 1rem;
+}
+
+.columns-scroll-container::-webkit-scrollbar {
+  height: 8px;
+}
+
+.columns-scroll-container::-webkit-scrollbar-thumb {
+  background: #cbd5e1;
+  border-radius: 4px;
+}
+
+.column-card {
+  background-color: white;
+  border-radius: 12px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
+  padding: 1rem;
+  min-width: 220px;
+  flex: 0 0 auto;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  max-height: 50vh;
+  overflow-y: auto;
+}
+
+.card-header {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  margin-bottom: 0.75rem;
+}
+
+.title {
+  font-size: 1.1rem;
+  font-weight: 700;
+  text-align: center;
+  margin-top: 0.3rem;
+}
+
+.badge {
+  padding: 0.25rem 0.5rem;
+  border-radius: 6px;
+  font-size: 0.8rem;
+  font-weight: bold;
+  color: white;
+}
+
+.badge.produit {
+  background-color: #3b82f6;
+}
+
+.badge.equipement {
+  background-color: #f59e0b;
+}
+
+.badge.group {
+  background-color: #10b981;
+}
+
+.card-content {
+  font-size: 0.9rem;
+  color: #374151;
+  padding-bottom: 0.75rem;
+  flex: 1 1 auto;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+}
+
+.info-line {
+  margin-bottom: 0.4rem;
+}
+
+.group-list {
+  list-style-type: none;
+  padding-left: 0.5rem;
+  margin-top: 0.5rem;
+  border-left: 2px solid #d1d5db;
+  max-height: 100%;
+  overflow-y: auto;
+  flex: 1 1 auto;
+}
+
+.group-list li {
+  font-size: 0.85rem;
+  color: #6b7280;
+  margin-bottom: 0.3rem;
+}
+
+.group-list::-webkit-scrollbar {
   width: 8px;
 }
 
-.column-box::-webkit-scrollbar-track {
-  background: transparent;
-}
-
-.column-box::-webkit-scrollbar-thumb {
-  background-color: #94a3b8; 
+.group-list::-webkit-scrollbar-thumb {
+  background-color: #cbd5e1;
   border-radius: 4px;
-  border: 2px solid transparent;
-  background-clip: content-box;
 }
 
-.column-box::-webkit-scrollbar-thumb:hover {
-  background-color: #64748b; 
+
+.card-actions {
+  display: flex;
+  justify-content: space-around;
+  margin-top: auto;
+  padding-top: 0.75rem;
+  border-top: 1px solid #e5e7eb;
+}
+
+.card-actions button {
+  background-color: #e5e7eb;
+  border: none;
+  border-radius: 50%;
+  width: 36px;
+  height: 36px;
+  font-size: 1.2rem;
+  line-height: 1;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0;
+  transition: background-color 0.2s ease;
+}
+
+.card-actions button:hover {
+  background-color: #3b82f6;
+  color: white;
+}
+
+.add-select-inline {
+  margin-top: 1rem;
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+}
+
+.add-select-inline select {
+  padding: 0.6rem 1rem;
+  border-radius: 8px;
+  border: 1px solid #cbd5e1;
+  background-color: white;
+  font-size: 1rem;
+  color: #374151;
+}
+
+.add-select-inline button {
+  padding: 0.6rem 1rem;
+  font-size: 1rem;
+  border-radius: 8px;
+  border: none;
+  cursor: pointer;
+  transition: background-color 0.2s ease;
+}
+
+.add-select-inline button:first-of-type {
+  background-color: #10b981;
+  color: white;
+}
+
+.add-select-inline button:last-of-type {
+  background-color: #ad0303;
+  color: white;
+}
+
+.footer-actions {
+  margin-top: 0.5rem;
+  display: flex;
+  gap: 1rem;
+}
+
+.footer-actions .save {
+  background-color: #3b82f6;
+  color: white;
+}
+
+.footer-actions .clear {
+  background-color: #ef4444;
+  color: white;
+}
+
+.footer-actions button {
+  padding: 0.7rem 1.4rem;
+  font-size: 1rem;
+  font-weight: bold;
+  border-radius: 8px;
+  border: none;
+  cursor: pointer;
+  transition: background-color 0.2s ease;
+}
+
+.footer-actions .save:hover {
+  background-color: #2563eb;
+}
+
+.footer-actions .clear:hover {
+  background-color: #dc2626;
 }
 </style>

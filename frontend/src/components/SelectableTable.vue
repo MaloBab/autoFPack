@@ -3,7 +3,6 @@ import { ref, computed, defineProps, defineEmits, onMounted, watch } from 'vue'
 import axios from 'axios'
 import Filters from '../components/Filters.vue'
 
-// Props
 const props = defineProps<{
   apiUrl?: string
   ajouter?: boolean
@@ -16,7 +15,6 @@ const emit = defineEmits<{
   (e: 'selection-changed', selected: Set<number>): void
 }>()
 
-// État
 const columns = ref<string[]>([])
 const rows = ref<any[]>([])
 const fournisseurs = ref<{ id: number, nom: string }[]>([])
@@ -24,32 +22,26 @@ const filters = ref<Record<string, Set<any>>>({})
 const selected = ref(new Set<number>(props.selectedIds))
 const scrollContainer = ref<HTMLElement | null>(null)
 
-// Fetch des données
 async function fetchData() {
   const urlBase = props.apiUrl || 'http://localhost:8000'
 
-  // Récupérer colonnes
   const colRes = await axios.get(`${urlBase}/table-columns/produits`)
   columns.value = colRes.data
 
-  // Récupérer données produits
   const dataRes = await axios.get(`${urlBase}/produits`)
   rows.value = dataRes.data
 
-  // Init filtres
   filters.value = {}
   columns.value.forEach(col => {
     filters.value[col] = new Set(rows.value.map(row => row[col]))
   })
 
-  // Récupérer fournisseurs
   const fournisseursRes = await axios.get(`${urlBase}/fournisseurs`)
   fournisseurs.value = fournisseursRes.data
 }
 
 onMounted(fetchData)
 
-// Toggle sélection
 function toggleSelect(id: number) {
   if (selected.value.has(id)) {
     selected.value.delete(id)
@@ -75,7 +67,6 @@ const columnValues = computed(() => {
   return map
 })
 
-// Labels pour les filtres
 const valueLabels = computed(() => {
   const map: Record<string, Record<any, string>> = {}
   map['fournisseur_id'] = Object.fromEntries(
@@ -84,16 +75,13 @@ const valueLabels = computed(() => {
   return map
 })
 
-// Filtres et recherche
 const filteredRows = computed(() => {
   let data = rows.value
-    // appliquer les filtres colonnes
     .filter(row =>
       columns.value.every(col =>
         !filters.value[col] || filters.value[col].has(row[col])
       )
     )
-    // appliquer la recherche
     .filter(row => {
       if (!props.search) return true
       const search = props.search.toLowerCase()
@@ -107,7 +95,6 @@ const filteredRows = computed(() => {
       })
     })
 
-  // appliquer filterMode
   if (props.filterMode === 'selected') {
     data = data.filter(row => selected.value.has(row.id))
   } else if (props.filterMode === 'unselected') {
