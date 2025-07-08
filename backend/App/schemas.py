@@ -140,3 +140,26 @@ class FPackConfigColumnRead(FPackConfigColumnBase):
     id: int
     class Config:
         orm_mode = True
+
+class ProduitIncompatibiliteBase(BaseModel):
+    produit_id_1: int
+    produit_id_2: int
+
+class ProduitIncompatibiliteCreate(ProduitIncompatibiliteBase):
+    pass
+
+class ProduitIncompatibiliteRead(ProduitIncompatibiliteBase):
+    class Config:
+        orm_mode = True
+
+
+class RobotProduitIncompatibiliteBase(BaseModel):
+    robot_id: int
+    produit_id: int
+
+class RobotProduitIncompatibiliteCreate(RobotProduitIncompatibiliteBase):
+    pass
+
+class RobotProduitIncompatibiliteRead(RobotProduitIncompatibiliteBase):
+    class Config:
+        orm_mode = True

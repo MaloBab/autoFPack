@@ -15,6 +15,9 @@ function resetAjouter() {
 <template>
   <div>
     <PageHeader titre="Produits" @ajouter="ajouter = true" />
+    <router-link to="/incompatibilites">
+      <button class="btn-incompat">⛔ Gérer Incompatibilités</button>
+    </router-link>
     <TableReader
       tableName="produits"
       :ajouter="ajouter"
@@ -25,3 +28,20 @@ function resetAjouter() {
     <TextSearch v-model="searchTerm" />
   </div>
 </template>
+
+<style lang="css" scoped>
+
+
+.btn-incompat {
+  padding: 0.4rem 0.8rem;
+  margin-top: 0.5rem ;
+  margin-left: 2%;
+  background-color: #ef4444;
+  color: white;
+  border: none;
+  border-radius: 6px;
+  font-weight: 500;
+  font-size: 0.9rem;
+  cursor: pointer;
+}
+</style>

@@ -408,3 +408,28 @@ def dashboard_stats(db: Session = Depends(get_db)):
         "fournisseurs": db.query(models.Fournisseur).count(),
         "fpacks": db.query(models.FPack).count()
     }
+    
+# PRODUIT-INCOMPATIBILITÉS
+@router.get("/produit-incompatibilites", response_model=list[schemas.ProduitIncompatibiliteRead])
+def list_incompatibilites(db: Session = Depends(get_db)):
+    return db.query(models.ProduitIncompatibilite).all()
+
+@router.post("/produit-incompatibilites", response_model=schemas.ProduitIncompatibiliteRead)
+def create_incompatibilite(incomp: schemas.ProduitIncompatibiliteCreate, db: Session = Depends(get_db)):
+    db_incomp = models.ProduitIncompatibilite(**incomp.dict())
+    db.add(db_incomp)
+    db.commit()
+    return db_incomp
+
+
+# ROBOT-PRODUIT-INCOMPATIBILITÉS
+@router.get("/robot-produit-incompatibilites", response_model=list[schemas.RobotProduitIncompatibiliteRead])
+def list_robot_incompatibilites(db: Session = Depends(get_db)):
+    return db.query(models.RobotProduitIncompatibilite).all()
+
+@router.post("/robot-produit-incompatibilites", response_model=schemas.RobotProduitIncompatibiliteRead)
+def create_robot_incompatibilite(incomp: schemas.RobotProduitIncompatibiliteCreate, db: Session = Depends(get_db)):
+    db_incomp = models.RobotProduitIncompatibilite(**incomp.dict())
+    db.add(db_incomp)
+    db.commit()
+    return db_incomp

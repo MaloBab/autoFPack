@@ -88,3 +88,13 @@ class FPackConfigColumn(Base):
     ordre = Column(Integer, nullable=False)
     type = Column(String(50), nullable=False)  # 'produit' | 'equipement' | 'group'
     ref_id = Column(Integer, nullable=True)
+    
+class ProduitIncompatibilite(Base):
+    __tablename__ = "produit_incompatibilites"
+    produit_id_1 = Column(Integer, ForeignKey("produits.id"), primary_key=True)
+    produit_id_2 = Column(Integer, ForeignKey("produits.id"), primary_key=True)
+
+class RobotProduitIncompatibilite(Base):
+    __tablename__ = "robot_produit_incompatibilites"
+    robot_id = Column(Integer, ForeignKey("robots.id"), primary_key=True)
+    produit_id = Column(Integer, ForeignKey("produits.id"), primary_key=True)

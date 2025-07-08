@@ -10,6 +10,7 @@ import Resultats from '../views/Resultats.vue'
 import Parametres from '../views/Parametres.vue'  
 import RemplirEquipement from '../views/RemplirEquipement.vue'
 import ConfigureFPack from '../views/ConfigureFPack.vue'
+import Incompatibilites from '../views/Incompatibilites.vue'
 
 const routes = [
   { path: '/', component: Dashboard },
@@ -22,7 +23,8 @@ const routes = [
   { path: '/resultats', component: Resultats },
   { path: '/parametres', component: Parametres },
   { path: '/remplir/:tableName/:id', name: 'RemplirEquipement', component: RemplirEquipement },
-  { path: '/configure/:tableName/:id', name: 'ConfigureFPack', component: ConfigureFPack}
+  { path: '/configure/:tableName/:id', name: 'ConfigureFPack', component: ConfigureFPack},
+  { path: '/incompatibilites', name: 'Incompatibilites', component: Incompatibilites }
 
 ]
 

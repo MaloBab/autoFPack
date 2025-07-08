@@ -73,13 +73,13 @@ onMounted(fetchStats)
 
 <style scoped>
 .dashboard {
-  padding: 2rem;
+  padding: 1rem;
   font-family: 'Segoe UI', sans-serif;
 }
 
 h1 {
   font-size: 2rem;
-  margin-bottom: 1.5rem;
+  margin-bottom: 0.5rem;
 }
 
 .stats-grid {
