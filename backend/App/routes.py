@@ -433,3 +433,21 @@ def create_robot_incompatibilite(incomp: schemas.RobotProduitIncompatibiliteCrea
     db.add(db_incomp)
     db.commit()
     return db_incomp
+
+@router.delete("/produit-incompatibilites")
+def delete_produit_incompatibilite(inc: schemas.ProduitIncompatibiliteCreate, db: Session = Depends(get_db)):
+    db.query(models.ProduitIncompatibilite).filter(
+        models.ProduitIncompatibilite.produit_id_1 == inc.produit_id_1,
+        models.ProduitIncompatibilite.produit_id_2 == inc.produit_id_2
+    ).delete()
+    db.commit()
+    return {"ok": True}
+
+@router.delete("/robot-produit-incompatibilites")
+def delete_robot_produit_incompatibilite(incomp: schemas.RobotProduitIncompatibiliteCreate, db: Session = Depends(get_db)):
+    db.query(models.RobotProduitIncompatibilite).filter(
+        models.RobotProduitIncompatibilite.robot_id == incomp.robot_id,
+        models.RobotProduitIncompatibilite.produit_id == incomp.produit_id
+    ).delete()
+    db.commit()
+    return {"ok": True}
