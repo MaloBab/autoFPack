@@ -44,4 +44,9 @@ function resetAjouter() {
   font-size: 0.9rem;
   cursor: pointer;
 }
+
+.btn-incompat:hover {
+  background-color: #d63c3c;
+
+}
 </style>
