@@ -45,7 +45,6 @@ export function useIncompatibilitesChecker(columns: () => ConfigColumn[]) {
     return result
   }
 
-  // 🔍 Vérifier incompatibilité globale (pour affichage en rouge)
   function isProduitIncompatible(prodId: number, equipements: any[]): boolean {
     const currentProduits = getAllProduits(columns(), equipements)
     return produitIncompatibilites.value.some(
@@ -83,7 +82,6 @@ export function useIncompatibilitesChecker(columns: () => ConfigColumn[]) {
     )
   }
 
-  // ✅ Nouveau : vérifier conflit direct (hors groupe)
   function hasDirectConflict(prodId: number, equipements: any[]): boolean {
     const autres = columns().filter(col => col.type !== 'group')
     const produitsHorsGroupes = getAllProduits(autres, equipements)
@@ -94,7 +92,33 @@ export function useIncompatibilitesChecker(columns: () => ConfigColumn[]) {
     )
   }
 
-  // ✅ Nouveau : vérifier conflit avec un groupe
+
+    function willMakeAllItemsInGroupIncompatible(newProduits: number[], equipements: any[]): boolean {
+    const allProduits = getAllProduits(columns(), equipements).concat(newProduits)
+
+    return columns().some(col => {
+        if (col.type !== 'group' || !col.group_items) return false
+
+        // Vérifier si TOUS les items de ce groupe sont incompatibles avec au moins un produit présent
+        return col.group_items.every(item => {
+        let itemProduits: number[] = []
+
+        if (item.type === 'produit') itemProduits = [item.ref_id]
+        else if (item.type === 'equipement') itemProduits = getProduitsFromEquipement(item.ref_id, equipements)
+        else return false // robot non concerné
+
+        // item incompatible avec au moins un produit présent
+        return itemProduits.every(pid =>
+            produitIncompatibilites.value.some(
+            inc =>
+                (inc.produit_id_1 === pid && allProduits.includes(inc.produit_id_2)) ||
+                (inc.produit_id_2 === pid && allProduits.includes(inc.produit_id_1))
+            )
+        )
+        })
+    })
+    }
+
   function hasGroupConflict(prodId: number, equipements: any[]): boolean {
     const groupes = columns().filter(col => col.type === 'group')
     const produitsGroupes = getAllProduits(groupes, equipements)
@@ -113,6 +137,7 @@ export function useIncompatibilitesChecker(columns: () => ConfigColumn[]) {
     isRobotIncompatible,
     hasDirectConflict,
     hasGroupConflict,
-    getProduitsFromEquipement
+    getProduitsFromEquipement,
+    willMakeAllItemsInGroupIncompatible
   }
 }
