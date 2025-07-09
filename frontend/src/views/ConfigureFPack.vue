@@ -4,6 +4,7 @@ import { useRoute } from 'vue-router'
 import ConfigureFPackTable from '../components/ConfigureFPackTable.vue'
 import axios from 'axios'
 
+
 const route = useRoute()
 const fpackId = ref<number | null>(null)
 const fpackName = ref<string>('')

@@ -3,6 +3,18 @@ import { ref, onMounted, onUnmounted } from 'vue'
 import axios from 'axios'
 import AddGroupModal from './AddGroupModal.vue'
 import { useRouter } from 'vue-router'
+import { useIncompatibilitesChecker } from '../composables/useIncompatibilitesChecker'
+
+
+const { 
+  loadIncompatibilites, 
+  isProduitIncompatible, 
+  isEquipementIncompatible, 
+  isGroupIncompatible,
+  hasDirectConflict,
+  getProduitsFromEquipement
+} = useIncompatibilitesChecker(() => columns.value)
+
 
 const router = useRouter()
 
@@ -179,14 +191,34 @@ function validerAjoutOuModif() {
     display_name: item.nom,
     ordre: editingIndex.value ?? columns.value.length
   }
-    if (modeAjout.value === "produit") {
-      col.type_detail = item.type
-      col.description = item.description
-      const fournisseur = fournisseurs.value.find(f => f.id === item.fournisseur_id)
-      col.fournisseur_nom = fournisseur?.nom ?? ''
+
+  if (modeAjout.value === 'produit') {
+    const pid = selectedRefId.value!
+
+    // ⚠️ Vérifier conflit direct → alert + annuler
+    if (hasDirectConflict(pid, equipements.value)) {
+      alert("Produit incompatible déjà présent dans la configuration.")
+      return
+    }
+
+    // Enrichissement
+    col.type_detail = item.type
+    col.description = item.description
+    const fournisseur = fournisseurs.value.find(f => f.id === item.fournisseur_id)
+    col.fournisseur_nom = fournisseur?.nom ?? ''
   }
 
-    if (modeAjout.value === "equipement") {
+  if (modeAjout.value === 'equipement') {
+    const eqId = selectedRefId.value!
+    const produitsEq = getProduitsFromEquipement(eqId, equipements.value)
+
+    // ⚠️ Vérifier si au moins un produit de l'équipement a un conflit direct
+    if (produitsEq.some(pid => hasDirectConflict(pid, equipements.value))) {
+      alert("Équipement incompatible déjà présent dans la configuration.")
+      return
+    }
+
+    // Enrichissement
     col.produits_count = item.equipement_produit?.length ?? 0
   }
 
@@ -196,6 +228,7 @@ function validerAjoutOuModif() {
     columns.value.push(col)
   }
 
+  // Reset des états
   modeAjout.value = null
   selectedRefId.value = null
   editingIndex.value = null
@@ -250,6 +283,22 @@ async function handleGroupUpdate(group: { type: 'group'; ref_id: null; display_n
   handleGroupModalClose()
 }
 
+function getColumnConflict(col: ConfigColumn): boolean {
+  if (col.type === 'produit') {
+    return isProduitIncompatible(col.ref_id, equipements.value)
+  }
+
+  if (col.type === 'equipement') {
+    return isEquipementIncompatible(col.ref_id, equipements.value)
+  }
+
+  if (col.type === 'group') {
+    return isGroupIncompatible(col.group_items || [], equipements.value)
+  }
+
+  return false
+}
+
 
 function handleGroupModalClose() {
   showAddGroupModal.value = false
@@ -284,6 +333,7 @@ onMounted(async () => {
   if (columnsRowRef.value) {
     columnsRowRef.value.addEventListener('wheel', handleWheel, { passive: false })
   }
+  await loadIncompatibilites()
 })
 
 onUnmounted(() => {
@@ -307,7 +357,7 @@ onUnmounted(() => {
     </div>
 
     <div ref="columnsRowRef" class="columns-scroll-container">
-      <div class="column-card" v-for="(col, index) in columns" :key="index">
+      <div v-for="(col, index) in columns" :key="index" class="column-card" :class="{ conflict: getColumnConflict(col) }">
         <div class="card-header">
           <span class="badge" :class="col.type">
             <template v-if="col.type === 'produit'">🧩 Produit</template>
@@ -325,7 +375,7 @@ onUnmounted(() => {
           </div>
 
           <div class="info-line" v-else-if="col.type === 'equipement'">
-            <p><strong>Produits associés :</strong> {{ col.produits_count }}</p>
+            <p><strong>Produit(s) associé(s) :</strong> {{ col.produits_count }}</p>
           </div>
 
           <div class="info-line" v-else-if="col.type === 'group' && col.group_summary">
@@ -428,6 +478,11 @@ onUnmounted(() => {
   font-size: 0.95rem;
   cursor: pointer;
   transition: background-color 0.2s ease;
+}
+
+.conflict {
+  border: 2px solid red;
+  background-color: #ffe4e6;
 }
 
 .addProduit {

@@ -21,6 +21,15 @@ const fournisseurs = ref<{ id: number, nom: string }[]>([])
 const filters = ref<Record<string, Set<any>>>({})
 const selected = ref(new Set<number>(props.selectedIds))
 const scrollContainer = ref<HTMLElement | null>(null)
+const produitIncompatibilites = ref<{ produit_id_1: number, produit_id_2: number }[]>([])
+const toastMessage = ref('')
+
+function showToast(message: string) {
+  toastMessage.value = message
+  setTimeout(() => {
+    toastMessage.value = ''
+  }, 3000)
+}
 
 async function fetchData() {
   const urlBase = props.apiUrl || 'http://localhost:8000'
@@ -40,12 +49,21 @@ async function fetchData() {
   fournisseurs.value = fournisseursRes.data
 }
 
-onMounted(fetchData)
+onMounted(async () => {
+  await fetchData()
+  const res = await axios.get('http://localhost:8000/produit-incompatibilites')
+  produitIncompatibilites.value = res.data
+})
 
 function toggleSelect(id: number) {
   if (selected.value.has(id)) {
     selected.value.delete(id)
   } else {
+    const produitsExistants = Array.from(selected.value)
+    if (!isProduitCompatibleAvecListe(id, produitsExistants)) {
+      showToast("Ce produit est incompatible avec la sélection actuelle.")
+      return
+    }
     selected.value.add(id)
   }
   emit('selection-changed', new Set(selected.value))
@@ -108,6 +126,21 @@ function updateFilter(col: string, values: Set<any>) {
   filters.value[col] = values
 }
 
+
+function isProduitCompatibleAvecListe(nouveauProduitId: number, produitsExistants: number[]): boolean {
+  return !produitsExistants.some(existant =>
+    produitIncompatibilites.value.some(inc =>
+      (inc.produit_id_1 === nouveauProduitId && inc.produit_id_2 === existant) ||
+      (inc.produit_id_2 === nouveauProduitId && inc.produit_id_1 === existant)
+    )
+  )
+}
+
+function isProduitIncompatibleAvecSelection(id: number): boolean {
+  const produitsExistants = Array.from(selected.value)
+  return !isProduitCompatibleAvecListe(id, produitsExistants)
+}
+
 </script>
 
 <template>
@@ -136,7 +169,9 @@ function updateFilter(col: string, values: Set<any>) {
     <div class="table-body-scroll" ref="scrollContainer">
       <table>
         <tbody>
-            <tr v-for="row in filteredRows" :key="row.id" @click="toggleSelect(row.id)" :class="{ selected: selected.has(row.id) }">
+            <tr v-for="row in filteredRows" :key="row.id" @click="toggleSelect(row.id)"
+              :class="{ conflict: isProduitIncompatibleAvecSelection(row.id),
+                selected: selected.has(row.id) && !isProduitIncompatibleAvecSelection(row.id)}">
                 <td v-for="col in columns" :key="col">
                     <template v-if="col === 'fournisseur_id'">
                         {{ fournisseurs.find(f => f.id === row.fournisseur_id)?.nom || row.fournisseur_id }}
@@ -149,8 +184,10 @@ function updateFilter(col: string, values: Set<any>) {
         </tbody>
       </table>
     </div>
+    <div v-if="toastMessage" class="incomp-toast">{{ toastMessage }}</div>
   </div>
 </template>
+
 
 
 
@@ -235,4 +272,28 @@ tr:hover {
 tr.selected {
   background-color: #bbf7d0;
 }
+
+tr.conflict {
+  background-color: #f6b3b7;
+}
+
+.incomp-toast {
+  position: fixed;
+  bottom: 1rem;
+  right: 1rem;
+  background: #ffe4e6;
+  color: #b91c1c;
+  padding: 1rem 1.5rem;
+  border-radius: 8px;
+  font-weight: bold;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+  z-index: 999;
+  animation: fadein 0.3s ease-out;
+}
+
+@keyframes fadein {
+  from { opacity: 0; transform: translateY(10px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
 </style>
