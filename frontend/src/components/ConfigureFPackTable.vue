@@ -12,8 +12,7 @@ const {
   isEquipementIncompatible, 
   isGroupIncompatible,
   hasDirectConflict,
-  getProduitsFromEquipement,
-  willMakeAllItemsInGroupIncompatible
+  getProduitsFromEquipement
 } = useIncompatibilitesChecker(() => columns.value)
 
 
@@ -196,13 +195,7 @@ function validerAjoutOuModif() {
   if (modeAjout.value === 'produit') {
     const pid = selectedRefId.value!
 
-    // ✅ Vérifier si ce produit rend tous les items d’au moins un groupe incompatibles
-    if (willMakeAllItemsInGroupIncompatible([pid], equipements.value)) {
-      alert("⚠️ Le produit ajouté rend tous les items d’au moins un groupe incompatibles avec la configuration.")
-      return
-    }
-
-    // ✅ Vérifier conflit direct hors groupe
+    // ⚠️ Vérifier conflit direct → alert + annuler
     if (hasDirectConflict(pid, equipements.value)) {
       alert("Produit incompatible déjà présent dans la configuration.")
       return
@@ -219,13 +212,7 @@ function validerAjoutOuModif() {
     const eqId = selectedRefId.value!
     const produitsEq = getProduitsFromEquipement(eqId, equipements.value)
 
-    // ✅ Vérifier si cet équipement rend tous les items d’au moins un groupe incompatibles
-    if (willMakeAllItemsInGroupIncompatible(produitsEq, equipements.value)) {
-      alert("⚠️ L’équipement ajouté rend tous les items d’au moins un groupe incompatibles avec la configuration.")
-      return
-    }
-
-    // ✅ Vérifier conflit direct hors groupe
+    // ⚠️ Vérifier si au moins un produit de l'équipement a un conflit direct
     if (produitsEq.some(pid => hasDirectConflict(pid, equipements.value))) {
       alert("Équipement incompatible déjà présent dans la configuration.")
       return
@@ -235,7 +222,6 @@ function validerAjoutOuModif() {
     col.produits_count = item.equipement_produit?.length ?? 0
   }
 
-  // Ajouter ou modifier
   if (editingIndex.value !== null) {
     columns.value[editingIndex.value] = col
   } else {
@@ -247,8 +233,6 @@ function validerAjoutOuModif() {
   selectedRefId.value = null
   editingIndex.value = null
 }
-
-
 
 async function handleGroupUpdate(group: { type: 'group'; ref_id: null; display_name: string; group_items: GroupItem[] }) {
   const enrichedGroupItems = group.group_items.map(item => {
