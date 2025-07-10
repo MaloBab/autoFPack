@@ -2,6 +2,7 @@
 import { ref, computed, defineProps, defineEmits, onMounted, watch } from 'vue'
 import axios from 'axios'
 import Filters from '../components/Filters.vue'
+import { showToast } from '../composables/useToast'
 
 const props = defineProps<{
   apiUrl?: string
@@ -22,14 +23,6 @@ const filters = ref<Record<string, Set<any>>>({})
 const selected = ref(new Set<number>(props.selectedIds))
 const scrollContainer = ref<HTMLElement | null>(null)
 const produitIncompatibilites = ref<{ produit_id_1: number, produit_id_2: number }[]>([])
-const toastMessage = ref('')
-
-function showToast(message: string) {
-  toastMessage.value = message
-  setTimeout(() => {
-    toastMessage.value = ''
-  }, 3000)
-}
 
 async function fetchData() {
   const urlBase = props.apiUrl || 'http://localhost:8000'
@@ -61,7 +54,7 @@ function toggleSelect(id: number) {
   } else {
     const produitsExistants = Array.from(selected.value)
     if (!isProduitCompatibleAvecListe(id, produitsExistants)) {
-      showToast("Ce produit est incompatible avec la sélection actuelle.")
+      showToast("Ce produit est incompatible avec la sélection actuelle.","#f67377")
       return
     }
     selected.value.add(id)
@@ -184,7 +177,6 @@ function isProduitIncompatibleAvecSelection(id: number): boolean {
         </tbody>
       </table>
     </div>
-    <div v-if="toastMessage" class="incomp-toast">{{ toastMessage }}</div>
   </div>
 </template>
 
@@ -277,23 +269,5 @@ tr.conflict {
   background-color: #f6b3b7;
 }
 
-.incomp-toast {
-  position: fixed;
-  bottom: 1rem;
-  right: 1rem;
-  background: #ffe4e6;
-  color: #b91c1c;
-  padding: 1rem 1.5rem;
-  border-radius: 8px;
-  font-weight: bold;
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
-  z-index: 999;
-  animation: fadein 0.3s ease-out;
-}
-
-@keyframes fadein {
-  from { opacity: 0; transform: translateY(10px); }
-  to { opacity: 1; transform: translateY(0); }
-}
 
 </style>

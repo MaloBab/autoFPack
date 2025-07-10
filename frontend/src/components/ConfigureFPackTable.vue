@@ -4,6 +4,7 @@ import axios from 'axios'
 import AddGroupModal from './AddGroupModal.vue'
 import { useRouter } from 'vue-router'
 import { useIncompatibilitesChecker } from '../composables/useIncompatibilitesChecker'
+import { showToast } from '../composables/useToast'
 
 
 const { 
@@ -212,7 +213,7 @@ function validerAjoutOuModif() {
   if (modeAjout.value === 'produit') {
 
     if (isProduitIncompatible(item.id)) {
-      alert("Ce produit est incompatible avec un item existant.")
+      showToast("Ce produit est incompatible avec un élément déjà présent.", "#ef4444")
       return
     }
   if (fullyConflictingGroupIndexes.value.length > 0) {
@@ -220,8 +221,7 @@ function validerAjoutOuModif() {
       .map(i => columns.value[i]?.display_name)
       .filter(Boolean)
       .join(', ')
-
-    alert(`Ce produit rend le(s) groupe(s) inutilisable(s) : ${groupNames}.`)
+    showToast(`Ce produit rend ce(s) groupe(s) inutilisable(s) : ${groupNames}.`, "#f97316")
     return
   }
      // Enrichissement
@@ -234,7 +234,7 @@ function validerAjoutOuModif() {
   if (modeAjout.value === 'equipement') {
 
     if (isEquipementIncompatible(item.id)) {
-      alert("Cet équipement est incompatible avec un item existant.")
+      showToast("Cet équipement est incompatible avec un élément déjà présent.", "#ef4444")
       return
     }
 
@@ -296,11 +296,11 @@ async function handleGroupUpdate(group: { type: 'group'; ref_id: null; display_n
 
 
   if (GroupIncompatibilityLevel(enrichedGroupItems) === enrichedGroupItems.length) {
-    alert("Ce groupe est entièrement incompatible.")
+    showToast("Ce groupe est entièrement incompatible avec la configuration actuelle.", "#ef4444")
     return
   }
   if (wouldCauseOtherGroupConflicts(enrichedGroupItems, editingGroupIndex.value)) {
-    alert("Ce groupe causerait des conflits avec d'autres groupes existants.")
+    showToast("Ce groupe entre en conflit avec un ou plusieurs groupes existants.", "#f97316")
     return
   }
 
@@ -324,7 +324,7 @@ async function resetFPack() {
 
 async function saveConfiguration() {
   if (typeof props.fpackId !== 'number' || isNaN(props.fpackId)) {
-    alert("Erreur : FPack ID non défini. Impossible de sauvegarder.")
+    showToast("Erreur : impossible de sauvegarder, ID de FPack non défini.", "#dc2626")
     return
   }
   await axios.delete(`http://localhost:8000/fpack_config_columns/clear/${props.fpackId}`)

@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { ref, onMounted } from 'vue'
 import axios from 'axios'
+import { showToast } from '../composables/useToast'
 
 const props = defineProps<{
   initialGroup?: {
@@ -43,14 +44,6 @@ const produits = ref<any[]>([])
 const equipements = ref<any[]>([])
 const robots = ref<any[]>([])
 
-const toastMessage = ref('')
-
-function showToast(message: string) {
-  toastMessage.value = message
-  setTimeout(() => {
-    toastMessage.value = ''
-  }, 3000)
-}
 
 async function loadData() {
   const [prodRes, eqRes, robRes] = await Promise.all([
@@ -170,7 +163,6 @@ function valider() {
       </div>
     </div>
   </div>
-  <div v-if="toastMessage" class="toast">{{ toastMessage }}</div>
 </template>
 
 <style scoped>
@@ -362,31 +354,5 @@ select:hover {
   box-shadow: 0 8px 20px rgb(220 38 38 / 0.6);
 }
 
-.toast {
-  position: fixed;
-  bottom: 2rem;
-  left: 50%;
-  transform: translateX(-50%);
-  background-color: #1e293b;
-  color: #fff;
-  padding: 0.9rem 1.5rem;
-  border-radius: 12px;
-  font-weight: 500;
-  font-size: 1rem;
-  box-shadow: 0 10px 20px rgba(0,0,0,0.2);
-  animation: fadein 0.4s ease, fadeout 0.4s ease 2.6s;
-  z-index: 2000;
-  pointer-events: none;
-}
-
-@keyframes fadein {
-  from { opacity: 0; transform: translate(-50%, 20px); }
-  to   { opacity: 1; transform: translate(-50%, 0); }
-}
-
-@keyframes fadeout {
-  from { opacity: 1; transform: translate(-50%, 0); }
-  to   { opacity: 0; transform: translate(-50%, 20px); }
-}
 
 </style>
