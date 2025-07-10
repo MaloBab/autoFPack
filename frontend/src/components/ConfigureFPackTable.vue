@@ -12,7 +12,9 @@ const {
   isEquipementIncompatible, 
   isGroupIncompatible,
   hasDirectConflict,
-  getProduitsFromEquipement
+  getProduitsFromEquipement,
+  areAllItemsInGroupIncompatible,
+  wouldCauseOtherGroupConflicts
 } = useIncompatibilitesChecker(() => columns.value)
 
 
@@ -183,6 +185,7 @@ function startEdit(index: number) {
 function validerAjoutOuModif() {
   const list = modeAjout.value === 'produit' ? produits.value : equipements.value
   const item = list.find(e => e.id === selectedRefId.value)
+  console.log(item)
   if (!item) return
 
   const col: ConfigColumn = {
@@ -192,6 +195,7 @@ function validerAjoutOuModif() {
     ordre: editingIndex.value ?? columns.value.length
   }
 
+
   if (modeAjout.value === 'produit') {
     const pid = selectedRefId.value!
 
@@ -200,6 +204,11 @@ function validerAjoutOuModif() {
       alert("Produit incompatible déjà présent dans la configuration.")
       return
     }
+
+    if (isProduitIncompatible(selectedRefId.value!, equipements.value)) {
+      alert("Ce produit est incompatible avec la configuration actuelle.")
+      return
+  }
 
     // Enrichissement
     col.type_detail = item.type
@@ -212,7 +221,7 @@ function validerAjoutOuModif() {
     const eqId = selectedRefId.value!
     const produitsEq = getProduitsFromEquipement(eqId, equipements.value)
 
-    // ⚠️ Vérifier si au moins un produit de l'équipement a un conflit direct
+  
     if (produitsEq.some(pid => hasDirectConflict(pid, equipements.value))) {
       alert("Équipement incompatible déjà présent dans la configuration.")
       return
@@ -274,6 +283,17 @@ async function handleGroupUpdate(group: { type: 'group'; ref_id: null; display_n
     group_summary: summarizeGroupItems(enrichedGroupItems)
   }
 
+    if (areAllItemsInGroupIncompatible(enrichedGroupItems, equipements.value)) {
+    alert("Tous les éléments du groupe sont incompatibles avec la configuration actuelle.")
+    return
+  }
+
+  const conflict = wouldCauseOtherGroupConflicts(configCol.group_items ?? [], equipements.value);
+  if (conflict) {
+    alert("Ce groupe est incompatible avec la configuration actuelle.");
+    return
+  }
+
   if (editingGroupIndex.value !== null) {
     columns.value[editingGroupIndex.value] = configCol
   } else {
@@ -293,7 +313,7 @@ function getColumnConflict(col: ConfigColumn): boolean {
   }
 
   if (col.type === 'group') {
-    return isGroupIncompatible(col.group_items || [], equipements.value)
+    return isGroupIncompatible(col.group_items || [], equipements.value)  || areAllItemsInGroupIncompatible(col.group_items || [], equipements.value)
   }
 
   return false
@@ -417,7 +437,7 @@ onUnmounted(() => {
           :key="item.id"
           :value="item.id"
         >
-          {{ item.nom }}
+          {{ item.nom }}<span v-if="modeAjout === 'produit'"> - </span>{{ item.description?.length > 6 ? item.description.slice(0, 10) + '…' : item.description }}
         </option>
       </select>
       <button @click="validerAjoutOuModif">✅</button>

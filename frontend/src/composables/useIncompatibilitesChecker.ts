@@ -9,6 +9,17 @@ type GroupItem = {
 type ConfigColumn = {
   type: 'produit' | 'equipement' | 'group'
   ref_id: number
+  ordre: number
+  display_name: string
+  type_detail?: string
+  description?: string
+  fournisseur_nom?: string
+  produits_count?: number
+  group_summary?: {
+    produit: number
+    equipement: number
+    robot: number
+  }
   group_items?: GroupItem[]
 }
 
@@ -30,6 +41,11 @@ export function useIncompatibilitesChecker(columns: () => ConfigColumn[]) {
     return eq?.equipement_produit?.map((ep: any) => ep.produit_id) ?? []
   }
 
+  function summarizeGroupItems(items: GroupItem[]) {
+    const summary = { produit: 0, equipement: 0, robot: 0 }
+    items.forEach(item => summary[item.type]++)
+    return summary
+    }
 
 
   function getAllProduits(cols: ConfigColumn[], equipements: any[]): number[] {
@@ -46,6 +62,158 @@ export function useIncompatibilitesChecker(columns: () => ConfigColumn[]) {
     }
     return result
   }
+
+function areAllItemsInGroupIncompatible(
+  groupItems: GroupItem[],
+  equipements: any[]
+): boolean {
+  // Filtrer columns pour exclure tous les items du groupe courant
+  const filteredColumns = columns().filter(col => {
+    if (col.type !== 'group') return true
+    if (!col.group_items) return true
+
+    // Exclure ce groupe s'il a exactement les mêmes items
+    return col.group_items !== groupItems
+  })
+
+  const currentProduits = getAllProduits(filteredColumns, equipements)
+
+  // Extraire tous les robots hors du groupe en cours
+  const robotsInConfig: number[] = []
+  for (const col of filteredColumns) {
+    if (col.type === 'group' && col.group_items) {
+      for (const item of col.group_items) {
+        if (item.type === 'robot') {
+          robotsInConfig.push(item.ref_id)
+        }
+      }
+    }
+  }
+
+  return groupItems.every(item => {
+    if (item.type === 'produit') {
+      const isIncompWithProduits = produitIncompatibilites.value.some(inc =>
+        (inc.produit_id_1 === item.ref_id && currentProduits.includes(inc.produit_id_2)) ||
+        (inc.produit_id_2 === item.ref_id && currentProduits.includes(inc.produit_id_1))
+      )
+
+      const isIncompWithRobots = robotProduitIncompatibilites.value.some(inc =>
+        inc.produit_id === item.ref_id && robotsInConfig.includes(inc.robot_id)
+      )
+
+      return isIncompWithProduits || isIncompWithRobots
+    }
+
+    if (item.type === 'equipement') {
+      const produitsEq = getProduitsFromEquipement(item.ref_id, equipements)
+      return produitsEq.every(pid =>
+        produitIncompatibilites.value.some(inc =>
+          (inc.produit_id_1 === pid && currentProduits.includes(inc.produit_id_2)) ||
+          (inc.produit_id_2 === pid && currentProduits.includes(inc.produit_id_1))
+        )
+      )
+    }
+
+    if (item.type === 'robot') {
+      return robotProduitIncompatibilites.value.some(inc =>
+        inc.robot_id === item.ref_id && currentProduits.includes(inc.produit_id)
+      )
+    }
+
+    return false
+  })
+}
+
+
+function wouldCauseOtherGroupConflicts(
+  newGroupItems: GroupItem[],
+  equipements: any[],
+  currentEditingGroupIndex: number | null = null
+): boolean {
+  const simulatedGroup: ConfigColumn = {
+    type: 'group',
+    ref_id: -1,
+    ordre: columns().length,
+    display_name: 'Simulation',
+    group_items: newGroupItems,
+    group_summary: summarizeGroupItems(newGroupItems)
+  }
+  const simulatedColumns = [...columns()]
+  if (currentEditingGroupIndex !== null) {
+    simulatedColumns[currentEditingGroupIndex] = simulatedGroup
+  } else {
+    simulatedColumns.push(simulatedGroup)
+  }
+
+  return simulatedColumns.some((col, index) => {
+    if (col.type !== 'group' || !col.group_items) return false
+
+
+    const groupProduits: number[] = []
+    const groupRobots: number[] = []
+    col.group_items.forEach(item => {
+      if (item.type === 'produit') groupProduits.push(item.ref_id)
+      else if (item.type === 'equipement') groupProduits.push(...getProduitsFromEquipement(item.ref_id, equipements))
+      else if (item.type === 'robot') groupRobots.push(item.ref_id)
+    })
+
+    // Reconstituer tous les produits et robots du reste de la config (en excluant le groupe actuel qu’on teste)
+    const autresColonnes = simulatedColumns.filter((_, i) => i !== index)
+    const produitsConfig = getAllProduits(autresColonnes, equipements)
+
+    const robotsConfig: number[] = []
+    autresColonnes.forEach(c => {
+      if (c.type === 'group' && c.group_items) {
+        c.group_items.forEach(item => {
+          if (item.type === 'robot') robotsConfig.push(item.ref_id)
+        })
+      }
+    })
+
+    const isTotallyIncompatible = col.group_items.every(item => {
+      if (item.type === 'produit') {
+        const produitId = item.ref_id
+        const incompProd = produitIncompatibilites.value.some(inc =>
+          (inc.produit_id_1 === produitId && produitsConfig.includes(inc.produit_id_2)) ||
+          (inc.produit_id_2 === produitId && produitsConfig.includes(inc.produit_id_1))
+        )
+        const incompRobot = robotProduitIncompatibilites.value.some(inc =>
+          inc.produit_id === produitId && robotsConfig.includes(inc.robot_id)
+        )
+        return incompProd || incompRobot
+      }
+    console.log(item.type)
+      if (item.type === 'equipement') {
+        const produits = getProduitsFromEquipement(item.ref_id, equipements)
+        console.log(produits)
+        return produits.some(pid =>
+          produitIncompatibilites.value.some(inc =>
+            (inc.produit_id_1 === pid && produitsConfig.includes(inc.produit_id_2)) ||
+            (inc.produit_id_2 === pid && produitsConfig.includes(inc.produit_id_1))
+          )
+        )
+      }
+
+    if (item.type === 'robot') {
+    const incompRobot = robotProduitIncompatibilites.value.some(inc =>
+        inc.robot_id === item.ref_id && produitsConfig.includes(inc.produit_id)
+    )
+    const incompProduitVersRobot = robotProduitIncompatibilites.value.some(inc =>
+        inc.produit_id && produitsConfig.includes(inc.produit_id) && inc.robot_id === item.ref_id
+    )
+    return incompRobot || incompProduitVersRobot
+    }
+
+      return false
+    })
+
+    return isTotallyIncompatible
+  })
+}
+
+
+
+
 
   function isProduitIncompatible(prodId: number, equipements: any[]): boolean {
     const currentProduits = getAllProduits(columns(), equipements)
@@ -146,6 +314,8 @@ function isGroupIncompatible(groupItems: GroupItem[], equipements: any[]): boole
     isGroupIncompatible,
     hasDirectConflict,
     hasGroupConflict,
-    getProduitsFromEquipement
+    getProduitsFromEquipement,
+    areAllItemsInGroupIncompatible,
+    wouldCauseOtherGroupConflicts
   }
 }
