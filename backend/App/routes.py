@@ -209,6 +209,15 @@ def get_equipement(id: int, db: Session = Depends(get_db)):
 
 # EQUIPEMENTS PRODUITS
 
+@router.get("/equipementproduits", response_model=dict[int, list[schemas.EquipementProduitRead]])
+def get_all_equipement_produits(db: Session = Depends(get_db)):
+    results = db.query(models.Equipement_Produit).all()
+
+    equipement_dict: dict[int, list[models.Equipement_Produit]] = {}
+    for ep in results:
+        equipement_dict.setdefault(ep.equipement_id, []).append(ep)
+
+    return equipement_dict
 
 @router.get("/equipementproduit/{equipement_id}", response_model=list[schemas.EquipementProduitRead])
 def get_equipement_produit_by_equipement(equipement_id: int, db: Session = Depends(get_db)):

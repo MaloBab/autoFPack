@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref, onMounted, onUnmounted } from 'vue'
+import { ref, onMounted, onUnmounted, computed } from 'vue'
 import axios from 'axios'
 import AddGroupModal from './AddGroupModal.vue'
 import { useRouter } from 'vue-router'
@@ -7,18 +7,17 @@ import { useIncompatibilitesChecker } from '../composables/useIncompatibilitesCh
 
 
 const { 
-  loadIncompatibilites, 
-  isProduitIncompatible, 
-  isEquipementIncompatible, 
-  isGroupIncompatible,
-  hasDirectConflict,
-  getProduitsFromEquipement,
-  areAllItemsInGroupIncompatible,
-  wouldCauseOtherGroupConflicts
+    loadIncompatibilites,
+    isProduitIncompatible,
+    isEquipementIncompatible,
+    GroupIncompatibilityLevel,
+    wouldCauseOtherGroupConflicts,
+    getConflictingColumns
 } = useIncompatibilitesChecker(() => columns.value)
 
 
 const router = useRouter()
+const conflictingColumnIndexes = computed(() => getConflictingColumns())
 
 const props = defineProps<{
   fpackId: number
@@ -100,9 +99,21 @@ async function fetchConfiguration() {
         enriched.push(col)
       }
     } else if (col.type === 'group') {
+      const enrichedGroupItems = (col.group_items || []).map((item: any) => {
+        if (item.type === 'produit') {
+          const p = produits.value.find(p => p.id === item.ref_id)
+          return { ...item, description: p?.description ?? '' }
+        } else if (item.type === 'robot') {
+          const r = robots.value.find(r => r.id === item.ref_id)
+          return { ...item, generation: r?.generation ?? '' }
+        }
+        return item
+      })
+
       enriched.push({
         ...col,
-        group_summary: summarizeGroupItems(col.group_items || [])
+        group_items: enrichedGroupItems,
+        group_summary: summarizeGroupItems(enrichedGroupItems)
       })
     } else {
       enriched.push(col)
@@ -195,22 +206,14 @@ function validerAjoutOuModif() {
     ordre: editingIndex.value ?? columns.value.length
   }
 
-
   if (modeAjout.value === 'produit') {
-    const pid = selectedRefId.value!
 
-    // ⚠️ Vérifier conflit direct → alert + annuler
-    if (hasDirectConflict(pid, equipements.value)) {
-      alert("Produit incompatible déjà présent dans la configuration.")
+    if (isProduitIncompatible(item.id)) {
+      alert("Ce produit est incompatible avec un item existant.")
       return
     }
 
-    if (isProduitIncompatible(selectedRefId.value!, equipements.value)) {
-      alert("Ce produit est incompatible avec la configuration actuelle.")
-      return
-  }
-
-    // Enrichissement
+     // Enrichissement
     col.type_detail = item.type
     col.description = item.description
     const fournisseur = fournisseurs.value.find(f => f.id === item.fournisseur_id)
@@ -218,12 +221,9 @@ function validerAjoutOuModif() {
   }
 
   if (modeAjout.value === 'equipement') {
-    const eqId = selectedRefId.value!
-    const produitsEq = getProduitsFromEquipement(eqId, equipements.value)
 
-  
-    if (produitsEq.some(pid => hasDirectConflict(pid, equipements.value))) {
-      alert("Équipement incompatible déjà présent dans la configuration.")
+    if (isEquipementIncompatible(item.id)) {
+      alert("Cet équipement est incompatible avec un item existant.")
       return
     }
 
@@ -283,14 +283,13 @@ async function handleGroupUpdate(group: { type: 'group'; ref_id: null; display_n
     group_summary: summarizeGroupItems(enrichedGroupItems)
   }
 
-    if (areAllItemsInGroupIncompatible(enrichedGroupItems, equipements.value)) {
-    alert("Tous les éléments du groupe sont incompatibles avec la configuration actuelle.")
+
+  if (GroupIncompatibilityLevel(enrichedGroupItems) === enrichedGroupItems.length) {
+    alert("Ce groupe est entièrement incompatible.")
     return
   }
-
-  const conflict = wouldCauseOtherGroupConflicts(configCol.group_items ?? [], equipements.value);
-  if (conflict) {
-    alert("Ce groupe est incompatible avec la configuration actuelle.");
+  if (wouldCauseOtherGroupConflicts(enrichedGroupItems, editingGroupIndex.value)) {
+    alert("Ce groupe causerait des conflits avec d'autres groupes existants.")
     return
   }
 
@@ -299,24 +298,7 @@ async function handleGroupUpdate(group: { type: 'group'; ref_id: null; display_n
   } else {
     columns.value.push(configCol)
   }
-
   handleGroupModalClose()
-}
-
-function getColumnConflict(col: ConfigColumn): boolean {
-  if (col.type === 'produit') {
-    return isProduitIncompatible(col.ref_id, equipements.value)
-  }
-
-  if (col.type === 'equipement') {
-    return isEquipementIncompatible(col.ref_id, equipements.value)
-  }
-
-  if (col.type === 'group') {
-    return isGroupIncompatible(col.group_items || [], equipements.value)  || areAllItemsInGroupIncompatible(col.group_items || [], equipements.value)
-  }
-
-  return false
 }
 
 
@@ -346,6 +328,7 @@ async function saveConfiguration() {
   }
   router.back()
 }
+
 
 onMounted(async () => {
   await fetchProduitsEtEquipements()
@@ -377,7 +360,7 @@ onUnmounted(() => {
     </div>
 
     <div ref="columnsRowRef" class="columns-scroll-container">
-      <div v-for="(col, index) in columns" :key="index" class="column-card" :class="{ conflict: getColumnConflict(col) }">
+      <div v-for="(col, index) in columns" :key="index" class="column-card" :class="{ conflict: conflictingColumnIndexes.includes(index) }">
         <div class="card-header">
           <span class="badge" :class="col.type">
             <template v-if="col.type === 'produit'">🧩 Produit</template>
