@@ -223,6 +223,63 @@ function getConflictingColumns(): number[] {
   return Array.from(conflictIds)
 }
 
+function getFullyConflictingGroups(columns: ConfigColumn[]): number[] {
+  const conflicts: number[] = []
+
+  const getProduitsAndRobotsFromCol = (col: ConfigColumn): { produits: number[]; robots: number[] } => {
+    const produits: number[] = []
+    const robots: number[] = []
+
+    if (col.type === 'produit') produits.push(col.ref_id)
+    else if (col.type === 'equipement') produits.push(...getProduitsFromEquipement(col.ref_id))
+    else if (col.type === 'group') {
+      for (const item of col.group_items ?? []) {
+        if (item.type === 'produit') produits.push(item.ref_id)
+        else if (item.type === 'equipement') produits.push(...getProduitsFromEquipement(item.ref_id))
+        else if (item.type === 'robot') robots.push(item.ref_id)
+      }
+    }
+
+    return { produits, robots }
+  }
+
+  for (let i = 0; i < columns.length; i++) {
+    const col = columns[i]
+    if (col.type !== 'group' || !col.group_items) continue
+
+    const groupItems = col.group_items
+    const groupProduits = groupItems.flatMap(item =>
+      item.type === 'produit' ? [item.ref_id] :
+      item.type === 'equipement' ? getProduitsFromEquipement(item.ref_id) : []
+    )
+    const groupRobots = groupItems.filter(i => i.type === 'robot').map(i => i.ref_id)
+
+    const otherCols = columns.filter((_, j) => j !== i)
+    const otherProduits = otherCols.flatMap(c => getProduitsAndRobotsFromCol(c).produits)
+
+    const produitConflict = groupProduits.every(p =>
+      otherProduits.some(op =>
+        produitIncompatibilites.value.some(inc =>
+          (inc.produit_id_1 === p && inc.produit_id_2 === op) ||
+          (inc.produit_id_2 === p && inc.produit_id_1 === op)
+        )
+      )
+    )
+
+    const robotConflict = groupRobots.every(r =>
+      otherProduits.some(p =>
+        robotProduitIncompatibilites.value.some(inc => inc.robot_id === r && inc.produit_id === p)
+      )
+    )
+
+    if (groupProduits.length > 0 && produitConflict || groupRobots.length > 0 && robotConflict) {
+      conflicts.push(i)
+    }
+  }
+
+  return conflicts
+}
+
   return {
     loadIncompatibilites,
     isProduitIncompatible,
@@ -231,6 +288,7 @@ function getConflictingColumns(): number[] {
     wouldCauseOtherGroupConflicts,
     isProduitIncompatibleWithGroup,
     isEquipementIncompatibleWithGroup,
+    getFullyConflictingGroups,
     getConflictingColumns
   }
 

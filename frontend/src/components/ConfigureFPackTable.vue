@@ -12,12 +12,15 @@ const {
     isEquipementIncompatible,
     GroupIncompatibilityLevel,
     wouldCauseOtherGroupConflicts,
+    getFullyConflictingGroups,
     getConflictingColumns
 } = useIncompatibilitesChecker(() => columns.value)
 
 
 const router = useRouter()
 const conflictingColumnIndexes = computed(() => getConflictingColumns())
+const fullyConflictingGroupIndexes = computed(() => getFullyConflictingGroups(columns.value))
+
 
 const props = defineProps<{
   fpackId: number
@@ -212,7 +215,15 @@ function validerAjoutOuModif() {
       alert("Ce produit est incompatible avec un item existant.")
       return
     }
+  if (fullyConflictingGroupIndexes.value.length > 0) {
+    const groupNames = fullyConflictingGroupIndexes.value
+      .map(i => columns.value[i]?.display_name)
+      .filter(Boolean)
+      .join(', ')
 
+    alert(`Ce produit rend le(s) groupe(s) inutilisable(s) : ${groupNames}.`)
+    return
+  }
      // Enrichissement
     col.type_detail = item.type
     col.description = item.description
