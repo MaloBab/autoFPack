@@ -4,76 +4,82 @@ from sqlalchemy.orm import relationship # type: ignore
 
 Base = declarative_base()
 class Fournisseur(Base):
-    __tablename__ = "fournisseurs"
+    __tablename__ = "FPM_fournisseurs"
+    __table_args__ = {'schema': 'dbo'}
 
     id = Column(Integer, primary_key=True, index=True)
     nom = Column(String(255), unique=True, index=True, nullable=False)
     produits = relationship("Produit", back_populates="fournisseur", cascade="all, delete-orphan")
 
 class Client(Base):
-    __tablename__ = "clients"
+    __tablename__ = "FPM_clients"
+    __table_args__ = {'schema': 'dbo'}
     id = Column(Integer, primary_key=True, index=True)
     nom = Column(String(255), nullable=False)
     robots = relationship("Robots", back_populates="client_rel", cascade="all, delete-orphan")
     fpacks = relationship("FPack", back_populates="client_relfpack")
 
 class Produit(Base):
-    __tablename__ = "produits"
+    __tablename__ = "FPM_produits"
+    __table_args__ = {'schema': 'dbo'}
     id = Column(Integer, primary_key=True, index=True)
     nom = Column(String(255), nullable=False)
     description = Column(String(255), nullable=True)
-    fournisseur_id = Column(Integer, ForeignKey("fournisseurs.id", ondelete="CASCADE"), nullable=False)
+    fournisseur_id = Column(Integer, ForeignKey("dbo.FPM_fournisseurs.id", ondelete="CASCADE"), nullable=False)
     type = Column(String(255))
     fournisseur = relationship("Fournisseur", back_populates="produits")
     equipement_produit = relationship("Equipement_Produit", back_populates="produits", cascade="all, delete-orphan")
 
 class Robots(Base):
-    __tablename__ = "robots"
+    __tablename__ = "FPM_robots"
+    __table_args__ = {'schema': 'dbo'}
     id = Column(Integer, primary_key=True, index=True)
     nom = Column(String(255), nullable=False)
     generation = Column(String(255), nullable=False)
-    client = Column(Integer, ForeignKey("clients.id", ondelete="CASCADE"), nullable=False)
+    client = Column(Integer, ForeignKey("dbo.FPM_clients.id", ondelete="CASCADE"), nullable=False)
     payload = Column(Integer, nullable=False)
     range = Column(Integer, nullable=False)
     client_rel = relationship("Client", back_populates="robots")
 
 class Equipements(Base):
-    __tablename__ = "equipements"
+    __tablename__ = "FPM_equipements"
+    __table_args__ = {'schema': 'dbo'}
     id = Column(Integer, primary_key=True, index=True)
     nom = Column(String(255), nullable=False)
     equipement_produit = relationship("Equipement_Produit", back_populates="equipements")
 
 class Equipement_Produit(Base):
-    __tablename__ = "equipement_produit"
-    equipement_id = Column(Integer, ForeignKey("equipements.id"), primary_key=True)
-    produit_id = Column(Integer, ForeignKey("produits.id"), primary_key=True)
+    __tablename__ = "FPM_equipement_produit"
+    __table_args__ = {'schema': 'dbo'}
+    equipement_id = Column(Integer, ForeignKey("dbo.FPM_equipements.id"), primary_key=True)
+    produit_id = Column(Integer, ForeignKey("dbo.FPM_produits.id"), primary_key=True)
     produits = relationship("Produit", back_populates="equipement_produit")
     equipements = relationship("Equipements", back_populates="equipement_produit")
     
 #FPACK
 
 class FPack(Base):
-    __tablename__ = "fpacks"
-
+    __tablename__ = "FPM_fpacks"
+    __table_args__ = {'schema': 'dbo'}
     id = Column(Integer, primary_key=True, index=True)
     nom = Column(String)
-    client = Column(Integer, ForeignKey("clients.id"), nullable=False)
+    client = Column(Integer, ForeignKey("dbo.FPM_clients.id"), nullable=False)
     fpack_abbr = Column(String, unique=True)
     client_relfpack = relationship("Client", back_populates="fpacks")
     
 class Groupes(Base):
-    __tablename__ = "groupes"
-
+    __tablename__ = "FPM_groupes"
+    __table_args__ = {'schema': 'dbo'}
     id = Column(Integer, primary_key=True,index= True, autoincrement=True)
     nom = Column(String(255), nullable=False)
     items = relationship("GroupeItem", back_populates="groupe", cascade="all, delete-orphan")
 
 
 class GroupeItem(Base):
-    __tablename__ = "groupe_items"
-
+    __tablename__ = "FPM_groupe_items"
+    __table_args__ = {'schema': 'dbo'}
     id = Column(Integer, primary_key=True, index = True, autoincrement=True)
-    group_id = Column(Integer, ForeignKey("groupes.id", ondelete="CASCADE"), nullable=False)
+    group_id = Column(Integer, ForeignKey("dbo.FPM_groupes.id", ondelete="CASCADE"), nullable=False)
     type = Column(String(50), nullable=False)  # 'produit' | 'equipement' | 'robot'
     ref_id = Column(Integer, nullable=False)
 
@@ -81,20 +87,22 @@ class GroupeItem(Base):
 
 
 class FPackConfigColumn(Base):
-    __tablename__ = "fpack_config_columns"
-
+    __tablename__ = "FPM_fpack_config_columns"
+    __table_args__ = {'schema': 'dbo'}
     id = Column(Integer, primary_key=True, index=True, autoincrement=True)
-    fpack_id = Column(Integer, ForeignKey("fpacks.id", ondelete="CASCADE"), nullable=False)
+    fpack_id = Column(Integer, ForeignKey("dbo.FPM_fpacks.id", ondelete="CASCADE"), nullable=False)
     ordre = Column(Integer, nullable=False)
     type = Column(String(50), nullable=False)  # 'produit' | 'equipement' | 'group'
     ref_id = Column(Integer, nullable=True)
     
 class ProduitIncompatibilite(Base):
-    __tablename__ = "produit_incompatibilites"
-    produit_id_1 = Column(Integer, ForeignKey("produits.id"), primary_key=True)
-    produit_id_2 = Column(Integer, ForeignKey("produits.id"), primary_key=True)
+    __tablename__ = "FPM_produit_incompatibilites"
+    __table_args__ = {'schema': 'dbo'}
+    produit_id_1 = Column(Integer, ForeignKey("dbo.FPM_produits.id"), primary_key=True)
+    produit_id_2 = Column(Integer, ForeignKey("dbo.FPM_produits.id"), primary_key=True)
 
 class RobotProduitIncompatibilite(Base):
-    __tablename__ = "robot_produit_incompatibilites"
-    robot_id = Column(Integer, ForeignKey("robots.id"), primary_key=True)
-    produit_id = Column(Integer, ForeignKey("produits.id"), primary_key=True)
+    __tablename__ = "FPM_robot_produit_incompatibilites"
+    __table_args__ = {'schema': 'dbo'}
+    robot_id = Column(Integer, ForeignKey("dbo.FPM_robots.id"), primary_key=True)
+    produit_id = Column(Integer, ForeignKey("dbo.FPM_produits.id"), primary_key=True)
