@@ -1,6 +1,17 @@
 import { ref, onMounted, watch, type Ref } from 'vue'
 import axios from 'axios'
 
+
+function handleError(err: any, action = "l'action") {
+  let message = `Erreur lors de ${action}`
+  if (err?.response?.data?.detail) {
+    message = err.response.data.detail
+  } else if (err?.message) {
+    message = err.message
+  }
+  alert(message)
+}
+
 export function useTableReader(
   props: { tableName: string; apiUrl?: string; ajouter?: boolean },
   emit: (event: 'added' | 'cancelled') => void,
@@ -13,6 +24,8 @@ export function useTableReader(
   const editRow = ref<any>({})
   const fournisseurs = ref<{ id: number, nom: string }[]>([])
   const clients = ref<{ id: number, nom: string }[]>([])
+  const isAdding = ref(false)
+  const isDeleting = ref(false)
 
   const fetchFournisseurs = async () => {
       const url = props.apiUrl ? `${props.apiUrl}/fournisseurs` : `http://localhost:8000/fournisseurs`
@@ -63,6 +76,8 @@ export function useTableReader(
   }
 
   async function validateAdd() {
+    if (isAdding.value) return
+    isAdding.value = true
     try {
       const dataToSend = { ...newRow.value }
       if (props.tableName === 'produits') {
@@ -82,8 +97,11 @@ export function useTableReader(
       await axios.post(url, dataToSend)
       await fetchData()
       emit('added')
-    } catch {
-      alert("Erreur lors de l'ajout")
+    } catch (err) {
+      handleError(err, "l'ajout")
+    }
+    finally {
+      isAdding.value = false
     }
   }
 
@@ -124,8 +142,8 @@ export function useTableReader(
       await axios.put(url, dataToSend)
       editingId.value = null
       await fetchData()
-    } catch {
-      alert("Erreur lors de la modification")
+    } catch (err){
+      handleError(err, "la modification")
     }
   }
 
@@ -134,12 +152,16 @@ export function useTableReader(
   }
 
   async function deleteRow(rowId: number) {
+    if (isDeleting.value) return
+    isDeleting.value = true
     try {
       const url = props.apiUrl ? `${props.apiUrl}/${props.tableName}/${rowId}` : `http://localhost:8000/${props.tableName}/${rowId}`
       await axios.delete(url)
       await fetchData()
-    } catch {
-      alert("Erreur lors de la suppression")
+    } catch (err){
+      handleError(err, "la suppression")
+    } finally {
+      isDeleting.value = false
     }
   }
 

@@ -15,8 +15,8 @@ USE_SQL_SERVER = os.getenv("USE_SQL_SERVER", "false").lower() == "true"
 if USE_SQL_SERVER:
     DATABASE_URL = (
         f"mssql+pyodbc://{DB_USER}:{DB_PASSWORD}@{DB_HOST},{DB_PORT}/{DB_NAME}"
-        "?driver=ODBC+Driver+18+for+SQL+Server&Encrypt=no"
-    )
+        "?driver=ODBC+Driver+18+for+SQL+Server&TrustServerCertificate=yes"
+    ) 
 else:
     DATABASE_URL = f"postgresql+psycopg2://{DB_USER}:{DB_PASSWORD}@{DB_HOST}:{DB_PORT}/{DB_NAME}"
     print("DATABASE_URL =", DATABASE_URL)

@@ -7,17 +7,17 @@ class Fournisseur(Base):
     __tablename__ = "FPM_fournisseurs"
     __table_args__ = {'schema': 'dbo'}
 
-    id = Column(Integer, primary_key=True, index=True)
+    id = Column(Integer, primary_key=True)
     nom = Column(String(255), unique=True, index=True, nullable=False)
-    produits = relationship("Produit", back_populates="fournisseur", cascade="all, delete-orphan")
+    produits = relationship("Produit", back_populates="fournisseur", cascade="all, delete-orphan", passive_deletes=True)
 
 class Client(Base):
     __tablename__ = "FPM_clients"
     __table_args__ = {'schema': 'dbo'}
     id = Column(Integer, primary_key=True, index=True)
     nom = Column(String(255), nullable=False)
-    robots = relationship("Robots", back_populates="client_rel", cascade="all, delete-orphan")
-    fpacks = relationship("FPack", back_populates="client_relfpack")
+    robots = relationship("Robots", back_populates="client_rel", cascade="all, delete-orphan", passive_deletes=True)
+    fpacks = relationship("FPack", back_populates="client_relfpack", cascade="all, delete-orphan", passive_deletes=True)
 
 class Produit(Base):
     __tablename__ = "FPM_produits"
@@ -27,8 +27,8 @@ class Produit(Base):
     description = Column(String(255), nullable=True)
     fournisseur_id = Column(Integer, ForeignKey("dbo.FPM_fournisseurs.id", ondelete="CASCADE"), nullable=False)
     type = Column(String(255))
-    fournisseur = relationship("Fournisseur", back_populates="produits")
-    equipement_produit = relationship("Equipement_Produit", back_populates="produits", cascade="all, delete-orphan")
+    fournisseur = relationship("Fournisseur", back_populates="produits", passive_deletes=True)
+    equipement_produit = relationship("Equipement_Produit", back_populates="produits", cascade="all, delete-orphan", passive_deletes=True)
 
 class Robots(Base):
     __tablename__ = "FPM_robots"
@@ -39,22 +39,25 @@ class Robots(Base):
     client = Column(Integer, ForeignKey("dbo.FPM_clients.id", ondelete="CASCADE"), nullable=False)
     payload = Column(Integer, nullable=False)
     range = Column(Integer, nullable=False)
-    client_rel = relationship("Client", back_populates="robots")
+    client_rel = relationship("Client", back_populates="robots", passive_deletes=True)
 
 class Equipements(Base):
     __tablename__ = "FPM_equipements"
     __table_args__ = {'schema': 'dbo'}
     id = Column(Integer, primary_key=True, index=True)
     nom = Column(String(255), nullable=False)
-    equipement_produit = relationship("Equipement_Produit", back_populates="equipements")
+    equipement_produit = relationship("Equipement_Produit", back_populates="equipements", cascade="all, delete-orphan", passive_deletes=True)
+
 
 class Equipement_Produit(Base):
     __tablename__ = "FPM_equipement_produit"
     __table_args__ = {'schema': 'dbo'}
-    equipement_id = Column(Integer, ForeignKey("dbo.FPM_equipements.id"), primary_key=True)
-    produit_id = Column(Integer, ForeignKey("dbo.FPM_produits.id"), primary_key=True)
-    produits = relationship("Produit", back_populates="equipement_produit")
-    equipements = relationship("Equipements", back_populates="equipement_produit")
+    equipement_id = Column(Integer, ForeignKey("dbo.FPM_equipements.id", ondelete="CASCADE"), primary_key=True)
+    produit_id = Column(Integer, ForeignKey("dbo.FPM_produits.id", ondelete="CASCADE"), primary_key=True)
+
+    produits = relationship("Produit", back_populates="equipement_produit", passive_deletes=True)
+    equipements = relationship("Equipements", back_populates="equipement_produit", passive_deletes=True)
+
     
 #FPACK
 
@@ -63,16 +66,16 @@ class FPack(Base):
     __table_args__ = {'schema': 'dbo'}
     id = Column(Integer, primary_key=True, index=True)
     nom = Column(String)
-    client = Column(Integer, ForeignKey("dbo.FPM_clients.id"), nullable=False)
+    client = Column(Integer, ForeignKey("dbo.FPM_clients.id", ondelete="CASCADE"), nullable=False)
     fpack_abbr = Column(String, unique=True)
-    client_relfpack = relationship("Client", back_populates="fpacks")
+    client_relfpack = relationship("Client", back_populates="fpacks", passive_deletes=True)
     
 class Groupes(Base):
     __tablename__ = "FPM_groupes"
     __table_args__ = {'schema': 'dbo'}
     id = Column(Integer, primary_key=True,index= True, autoincrement=True)
     nom = Column(String(255), nullable=False)
-    items = relationship("GroupeItem", back_populates="groupe", cascade="all, delete-orphan")
+    items = relationship("GroupeItem", back_populates="groupe", cascade="all, delete-orphan", passive_deletes=True)
 
 
 class GroupeItem(Base):
@@ -83,7 +86,7 @@ class GroupeItem(Base):
     type = Column(String(50), nullable=False)  # 'produit' | 'equipement' | 'robot'
     ref_id = Column(Integer, nullable=False)
 
-    groupe = relationship("Groupes", back_populates="items")
+    groupe = relationship("Groupes", back_populates="items", passive_deletes=True)
 
 
 class FPackConfigColumn(Base):
@@ -98,11 +101,11 @@ class FPackConfigColumn(Base):
 class ProduitIncompatibilite(Base):
     __tablename__ = "FPM_produit_incompatibilites"
     __table_args__ = {'schema': 'dbo'}
-    produit_id_1 = Column(Integer, ForeignKey("dbo.FPM_produits.id"), primary_key=True)
-    produit_id_2 = Column(Integer, ForeignKey("dbo.FPM_produits.id"), primary_key=True)
+    produit_id_1 = Column(Integer, ForeignKey("dbo.FPM_produits.id", ondelete="CASCADE"), primary_key=True)
+    produit_id_2 = Column(Integer, ForeignKey("dbo.FPM_produits.id", ondelete="CASCADE"), primary_key=True)
 
 class RobotProduitIncompatibilite(Base):
     __tablename__ = "FPM_robot_produit_incompatibilites"
     __table_args__ = {'schema': 'dbo'}
-    robot_id = Column(Integer, ForeignKey("dbo.FPM_robots.id"), primary_key=True)
-    produit_id = Column(Integer, ForeignKey("dbo.FPM_produits.id"), primary_key=True)
+    robot_id = Column(Integer, ForeignKey("dbo.FPM_robots.id", ondelete="CASCADE"), primary_key=True)
+    produit_id = Column(Integer, ForeignKey("dbo.FPM_produits.id", ondelete="CASCADE"), primary_key=True)

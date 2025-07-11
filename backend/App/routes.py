@@ -4,6 +4,7 @@ from .database import SessionLocal
 from . import models, schemas
 from sqlalchemy import inspect # type: ignore
 from sqlalchemy.orm import selectinload #type: ignore
+import os
 
 router = APIRouter()
 
@@ -18,7 +19,27 @@ def get_db():
 @router.get("/table-columns/{table_name}", response_model=list[str])
 def get_table_columns(table_name: str, db: Session = Depends(get_db)):
     inspector = inspect(db.bind)
-    columns = inspector.get_columns(table_name)
+
+    use_sql_server = os.getenv("USE_SQL_SERVER", "false").lower() == "true"
+
+    if use_sql_server:
+        table_mapping = {
+            "clients": "FPM_clients",
+            "produits": "FPM_produits",
+            "equipements": "FPM_equipements",
+            "robots": "FPM_robots",
+            "fournisseurs": "FPM_fournisseurs",
+            "fpacks": "FPM_fpacks",
+            # ajoute d’autres mappings si besoin
+        }
+
+        actual_name = table_mapping.get(table_name)
+        if not actual_name:
+            raise HTTPException(status_code=404, detail=f"Table inconnue : {table_name}")
+    else:
+        actual_name = table_name
+
+    columns = inspector.get_columns(actual_name)
     return [col["name"] for col in columns]
 
 
@@ -51,6 +72,20 @@ def delete_produit(id: int, db: Session = Depends(get_db)):
     db_produit = db.query(models.Produit).get(id)
     if not db_produit:
         raise HTTPException(status_code=404, detail="Produit non trouvé")
+
+    equipements = db.query(models.Equipement_Produit).filter(
+        models.Equipement_Produit.produit_id == id
+    ).all()
+
+    if equipements:
+        equipement_ids = {ep.equipement_id for ep in equipements}
+        noms = db.query(models.Equipements.nom).filter(models.Equipements.id.in_(equipement_ids)).all()
+        noms_liste = [nom for (nom,) in noms]
+        raise HTTPException(
+            status_code=400,
+            detail=f"Suppression impossible : {db_produit.nom} est lié aux équipement(s) : {', '.join(noms_liste)}"
+        )
+
     db.delete(db_produit)
     db.commit()
     return {"ok": True}
@@ -126,6 +161,26 @@ def delete_client(id: int, db: Session = Depends(get_db)):
     db_client = db.query(models.Client).get(id)
     if not db_client:
         raise HTTPException(status_code=404, detail="Client non trouvé")
+
+    # Vérifie si ce client est utilisé dans des robots
+    robots = db.query(models.Robots).filter(models.Robots.client == id).all()
+    fpacks = db.query(models.FPack).filter(models.FPack.client == id).all()
+
+    noms_robots = [r.nom for r in robots]
+    noms_fpacks = [f.nom for f in fpacks]
+
+    erreurs = []
+    if noms_robots:
+        erreurs.append(f"robots : {', '.join(noms_robots)}")
+    if noms_fpacks:
+        erreurs.append(f"fpacks : {', '.join(noms_fpacks)}")
+
+    if erreurs:
+        raise HTTPException(
+            status_code=400,
+            detail=f"Suppression impossible : {db_client.nom} est lié aux {', et aux '.join(erreurs)}"
+        )
+
     db.delete(db_client)
     db.commit()
     return {"ok": True}
