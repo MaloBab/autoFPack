@@ -357,6 +357,7 @@ def duplicate_fpack(fpack_id: int, db: Session = Depends(get_db)):
     if not original_fpack:
         raise HTTPException(status_code=404, detail="FPack non trouvée")
 
+    # Créer la nouvelle FPack
     new_fpack = models.FPack(
         nom=original_fpack.nom + " (copie)",
         client=original_fpack.client,
@@ -365,6 +366,18 @@ def duplicate_fpack(fpack_id: int, db: Session = Depends(get_db)):
     db.add(new_fpack)
     db.commit()
     db.refresh(new_fpack)
+
+    config_columns = db.query(models.FPackConfigColumn).filter_by(fpack_id=fpack_id).all()
+    for col in config_columns:
+        copied_col = models.FPackConfigColumn(
+            fpack_id=new_fpack.id,
+            ordre=col.ordre,
+            type=col.type,
+            ref_id=col.ref_id
+        )
+        db.add(copied_col)
+
+    db.commit()
 
     return new_fpack
 
