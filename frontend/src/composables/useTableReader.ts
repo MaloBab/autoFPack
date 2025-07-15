@@ -61,6 +61,31 @@ export function useTableReader(
     if (val) startAddRow()
   })
 
+
+  async function ExportRow(row: any) {
+  try {
+    const response = await axios.post(
+      `http://localhost:8000/export-fpack/${row.id}`,
+      {},
+      { responseType: "blob" }
+    )
+
+    const blob = new Blob([response.data], {
+      type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+    })
+
+    const url = window.URL.createObjectURL(blob)
+    const a = document.createElement("a")
+    a.href = url
+    a.download = `F-Pack-${row.nom}-${row.fpack_abbr}.xlsx`
+    a.click()
+    window.URL.revokeObjectURL(url)
+  } catch (err) {
+    console.error("Erreur lors de l'export :", err)
+  }
+}
+
+
   function startAddRow() {
     newRow.value = {}
     columns.value.forEach(col => {
@@ -193,6 +218,7 @@ async function duplicateRow(row: any) {
 
   return {
     columns, rows, newRow, editingId, editRow, fournisseurs, clients,
-    validateAdd, cancelAdd, startEdit, validateEdit, cancelEdit, deleteRow,duplicateRow
+    validateAdd, cancelAdd, startEdit, validateEdit, cancelEdit, deleteRow,
+    duplicateRow, ExportRow
   }
 }

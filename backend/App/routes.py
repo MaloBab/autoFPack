@@ -3,7 +3,10 @@ from sqlalchemy.orm import Session
 from App.database import SessionLocal
 from App import models, schemas
 from sqlalchemy import inspect 
-from sqlalchemy.orm import selectinload 
+from sqlalchemy.orm import selectinload
+from App.export_fpack_to_excel import export_fpack_config
+from fastapi.responses import StreamingResponse
+from io import BytesIO
 import os
 
 router = APIRouter()
@@ -357,7 +360,6 @@ def duplicate_fpack(fpack_id: int, db: Session = Depends(get_db)):
     if not original_fpack:
         raise HTTPException(status_code=404, detail="FPack non trouvée")
 
-    # Créer la nouvelle FPack
     new_fpack = models.FPack(
         nom=original_fpack.nom + " (copie)",
         client=original_fpack.client,
@@ -545,3 +547,18 @@ def delete_robot_produit_incompatibilite(incomp: schemas.RobotProduitIncompatibi
     ).delete()
     db.commit()
     return {"ok": True}
+
+#EXPORT FPACK TO EXCEL
+@router.post("/export-fpack/{fpack_id}")
+def export_fpack(fpack_id: int, db: Session = Depends(get_db)):
+    wb = export_fpack_config(fpack_id, db)
+
+    output = BytesIO()
+    wb.save(output)
+    output.seek(0)
+
+    headers = {
+        'Content-Disposition': f'attachment; filename="F-Pack-{fpack_id}.xlsx"'
+    }
+
+    return StreamingResponse(output, media_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet", headers=headers)

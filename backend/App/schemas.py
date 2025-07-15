@@ -1,5 +1,5 @@
 from __future__ import annotations
-from pydantic import BaseModel # type: ignore
+from pydantic import BaseModel  # type: ignore
 from typing import List, Optional
 
 
@@ -16,7 +16,7 @@ class ProduitRead(ProduitBase):
     id: int
 
     class Config:
-        orm_mode = True
+        from_attributes = True
 
 class FournisseurBase(BaseModel):
     nom: str
@@ -29,7 +29,7 @@ class FournisseurRead(FournisseurBase):
     produits: List[ProduitRead] = []
 
     class Config:
-        orm_mode = True
+        from_attributes = True
 
 class ClientBase(BaseModel):
     nom: str
@@ -42,7 +42,7 @@ class ClientRead(ClientBase):
     robots: List[RobotRead] = []
 
     class Config:
-        orm_mode = True
+        from_attributes = True
 
 class RobotBase(BaseModel):
     nom: str
@@ -58,7 +58,7 @@ class RobotRead(RobotBase):
     id: int
 
     class Config:
-        orm_mode = True
+        from_attributes = True
 
 class EquipementBase(BaseModel):
     nom: str
@@ -66,13 +66,19 @@ class EquipementBase(BaseModel):
 class EquipementCreate(EquipementBase):
     pass
 
+class EquipementProduitRead(BaseModel):
+    produit_id: int
+
+    class Config:
+        from_attributes = True
+
 class EquipementRead(BaseModel):
     id: int
     nom: str
     equipement_produit: list[EquipementProduitRead] = []
 
     class Config:
-        orm_mode = True
+        from_attributes = True
 
 class EquipementProduitBase(BaseModel):
     equipement_id: int
@@ -81,12 +87,6 @@ class EquipementProduitBase(BaseModel):
 class EquipementProduitCreate(EquipementProduitBase):
     pass
 
-class EquipementProduitRead(BaseModel):
-    produit_id: int
-
-    class Config:
-        orm_mode = True
-        
 class FPackBase(BaseModel):
     nom: str
     client: int
@@ -99,8 +99,8 @@ class FPackRead(FPackBase):
     id: int
 
     class Config:
-        orm_mode = True
-        
+        from_attributes = True
+
 # GROUPS
 class GroupesBase(BaseModel):
     nom: str
@@ -110,8 +110,9 @@ class GroupesCreate(GroupesBase):
 
 class GroupesRead(GroupesBase):
     id: int
+
     class Config:
-        orm_mode = True
+        from_attributes = True
 
 class GroupeItemBase(BaseModel):
     group_id: int
@@ -123,8 +124,9 @@ class GroupeItemCreate(GroupeItemBase):
 
 class GroupeItemRead(GroupeItemBase):
     id: int
+
     class Config:
-        orm_mode = True
+        from_attributes = True
 
 # FPACK CONFIG COLUMNS
 class FPackConfigColumnBase(BaseModel):
@@ -138,8 +140,9 @@ class FPackConfigColumnCreate(FPackConfigColumnBase):
 
 class FPackConfigColumnRead(FPackConfigColumnBase):
     id: int
+
     class Config:
-        orm_mode = True
+        from_attributes = True
 
 class ProduitIncompatibiliteBase(BaseModel):
     produit_id_1: int
@@ -150,8 +153,7 @@ class ProduitIncompatibiliteCreate(ProduitIncompatibiliteBase):
 
 class ProduitIncompatibiliteRead(ProduitIncompatibiliteBase):
     class Config:
-        orm_mode = True
-
+        from_attributes = True
 
 class RobotProduitIncompatibiliteBase(BaseModel):
     robot_id: int
@@ -162,4 +164,4 @@ class RobotProduitIncompatibiliteCreate(RobotProduitIncompatibiliteBase):
 
 class RobotProduitIncompatibiliteRead(RobotProduitIncompatibiliteBase):
     class Config:
-        orm_mode = True
+        from_attributes = True

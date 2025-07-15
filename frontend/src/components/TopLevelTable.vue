@@ -18,7 +18,7 @@ const router = useRouter()
 const filters = ref<Record<string, Set<any>>>({})
 const {
   columns, rows, newRow, editingId, editRow, fournisseurs, clients,
-  validateAdd, cancelAdd, startEdit, validateEdit, cancelEdit, deleteRow, duplicateRow
+  validateAdd, cancelAdd, startEdit, validateEdit, cancelEdit, deleteRow, duplicateRow, ExportRow
 } = useTableReader(props, emit, filters)
 
 const columnValues = computed(() => {
@@ -168,6 +168,9 @@ function remplirFPack(row: any) {
                 </span>
                 <span v-if="props.tableName === 'fpacks'">
                   <button title="Dupliquer" @click="duplicateRow(row)">🔁</button>
+                </span>
+                <span v-if="props.tableName === 'fpacks'">
+                  <button title="Dupliquer" @click="ExportRow(row)">📤</button>
                 </span>
                 
               </template>
