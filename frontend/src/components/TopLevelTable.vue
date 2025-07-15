@@ -18,7 +18,7 @@ const router = useRouter()
 const filters = ref<Record<string, Set<any>>>({})
 const {
   columns, rows, newRow, editingId, editRow, fournisseurs, clients,
-  validateAdd, cancelAdd, startEdit, validateEdit, cancelEdit, deleteRow, duplicateRow, ExportRow
+  validateAdd, cancelAdd, startEdit, validateEdit, cancelEdit, deleteRow, duplicateRow, ExportRow, ExportAll, isExporting
 } = useTableReader(props, emit, filters)
 
 const columnValues = computed(() => {
@@ -92,6 +92,10 @@ function remplirFPack(row: any) {
 </script>
 
 <template>
+  <button v-if="props.tableName === 'fpacks'" @click="ExportAll" :disabled="isExporting" class="ExportAll">
+    Tout exporter
+    <span v-if="isExporting" class="loader"></span>
+  </button>
   <div class="table-container">
     <table class="table-head">
       <thead>
@@ -311,4 +315,47 @@ input:focus, select:focus {
   border: 1.5px solid #2563eb;
   background: #fff;
 }
+
+.ExportAll {
+  background-color: #4CAF50;
+  color: white;
+  margin-left: 2%;
+  margin-top: 1%;
+  padding: 10px 20px;
+  font-size: 16px;
+  font-weight: 600;
+  border: none;
+  border-radius: 8px;
+  cursor: pointer;
+  transition: background-color 0.3s ease, transform 0.2s ease;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
+}
+
+.ExportAll:hover {
+  background-color: #45a049;
+  transform: scale(1.03);
+}
+
+.ExportAll:active {
+  background-color: #3e8e41;
+  transform: scale(0.98);
+}
+
+.loader {
+  border: 3px solid #f3f3f3;
+  border-top: 3px solid #09d871;
+  border-radius: 50%;
+  width: 14px;
+  height: 14px;
+  animation: spin 1s linear infinite;
+  display: inline-block;
+  margin-left: 8px;
+  vertical-align: middle;
+}
+
+@keyframes spin {
+  0% { transform: rotate(0deg); }
+  100% { transform: rotate(360deg); }
+}
+
 </style>

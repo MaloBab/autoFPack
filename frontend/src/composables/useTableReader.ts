@@ -27,6 +27,7 @@ export function useTableReader(
   const isAdding = ref(false)
   const isDeleting = ref(false)
   const isDuplicating = ref(false)
+  const isExporting = ref(false)
 
   const fetchFournisseurs = async () => {
       const url = props.apiUrl ? `${props.apiUrl}/fournisseurs` : `http://localhost:8000/fournisseurs`
@@ -64,6 +65,7 @@ export function useTableReader(
 
   async function ExportRow(row: any) {
   try {
+    isExporting.value = true
     const response = await axios.post(
       `http://localhost:8000/export-fpack/${row.id}`,
       {},
@@ -82,9 +84,35 @@ export function useTableReader(
     window.URL.revokeObjectURL(url)
   } catch (err) {
     console.error("Erreur lors de l'export :", err)
+  } finally {
+    isExporting.value = false
   }
 }
 
+async function ExportAll() {
+  try {
+    isExporting.value = true
+    const response = await axios.get(
+      "http://localhost:8000/export-fpacks/all",
+      { responseType: "blob" }
+    )
+
+    const blob = new Blob([response.data], {
+      type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+    })
+
+    const url = window.URL.createObjectURL(blob)
+    const a = document.createElement("a")
+    a.href = url
+    a.download = `F-Packs-All.xlsx`
+    a.click()
+    window.URL.revokeObjectURL(url)
+  } catch (err) {
+    console.error("Erreur lors de l'export global :", err)
+  } finally {
+    isExporting.value = false
+  }
+}
 
   function startAddRow() {
     newRow.value = {}
@@ -219,6 +247,6 @@ async function duplicateRow(row: any) {
   return {
     columns, rows, newRow, editingId, editRow, fournisseurs, clients,
     validateAdd, cancelAdd, startEdit, validateEdit, cancelEdit, deleteRow,
-    duplicateRow, ExportRow
+    duplicateRow, ExportRow, ExportAll, isExporting
   }
 }

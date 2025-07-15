@@ -4,7 +4,7 @@ from App.database import SessionLocal
 from App import models, schemas
 from sqlalchemy import inspect 
 from sqlalchemy.orm import selectinload
-from App.export_fpack_to_excel import export_fpack_config
+from App.export_fpack_to_excel import export_fpack_config, export_all_fpacks
 from fastapi.responses import StreamingResponse
 from io import BytesIO
 import os
@@ -559,6 +559,19 @@ def export_fpack(fpack_id: int, db: Session = Depends(get_db)):
 
     headers = {
         'Content-Disposition': f'attachment; filename="F-Pack-{fpack_id}.xlsx"'
+    }
+
+    return StreamingResponse(output, media_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet", headers=headers)
+
+@router.get("/export-fpacks/all")
+def export_all_fpacks_route(db: Session = Depends(get_db)):
+    wb = export_all_fpacks(db)
+    output = BytesIO()
+    wb.save(output)
+    output.seek(0)
+
+    headers = {
+        'Content-Disposition': 'attachment; filename="FPacks-All.xlsx"'
     }
 
     return StreamingResponse(output, media_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet", headers=headers)
