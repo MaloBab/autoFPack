@@ -1,9 +1,9 @@
-from fastapi import APIRouter, Depends, HTTPException # type: ignore
-from sqlalchemy.orm import Session # type: ignore
-from .database import SessionLocal
-from . import models, schemas
-from sqlalchemy import inspect # type: ignore
-from sqlalchemy.orm import selectinload #type: ignore
+from fastapi import APIRouter, Depends, HTTPException 
+from sqlalchemy.orm import Session 
+from App.database import SessionLocal
+from App import models, schemas
+from sqlalchemy import inspect 
+from sqlalchemy.orm import selectinload 
 import os
 
 router = APIRouter()

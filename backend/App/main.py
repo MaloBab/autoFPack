@@ -1,8 +1,8 @@
-from fastapi import FastAPI #type: ignore
-from fastapi.middleware.cors import CORSMiddleware #type: ignore
-from .database import engine
-from . import models
-from .routes import router
+from fastapi import FastAPI 
+from fastapi.middleware.cors import CORSMiddleware 
+from App.database import engine
+from App import models
+from App.routes import router
 
 models.Base.metadata.create_all(bind=engine)
 
@@ -21,3 +21,4 @@ app.add_middleware(
 )
 
 app.include_router(router)
+

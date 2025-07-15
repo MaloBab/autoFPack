@@ -2,11 +2,13 @@ import { app, BrowserWindow } from 'electron'
 import path from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { dirname } from 'node:path'
+import { spawn } from 'node:child_process'
 
 const __filename = fileURLToPath(import.meta.url)
 const __dirname = dirname(__filename)
 
 let win = null
+let backendProcess = null
 
 function createWindow() {
   win = new BrowserWindow({
@@ -28,10 +30,33 @@ function createWindow() {
   console.log('Dev server URL:', devServerUrl)
   console.log('================================')
 
+  let backendExePath = ''
+
   if (app.isPackaged) {
+    // En prod : backend.exe est copié dans resources/app/
+    backendExePath = path.join(process.resourcesPath, 'backend.exe')
+    console.log('Starting backend:', backendExePath)
+
+    backendProcess = spawn(backendExePath, { cwd: path.dirname(backendExePath) })
+
+    backendProcess.stdout.on('data', (data) => {
+      console.log(`[Backend] ${data}`)
+    })
+
+    backendProcess.stderr.on('data', (data) => {
+      console.error(`[Backend ERROR] ${data}`)
+    })
+
+    backendProcess.on('close', (code) => {
+      console.log(`Backend process exited with code ${code}`)
+    })
+
     win.loadFile(path.join(__dirname, 'dist', 'index.html'))
   } else {
-
+    // En dev : on charge le serveur de dev et on lance manuellement le backend
+    backendExePath = path.join(process.resourcesPath, 'backend.exe')
+    console.log('Dev mode: backend path:', backendExePath)
+    // facultatif : tu peux aussi lancer le backend ici si tu veux
     win.loadURL(devServerUrl)
   }
 
@@ -40,7 +65,6 @@ function createWindow() {
   })
 }
 
-
 app.whenReady().then(createWindow)
 
 app.on('activate', () => {
@@ -48,5 +72,10 @@ app.on('activate', () => {
 })
 
 app.on('window-all-closed', () => {
-  if (process.platform !== 'darwin') app.quit()
+  if (process.platform !== 'darwin') {
+    if (backendProcess) {
+      backendProcess.kill()
+    }
+    app.quit()
+  }
 })

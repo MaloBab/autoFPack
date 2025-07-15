@@ -2,6 +2,8 @@
   "name": "fpack-app",
   "private": true,
   "version": "0.0.0",
+  "description": "Application desktop F-Pack pour configurer et gérer vos packs",
+  "author": "FANUC",
   "type": "module",
   "main": "electron-main.js",
   "scripts": {
@@ -9,8 +11,8 @@
     "electron": "electron .",
     "dev:electron": "concurrently \"npm run dev\" \"wait-on http://localhost:5173 && npm run electron\"",
     "build": "vite build",
-    "start": "electron .",
     "build:electron": "npm run build && electron-builder",
+    "start": "electron .",
     "postinstall": "electron-builder install-app-deps"
   },
   "dependencies": {
@@ -34,16 +36,22 @@
     "files": [
       "dist/",
       "electron-main.js",
+      "preload.js",
       "package.json",
-      "../backend/**"
+      "../backend/dist/backend.exe"
     ],
+    "extraResources": [
+    {
+      "from": "../backend/dist/backend.exe",
+      "to": "backend.exe"
+    }
+  ],
     "directories": {
       "buildResources": "build"
     },
     "win": {
       "target": "nsis",
-      "icon": "build/icon.ico",
-      "sign": false
+      "icon": "build/icon.ico"
     }
   }
 }
