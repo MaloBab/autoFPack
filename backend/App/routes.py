@@ -351,6 +351,23 @@ def get_fpack(id: int, db: Session = Depends(get_db)):
         raise HTTPException(status_code=404, detail="FPack non trouvé")
     return db_fpack
 
+@router.post("/fpacks/{fpack_id}/duplicate", response_model=schemas.FPackRead)
+def duplicate_fpack(fpack_id: int, db: Session = Depends(get_db)):
+    original_fpack = db.query(models.FPack).filter(models.FPack.id == fpack_id).first()
+    if not original_fpack:
+        raise HTTPException(status_code=404, detail="FPack non trouvée")
+
+    new_fpack = models.FPack(
+        nom=original_fpack.nom + " (copie)",
+        client=original_fpack.client,
+        fpack_abbr=original_fpack.fpack_abbr
+    )
+    db.add(new_fpack)
+    db.commit()
+    db.refresh(new_fpack)
+
+    return new_fpack
+
 # GROUPS
 @router.get("/groupes", response_model=list[schemas.GroupesRead])
 def list_groupes(db: Session = Depends(get_db)):

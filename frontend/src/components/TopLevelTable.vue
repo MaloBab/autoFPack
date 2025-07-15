@@ -13,13 +13,12 @@ const props = defineProps<{
   search?: string
 }>()
 const emit = defineEmits(['added', 'cancelled'])
-
 const router = useRouter()
 
 const filters = ref<Record<string, Set<any>>>({})
 const {
   columns, rows, newRow, editingId, editRow, fournisseurs, clients,
-  validateAdd, cancelAdd, startEdit, validateEdit, cancelEdit, deleteRow
+  validateAdd, cancelAdd, startEdit, validateEdit, cancelEdit, deleteRow, duplicateRow
 } = useTableReader(props, emit, filters)
 
 const columnValues = computed(() => {
@@ -167,6 +166,9 @@ function remplirFPack(row: any) {
                 <span v-if="props.tableName === 'fpacks'">
                   <button title="Remplir" @click="remplirFPack(row)">🛠️</button>
                 </span>
+                <span v-if="props.tableName === 'fpacks'">
+                  <button title="Dupliquer" @click="duplicateRow(row)">🔁</button>
+                </span>
                 
               </template>
             </td>
@@ -271,7 +273,7 @@ td {
 
 .actions {
   display: flex;
-  gap: 0.75rem;
+  gap: 0.6rem;
   align-items: center;
 }
 
@@ -280,7 +282,7 @@ td {
   border: none;
   cursor: pointer;
   padding: 0;
-  font-size: 1.5rem; 
+  font-size: 1.2rem; 
   color: #222;
 }
 

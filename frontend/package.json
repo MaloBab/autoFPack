@@ -38,14 +38,13 @@
       "electron-main.js",
       "preload.js",
       "package.json",
-      "../backend/dist/backend.exe"
+      "../backend/dist/backend.exe",
+      "../backend/.env"
     ],
     "extraResources": [
-    {
-      "from": "../backend/dist/backend.exe",
-      "to": "backend.exe"
-    }
-  ],
+      { "from": "../backend/dist/backend.exe", "to": "backend.exe" },
+      { "from": "../backend/.env", "to": ".env" }
+    ],
     "directories": {
       "buildResources": "build"
     },

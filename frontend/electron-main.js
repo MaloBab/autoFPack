@@ -3,6 +3,7 @@ import path from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { dirname } from 'node:path'
 import { spawn } from 'node:child_process'
+import http from 'http'
 
 const __filename = fileURLToPath(import.meta.url)
 const __dirname = dirname(__filename)
@@ -10,12 +11,39 @@ const __dirname = dirname(__filename)
 let win = null
 let backendProcess = null
 
+function waitForBackend(url, retries = 20, interval = 500) {
+  return new Promise((resolve, reject) => {
+    const attempt = () => {
+      console.log(`Checking backend at ${url}... (${retries} retries left)`)
+      http.get(url, res => {
+        if (res.statusCode === 200 || res.statusCode === 404) {
+          console.log('✅ Backend is up!')
+          resolve()
+        } else {
+          retry()
+        }
+      }).on('error', retry)
+    }
+
+    const retry = () => {
+      if (retries <= 0) {
+        reject(new Error('Backend did not start in time'))
+      } else {
+        retries--
+        setTimeout(attempt, interval)
+      }
+    }
+
+    attempt()
+  })
+}
+
 function createWindow() {
   win = new BrowserWindow({
     width: 1000,
     height: 700,
     minWidth: 1000,
-    minHeight: 700, 
+    minHeight: 700,
     webPreferences: {
       preload: path.join(__dirname, 'preload.js'),
       contextIsolation: true,
@@ -33,7 +61,6 @@ function createWindow() {
   let backendExePath = ''
 
   if (app.isPackaged) {
-    // En prod : backend.exe est copié dans resources/app/
     backendExePath = path.join(process.resourcesPath, 'backend.exe')
     console.log('Starting backend:', backendExePath)
 
@@ -51,12 +78,17 @@ function createWindow() {
       console.log(`Backend process exited with code ${code}`)
     })
 
-    win.loadFile(path.join(__dirname, 'dist', 'index.html'))
+    waitForBackend('http://localhost:8000/docs')
+      .then(() => {
+        win.loadFile(path.join(__dirname, 'dist', 'index.html'))
+      })
+      .catch(err => {
+        console.error('❌ Backend did not start in time:', err)
+        win.loadFile(path.join(__dirname, 'dist', 'index.html'))
+      })
   } else {
-    // En dev : on charge le serveur de dev et on lance manuellement le backend
     backendExePath = path.join(process.resourcesPath, 'backend.exe')
     console.log('Dev mode: backend path:', backendExePath)
-    // facultatif : tu peux aussi lancer le backend ici si tu veux
     win.loadURL(devServerUrl)
   }
 

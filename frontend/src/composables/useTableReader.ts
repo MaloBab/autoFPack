@@ -26,6 +26,7 @@ export function useTableReader(
   const clients = ref<{ id: number, nom: string }[]>([])
   const isAdding = ref(false)
   const isDeleting = ref(false)
+  const isDuplicating = ref(false)
 
   const fetchFournisseurs = async () => {
       const url = props.apiUrl ? `${props.apiUrl}/fournisseurs` : `http://localhost:8000/fournisseurs`
@@ -74,6 +75,22 @@ export function useTableReader(
       }
     })
   }
+
+async function duplicateRow(row: any) {
+  if (props.tableName !== 'fpacks') return
+
+  try {
+    if (isDuplicating.value) return
+    isDuplicating.value = true
+    const urlBase = props.apiUrl || 'http://localhost:8000'
+    const res = await axios.post(`${urlBase}/fpacks/${row.id}/duplicate`)
+    const newrow = res.data
+    startEdit(newrow)
+    await fetchData()
+  } catch (err) {
+    handleError(err, "la duplication")
+  }
+}
 
   async function validateAdd() {
     if (isAdding.value) return
@@ -144,11 +161,20 @@ export function useTableReader(
       await fetchData()
     } catch (err){
       handleError(err, "la modification")
+    } finally {
+      isDuplicating.value = false
     }
   }
 
   function cancelEdit() {
+        if (isDuplicating.value) {
+          console.warn("je vais annuler la duplication")
+          deleteRow(editingId.value!)
+    }
+    console.warn("je vais annuler l'édition")
     editingId.value = null
+    isDuplicating.value = false
+
   }
 
   async function deleteRow(rowId: number) {
@@ -167,6 +193,6 @@ export function useTableReader(
 
   return {
     columns, rows, newRow, editingId, editRow, fournisseurs, clients,
-    validateAdd, cancelAdd, startEdit, validateEdit, cancelEdit, deleteRow
+    validateAdd, cancelAdd, startEdit, validateEdit, cancelEdit, deleteRow,duplicateRow
   }
 }
