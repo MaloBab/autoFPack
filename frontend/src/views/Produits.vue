@@ -18,6 +18,9 @@ function resetAjouter() {
     <router-link to="/incompatibilites">
       <button class="btn-incompat">⛔ Gérer Incompatibilités</button>
     </router-link>
+    <router-link to="/prix">
+      <button class="btn-prix">💵 Gerer Prix</button>
+    </router-link>
     <TableReader
       tableName="produits"
       :ajouter="ajouter"
@@ -47,6 +50,24 @@ function resetAjouter() {
 
 .btn-incompat:hover {
   background-color: #d63c3c;
+
+}
+
+.btn-prix {
+  padding: 0.4rem 0.8rem;
+  margin-top: 0.5rem ;
+  margin-left: 2%;
+  background-color: #727272;
+  color: white;
+  border: none;
+  border-radius: 6px;
+  font-weight: 500;
+  font-size: 0.9rem;
+  cursor: pointer;
+}
+
+.btn-prix:hover {
+  background-color: #525252;
 
 }
 </style>

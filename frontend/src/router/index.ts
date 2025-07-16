@@ -12,6 +12,7 @@ import RemplirEquipement from '../views/RemplirEquipement.vue'
 import ConfigureFPack from '../views/ConfigureFPack.vue'
 import Incompatibilites from '../views/Incompatibilites.vue'
 import FpackList from '../views/ConfigureFPackListe.vue'
+import Prix from '../views/Prix.vue'
 
 const routes = [
   { path: '/', component: Dashboard },
@@ -19,14 +20,15 @@ const routes = [
   { path: '/fournisseurs', component: Fournisseurs },
   { path: '/equipements', component: Equipements },
   { path: '/clients', component: Clients },
-  { path: '/fpack', component: FPack },
+  { path: '/fpack', name: 'FPackMenu', component: FPack },
   { path: '/robots', component: Robots },
   { path: '/resultats', component: Resultats },
   { path: '/parametres', component: Parametres },
   { path: '/remplir/:tableName/:id', name: 'RemplirEquipement', component: RemplirEquipement },
   { path: '/configure/:tableName/:id', name: 'ConfigureFPack', component: ConfigureFPack},
   { path: '/incompatibilites', name: 'Incompatibilites', component: Incompatibilites },
-  {path: '/fpacks/:id/config/liste', name: 'ConfigureFPackListe',component: FpackList}
+  {path: '/fpacks/:id/config/liste', name: 'ConfigureFPackListe',component: FpackList},
+  {path: '/prix', name: 'Prix',component: Prix}
 
 ]
 

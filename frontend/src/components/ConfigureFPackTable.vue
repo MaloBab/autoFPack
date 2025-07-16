@@ -339,7 +339,8 @@ async function saveConfiguration() {
       ref_id: col.ref_id
     })
   }
-  router.back()
+  router.push({ name: 'FPackMenu'})
+
 }
 
 async function listeView() {
@@ -380,7 +381,7 @@ onUnmounted(() => {
 <template>
   <div class="fpack-config-wrapper">
     <h2 class="fpack-title">
-      Configuration de la F-Pack :
+      🛠️ Configuration de la F-Pack :
       <span class="fpack-name">{{ props.fpackName }}</span>
     </h2>
     <button class="vue-liste-btn" @click="listeView()">
@@ -480,7 +481,7 @@ onUnmounted(() => {
 
 .vue-liste-btn {
   color: white;
-  background-color: #3b82f6;
+  background-color: #e3ba12;
   padding: 0.6rem 1rem;
   border-radius: 8px;
   border: none;
@@ -493,8 +494,8 @@ onUnmounted(() => {
 }
 
 .vue-liste-btn:hover {
-  background-color: #2563eb;
-  box-shadow: 0 6px 16px rgba(37, 99, 235, 0.4);
+  background-color: #c29e10;
+  box-shadow: 0 6px 16px rgba(197, 179, 18, 0.4);
 }
 
 .vue-liste-btn:focus {

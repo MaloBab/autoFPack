@@ -24,6 +24,7 @@ export function useTableReader(
   const editRow = ref<any>({})
   const fournisseurs = ref<{ id: number, nom: string }[]>([])
   const clients = ref<{ id: number, nom: string }[]>([])
+  const produits = ref<{ id: number, nom: string }[]>([])
   const isAdding = ref(false)
   const isDeleting = ref(false)
   const isDuplicating = ref(false)
@@ -41,6 +42,12 @@ export function useTableReader(
       clients.value = res.data
   }
 
+  const fetchProduits = async () => {
+    const url = props.apiUrl ? `${props.apiUrl}/produits` : `http://localhost:8000/produits`
+    const res = await axios.get(url)
+    produits.value = res.data
+  }
+
   const fetchData = async () => {
     const urlBase = props.apiUrl || 'http://localhost:8000'
     const colRes = await axios.get(`${urlBase}/table-columns/${props.tableName}`)
@@ -54,6 +61,7 @@ export function useTableReader(
 
     await fetchFournisseurs()
     await fetchClients()
+    await fetchProduits()
   }
 
   onMounted(fetchData)
@@ -163,6 +171,16 @@ async function duplicateRow(row: any) {
         delete dataToSend.client_nom
       }
 
+      if (props.tableName === 'prix') {
+        const produit = produits.value.find(p => p.nom === dataToSend.produit_nom)
+        dataToSend.produit_id = produit?.id
+        delete dataToSend.produit_nom
+
+        const client = clients.value.find(c => c.nom === dataToSend.client_nom)
+        dataToSend.client_id = client?.id
+        delete dataToSend.client_nom
+      }
+
       delete dataToSend.id
       const url = props.apiUrl ? `${props.apiUrl}/${props.tableName}` : `http://localhost:8000/${props.tableName}`
       await axios.post(url, dataToSend)
@@ -193,6 +211,14 @@ async function duplicateRow(row: any) {
       editRow.value.client_nom = client?.nom || ''
     }
 
+    if (props.tableName === 'prix' && 'produit_id' in row && 'client_id' in row) {
+      const produit = produits.value.find(p => p.id === row.produit_id)
+      editRow.value.produit_nom = produit?.nom || ''
+      
+      const client = clients.value.find(c => c.id === row.client_id)
+      editRow.value.client_nom = client?.nom || ''
+    }
+
   }
 
   async function validateEdit(rowId: number) {
@@ -209,7 +235,27 @@ async function duplicateRow(row: any) {
         delete dataToSend.client_nom
       }
 
-      const url = props.apiUrl ? `${props.apiUrl}/${props.tableName}/${rowId}` : `http://localhost:8000/${props.tableName}/${rowId}`
+      if (props.tableName === 'prix') {
+        const produit = produits.value.find(p => p.nom === dataToSend.produit_nom)
+        dataToSend.produit_id = produit?.id
+        delete dataToSend.produit_nom
+
+        const client = clients.value.find(c => c.nom === dataToSend.client_nom)
+        dataToSend.client_id = client?.id
+        delete dataToSend.client_nom
+      }
+
+      let url = props.apiUrl ? `${props.apiUrl}/${props.tableName}/${rowId}` : `http://localhost:8000/${props.tableName}/${rowId}`
+
+      if (props.tableName === "prix") {
+        console.log(editRow.value)
+        const produitId = editRow.value.produit_id;
+        const clientId = editRow.value.client_id;
+        url = props.apiUrl ? `${props.apiUrl}/prix/${produitId}/${clientId}` : `http://localhost:8000/prix/${produitId}/${clientId}`;
+      } else {
+        url = props.apiUrl ? `${props.apiUrl}/${props.tableName}/${rowId}` : `http://localhost:8000/${props.tableName}/${rowId}`;
+      }
+
       await axios.put(url, dataToSend)
       editingId.value = null
       await fetchData()
@@ -231,22 +277,36 @@ async function duplicateRow(row: any) {
 
   }
 
-  async function deleteRow(rowId: number) {
-    if (isDeleting.value) return
-    isDeleting.value = true
-    try {
-      const url = props.apiUrl ? `${props.apiUrl}/${props.tableName}/${rowId}` : `http://localhost:8000/${props.tableName}/${rowId}`
-      await axios.delete(url)
-      await fetchData()
-    } catch (err){
-      handleError(err, "la suppression")
-    } finally {
-      isDeleting.value = false
+async function deleteRow(rowId: number | { produit_id: number; client_id: number }) {
+  if (isDeleting.value) return
+  isDeleting.value = true
+
+  try {
+    let url = ''
+
+    if (props.tableName === 'prix') {
+      const ids = rowId as { produit_id: number; client_id: number }
+      url = props.apiUrl
+        ? `${props.apiUrl}/${props.tableName}/${ids.produit_id}/${ids.client_id}`
+        : `http://localhost:8000/${props.tableName}/${ids.produit_id}/${ids.client_id}`
+    } else {
+      const id = rowId as number
+      url = props.apiUrl
+        ? `${props.apiUrl}/${props.tableName}/${id}`
+        : `http://localhost:8000/${props.tableName}/${id}`
     }
+
+    await axios.delete(url)
+    await fetchData()
+  } catch (err) {
+    handleError(err, "la suppression")
+  } finally {
+    isDeleting.value = false
   }
+}
 
   return {
-    columns, rows, newRow, editingId, editRow, fournisseurs, clients,
+    columns, rows, newRow, editingId, editRow, fournisseurs, clients,produits,
     validateAdd, cancelAdd, startEdit, validateEdit, cancelEdit, deleteRow,
     duplicateRow, ExportRow, ExportAll, isExporting
   }

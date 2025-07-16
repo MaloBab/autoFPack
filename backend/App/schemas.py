@@ -17,6 +17,22 @@ class ProduitRead(ProduitBase):
 
     class Config:
         from_attributes = True
+        
+
+class PrixBase(BaseModel):
+    produit_id: int
+    client_id: int
+    prix_produit: float
+    prix_transport: float
+    commentaire: Optional[str] = None
+
+class PrixCreate(PrixBase):
+    pass
+
+class PrixRead(PrixBase):
+    
+    class Config:
+        from_attributes = True
 
 class FournisseurBase(BaseModel):
     nom: str

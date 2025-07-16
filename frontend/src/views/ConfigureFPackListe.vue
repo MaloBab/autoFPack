@@ -88,14 +88,13 @@ onMounted(async () => {
 </script>
 
 <template>
-    <LoadingSpinner />
   <div class="liste-page">
     <div class="header-bar">
-      <h2>🧾 {{ fpackName }}</h2>
+      <h2>🧾 Liste de la F-Pack : <span class="fpack-name">{{ fpackName }}</span></h2>
       <div class="header-actions">
         <button class="btn-secondary" @click="toggleAll"> {{ allExpanded ? 'Tout replier' : 'Tout déplier' }} </button>
         <button class="btn-retour" @click="router.push({ name: 'ConfigureFPack', params: { tableName: 'fpacks', id: fpackId } })">
-            ⬅️ Retour
+           🛠️ Vue Configuration
         </button>
         </div>
     </div>
@@ -111,14 +110,14 @@ onMounted(async () => {
           <div class="header-row" @click="toggleExpanded(index)">
             <div class="icon">
               <span v-if="col.type === 'produit'">📦</span>
-              <span v-else-if="col.type === 'equipement'">🛠️</span>
+              <span v-else-if="col.type === 'equipement'">🔧</span>
               <span v-else>👥</span>
             </div>
 
             <div class="content">
               <div class="main-line">
                 <strong class="label">#{{ col.ordre +1 }} - {{ col.display_name }}</strong>
-                <span class="badge">{{ formatTypeLabel(col.type) }}</span>
+                <span class="badge":class="'badge-' + col.type">{{ formatTypeLabel(col.type) }}</span>
               </div>
               <div class="sub-text">
                 Cliquez pour {{ expandedIndexes.has(index) ? 'replier' : 'déplier' }}
@@ -197,11 +196,17 @@ onMounted(async () => {
 .btn-retour {
   background-color: #facc15;
   color: #111827;
-  padding: 0.45rem 1rem;
+  padding: 0.45rem 3.5rem;
   border-radius: 8px;
   font-weight: 600;
   border: none;
   cursor: pointer;
+}
+
+.fpack-name {
+  color: #2563eb;
+  font-weight: 700;
+  margin-left: 0.5rem;
 }
 
 .scroll-container {
@@ -231,8 +236,8 @@ onMounted(async () => {
 }
 
 .type-produit { border-left-color: #3b82f6; }
-.type-equipement { border-left-color: #10b981; }
-.type-group { border-left-color: #f97316; }
+.type-equipement { border-left-color: #f97316; }
+.type-group { border-left-color: #10b981; }
 
 .header-row {
   display: flex;
@@ -270,6 +275,19 @@ onMounted(async () => {
   font-weight: 500;
   color: #334155;
   white-space: nowrap;
+}
+
+.badge-produit {
+  background: #3b82f6;
+  color: white;
+}
+.badge-equipement {
+  background: #f59e0b;
+  color: white;
+}
+.badge-group {
+  background: #10b981;
+  color: white;
 }
 
 .sub-text {

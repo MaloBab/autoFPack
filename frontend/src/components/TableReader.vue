@@ -16,7 +16,7 @@ const emit = defineEmits(['added', 'cancelled'])
 
 const filters = ref<Record<string, Set<any>>>({})
 const {
-  columns, rows, newRow, editingId, editRow, fournisseurs, clients,
+  columns, rows, newRow, editingId, editRow, fournisseurs, clients,produits,
   validateAdd, cancelAdd, startEdit, validateEdit, cancelEdit, deleteRow
 } = useTableReader(props, emit,filters)
 
@@ -55,6 +55,14 @@ const filteredRows = computed(() =>
         const client = clients.value.find(c => c.id === cellValue)
         cellValue = client?.nom || ''
       }
+      if (props.tableName === 'prix' && col === 'client_id') {
+        const client = clients.value.find(c => c.id === cellValue)
+        cellValue = client?.nom || ''
+      }
+      if (props.tableName === 'prix' && col === 'produit_id') {
+        const produit = produits.value.find(p => p.id === cellValue)
+        cellValue = produit?.nom || ''
+      }
 
       return String(cellValue).toLowerCase().includes(search)
     })})
@@ -85,6 +93,14 @@ const valueLabels = computed(() => {
     )
   }
 
+    if (props.tableName === 'prix') {
+      map['produit_id'] = Object.fromEntries(
+      produits.value.map(p => [p.id, p.nom])
+    )
+      map['client_id'] = Object.fromEntries(
+        clients.value.map(c => [c.id, c.nom])
+      )
+  }
   return map
 })
 
@@ -100,6 +116,8 @@ const valueLabels = computed(() => {
             <div style="display: flex; align-items: center; gap: 0.3rem;">
               <span>
                 <template v-if="col === 'fournisseur_id' && props.tableName === 'produits'">fournisseur</template>
+                <template v-else-if="col === 'client_id' && props.tableName === 'prix'">client</template>
+                <template v-else-if="col === 'produit_id' && props.tableName === 'prix'">produit</template>
                 <template v-else>{{ col }}</template>
               </span>
               <Filters
@@ -133,6 +151,18 @@ const valueLabels = computed(() => {
                 </select>
               </template>
 
+              <template v-else-if="col === 'produit_id' && props.tableName === 'prix'">
+                <select v-model="newRow.produit_nom">
+                  <option v-for="p in produits" :key="p.id" :value="p.nom">{{ p.nom }}</option>
+                </select>
+              </template>
+
+              <template v-else-if="col === 'client_id' && props.tableName === 'prix'">
+                <select v-model="newRow.client_nom">
+                  <option v-for="c in clients" :key="c.id" :value="c.nom">{{ c.nom }}</option>
+                </select>
+              </template>
+
               <template v-else-if="col !== 'id'">
                 <input v-model="newRow[col]" @keyup.enter="validateAdd" />
               </template>
@@ -154,6 +184,19 @@ const valueLabels = computed(() => {
                   <option v-for="c in clients" :key="c.id" :value="c.nom">{{ c.nom }}</option>
                 </select>
               </template>
+
+              <template v-else-if="editingId === row.id && col === 'client_id' && props.tableName === 'prix'">
+                <select v-model="editRow.client_nom" @keyup.enter="validateEdit(row.id)">
+                  <option v-for="c in clients" :key="c.id" :value="c.nom">{{ c.nom }}</option>
+                </select>
+              </template>
+
+              <template v-else-if="editingId === row.id && col === 'produit_id' && props.tableName === 'prix'">
+                <select v-model="editRow.produit_nom" @keyup.enter="validateEdit(row.id)">
+                  <option v-for="p in produits" :key="p.id" :value="p.nom">{{ p.nom }}</option>
+                </select>
+              </template>
+
               <template v-else-if="editingId === row.id && col !== 'id'">
                 <input v-model="editRow[col]" @keyup.enter="validateEdit(row.id)" />
               </template>
@@ -162,6 +205,12 @@ const valueLabels = computed(() => {
               </template>
               <template v-else-if="col === 'client' && props.tableName === 'robots'">
                 {{ clients.find(c => c.id === row.client)?.nom || row.client }}
+              </template>
+              <template v-else-if="col === 'produit_id' && props.tableName === 'prix'">
+                {{ produits.find(p => p.id === row.produit_id)?.nom || row.produit_id }}
+              </template>
+              <template v-else-if="col === 'client_id' && props.tableName === 'prix'">
+                {{ clients.find(c => c.id === row.client_id)?.nom || row.client_id }}
               </template>
               <template v-else>
                 {{ row[col] }}
@@ -174,7 +223,8 @@ const valueLabels = computed(() => {
               </template>
               <template v-else>
                 <button title="Éditer" @click="startEdit(row)">✏️</button>
-                <button title="Supprimer" @click="deleteRow(row.id)">🗑️</button>
+                <button v-if="props.tableName === 'prix'" @click="deleteRow({ produit_id: row.produit_id, client_id: row.client_id })">🗑️</button>
+                <button v-else title="Supprimer" @click="deleteRow(row.id)">🗑️</button>
               </template>
             </td>
           </tr>

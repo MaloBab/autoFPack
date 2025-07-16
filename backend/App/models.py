@@ -1,5 +1,5 @@
 from sqlalchemy.ext.declarative import declarative_base
-from sqlalchemy import Column, Integer, String, ForeignKey
+from sqlalchemy import Column, Integer, Numeric, String, ForeignKey
 from sqlalchemy.orm import relationship
 
 Base = declarative_base()
@@ -29,6 +29,19 @@ class Produit(Base):
     type = Column(String(255))
     fournisseur = relationship("Fournisseur", back_populates="produits", passive_deletes=True)
     equipement_produit = relationship("Equipement_Produit", back_populates="produits", cascade="all, delete-orphan", passive_deletes=True)
+
+class Prix(Base):
+    __tablename__ = "FPM_prix"
+    __table_args__ = {'schema': 'dbo'}
+
+    produit_id = Column(Integer, ForeignKey("dbo.FPM_produits.id", ondelete="CASCADE"), primary_key=True)
+    client_id = Column(Integer, ForeignKey("dbo.FPM_clients.id", ondelete="CASCADE"), primary_key=True)
+    prix_produit = Column(Numeric(10, 2), nullable=False)
+    prix_transport = Column(Numeric(10, 2), nullable=False)
+    commentaire = Column(String(255), nullable=True)
+
+    produit = relationship("Produit", passive_deletes=True)
+    client = relationship("Client", passive_deletes=True)
 
 class Robots(Base):
     __tablename__ = "FPM_robots"
