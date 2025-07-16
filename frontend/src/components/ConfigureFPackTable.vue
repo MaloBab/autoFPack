@@ -5,7 +5,9 @@ import AddGroupModal from './AddGroupModal.vue'
 import { useRouter } from 'vue-router'
 import { useIncompatibilitesChecker } from '../composables/useIncompatibilitesChecker'
 import { showToast } from '../composables/useToast'
+import { useLoading } from '../composables/useLoading'
 
+const { startLoading, stopLoading } = useLoading()
 
 const { 
     loadIncompatibilites,
@@ -340,14 +342,32 @@ async function saveConfiguration() {
   router.back()
 }
 
+async function listeView() {
+    await axios.delete(`http://localhost:8000/fpack_config_columns/clear/${props.fpackId}`)
+    for (let i = 0; i < columns.value.length; i++) {
+      const col = columns.value[i]
+      await axios.post(`http://localhost:8000/fpack_config_columns`, {
+        fpack_id: props.fpackId,
+        ordre: i,
+        type: col.type,
+        ref_id: col.ref_id
+    })
+  }
+  router.push({ name: 'ConfigureFPackListe', params: { id: props.fpackId }, query: { name: props.fpackName } })
+}
+
 
 onMounted(async () => {
+  startLoading()
+  console.log("Configuration en cours de chargement...")
   await fetchProduitsEtEquipements()
   await fetchConfiguration()
   if (columnsRowRef.value) {
     columnsRowRef.value.addEventListener('wheel', handleWheel, { passive: false })
   }
   await loadIncompatibilites()
+  console.log("Configuration chargée avec succès.")
+  stopLoading()
 })
 
 onUnmounted(() => {
@@ -363,6 +383,9 @@ onUnmounted(() => {
       Configuration de la F-Pack :
       <span class="fpack-name">{{ props.fpackName }}</span>
     </h2>
+    <button class="vue-liste-btn" @click="listeView()">
+      🧾 Vue Liste
+    </button>
 
     <div class="toolbar">
       <button @click="startAdd('produit')" class="addProduit">🧩 Ajouter Produit</button>
@@ -454,6 +477,31 @@ onUnmounted(() => {
 
 
 <style scoped>
+
+.vue-liste-btn {
+  color: white;
+  background-color: #3b82f6;
+  padding: 0.6rem 1rem;
+  border-radius: 8px;
+  border: none;
+  margin-bottom: 1%;
+  font-weight: 600;
+  width: 570px;
+  font-size: 0.95rem;
+  cursor: pointer;
+  transition: background-color 0.2s ease;
+}
+
+.vue-liste-btn:hover {
+  background-color: #2563eb;
+  box-shadow: 0 6px 16px rgba(37, 99, 235, 0.4);
+}
+
+.vue-liste-btn:focus {
+  outline: 2px solid #bfdbfe;
+  outline-offset: 2px;
+}
+
 .fpack-config-wrapper {
   padding: 0rem 2rem 2rem 2rem;
   background-color: #f1f5f9;

@@ -3,6 +3,9 @@ import { ref, computed, defineProps, defineEmits, onMounted, watch } from 'vue'
 import axios from 'axios'
 import Filters from '../components/Filters.vue'
 import { showToast } from '../composables/useToast'
+import { useLoading } from '../composables/useLoading'
+
+const { startLoading, stopLoading } = useLoading()
 
 const props = defineProps<{
   apiUrl?: string
@@ -43,9 +46,11 @@ async function fetchData() {
 }
 
 onMounted(async () => {
+  startLoading()
   await fetchData()
   const res = await axios.get('http://localhost:8000/produit-incompatibilites')
   produitIncompatibilites.value = res.data
+  stopLoading()
 })
 
 function toggleSelect(id: number) {

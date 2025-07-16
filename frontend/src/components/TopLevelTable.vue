@@ -16,6 +16,7 @@ const emit = defineEmits(['added', 'cancelled'])
 const router = useRouter()
 
 const filters = ref<Record<string, Set<any>>>({})
+
 const {
   columns, rows, newRow, editingId, editRow, fournisseurs, clients,
   validateAdd, cancelAdd, startEdit, validateEdit, cancelEdit, deleteRow, duplicateRow, ExportRow, ExportAll, isExporting
