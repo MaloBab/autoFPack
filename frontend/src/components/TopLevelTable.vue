@@ -175,7 +175,7 @@ function remplirFPack(row: any) {
                   <button title="Dupliquer" @click="duplicateRow(row)">🔁</button>
                 </span>
                 <span v-if="props.tableName === 'fpacks'">
-                  <button title="Dupliquer" @click="ExportRow(row)">📤</button>
+                  <button title="Exporter" @click="ExportRow(row)">📤</button>
                 </span>
                 
               </template>
