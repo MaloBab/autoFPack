@@ -204,11 +204,10 @@ class ProjetBase(BaseModel):
     fpack_id: int
 
 class ProjetCreate(ProjetBase):
-    selections: list[ProjetSelectionCreate]
+    pass
 
 class ProjetRead(ProjetBase):
     id: int
-    selections: list[ProjetSelectionRead] = []
 
     class Config:
         from_attributes = True

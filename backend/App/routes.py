@@ -34,6 +34,7 @@ def get_table_columns(table_name: str, db: Session = Depends(get_db)):
             "fournisseurs": "FPM_fournisseurs",
             "fpacks": "FPM_fpacks",
             "prix": "FPM_prix",
+            "projets": "FPM_projets",
         }
 
         actual_name = table_mapping.get(table_name)
@@ -643,17 +644,6 @@ def create_projet(projet: schemas.ProjetCreate, db: Session = Depends(get_db)):
     db.add(db_projet)
     db.commit()
     db.refresh(db_projet)
-
-    for selection in projet.selections:
-        db_selection = models.ProjetSelection(
-            projet_id=db_projet.id,
-            groupe_id=selection.groupe_id,
-            type_item=selection.type_item,
-            ref_id=selection.ref_id
-        )
-        db.add(db_selection)
-
-    db.commit()
     return db_projet
 
 @router.get("/projets", response_model=list[schemas.ProjetRead])
@@ -666,3 +656,27 @@ def get_projet(id: int, db: Session = Depends(get_db)):
     if not projet:
         raise HTTPException(status_code=404, detail="Projet non trouvé")
     return projet
+
+@router.delete("/projets/{id}")
+def delete_projet(id: int, db: Session = Depends(get_db)):
+    db_projet = db.query(models.Projet).filter_by(id=id).first()
+    if not db_projet:
+        raise HTTPException(status_code=404, detail="Projet non trouvé")
+
+    db.delete(db_projet)
+    db.commit()
+    return {"ok": True}
+
+@router.put("/projets/{id}", response_model=schemas.ProjetRead)
+def update_projet(id: int, projet: schemas.ProjetCreate, db: Session = Depends(get_db)):
+    db_projet = db.query(models.Projet).filter_by(id=id).first()
+    if not db_projet:
+        raise HTTPException(status_code=404, detail="Projet non trouvé")
+
+    # Met à jour les champs de base
+    db_projet.nom = projet.nom
+    db_projet.client = projet.client
+    db_projet.fpack_id = projet.fpack_id
+    db.commit()
+    db.refresh(db_projet)
+    return db_projet
