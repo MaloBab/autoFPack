@@ -8,7 +8,7 @@ const menuItems = [
   { label: 'Equipements', route: '/equipements', icon: '🔧' },
   { label: 'Produits', route: '/produits', icon: '🧩' },
   { label: 'F-Pack', route: '/fpack', icon: '📦' },
-  { label: 'Résultats', route: '/resultats', icon: '📈' }
+  { label: 'Projets', route: '/projet', icon: '📈' }
 ]
 
 </script>

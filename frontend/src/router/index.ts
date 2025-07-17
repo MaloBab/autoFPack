@@ -13,6 +13,7 @@ import ConfigureFPack from '../views/ConfigureFPack.vue'
 import Incompatibilites from '../views/Incompatibilites.vue'
 import FpackList from '../views/ConfigureFPackListe.vue'
 import Prix from '../views/Prix.vue'
+import Projet from '../views/Projet.vue'
 
 const routes = [
   { path: '/', component: Dashboard },
@@ -28,7 +29,8 @@ const routes = [
   { path: '/configure/:tableName/:id', name: 'ConfigureFPack', component: ConfigureFPack},
   { path: '/incompatibilites', name: 'Incompatibilites', component: Incompatibilites },
   {path: '/fpacks/:id/config/liste', name: 'ConfigureFPackListe',component: FpackList},
-  {path: '/prix', name: 'Prix',component: Prix}
+  {path: '/prix', name: 'Prix',component: Prix},
+  {path: '/projet', name: 'Projet',component: Projet}
 
 ]
 

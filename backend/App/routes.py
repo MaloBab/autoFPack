@@ -634,3 +634,35 @@ def export_all_fpacks_route(db: Session = Depends(get_db)):
     }
 
     return StreamingResponse(output, media_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet", headers=headers)
+
+#PROJET
+
+@router.post("/projets", response_model=schemas.ProjetRead)
+def create_projet(projet: schemas.ProjetCreate, db: Session = Depends(get_db)):
+    db_projet = models.Projet(nom=projet.nom, client=projet.client, fpack_id=projet.fpack_id)
+    db.add(db_projet)
+    db.commit()
+    db.refresh(db_projet)
+
+    for selection in projet.selections:
+        db_selection = models.ProjetSelection(
+            projet_id=db_projet.id,
+            groupe_id=selection.groupe_id,
+            type_item=selection.type_item,
+            ref_id=selection.ref_id
+        )
+        db.add(db_selection)
+
+    db.commit()
+    return db_projet
+
+@router.get("/projets", response_model=list[schemas.ProjetRead])
+def list_projets(db: Session = Depends(get_db)):
+    return db.query(models.Projet).all()
+
+@router.get("/projets/{id}", response_model=schemas.ProjetRead)
+def get_projet(id: int, db: Session = Depends(get_db)):
+    projet = db.query(models.Projet).filter_by(id=id).first()
+    if not projet:
+        raise HTTPException(status_code=404, detail="Projet non trouvé")
+    return projet

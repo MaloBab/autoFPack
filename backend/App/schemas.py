@@ -181,3 +181,34 @@ class RobotProduitIncompatibiliteCreate(RobotProduitIncompatibiliteBase):
 class RobotProduitIncompatibiliteRead(RobotProduitIncompatibiliteBase):
     class Config:
         from_attributes = True
+
+#PROJET
+
+class ProjetSelectionBase(BaseModel):
+    groupe_id: int
+    type_item: str
+    ref_id: int
+
+class ProjetSelectionCreate(ProjetSelectionBase):
+    pass
+
+class ProjetSelectionRead(ProjetSelectionBase):
+    projet_id: int
+
+    class Config:
+        from_attributes = True
+
+class ProjetBase(BaseModel):
+    nom: str
+    client: int
+    fpack_id: int
+
+class ProjetCreate(ProjetBase):
+    selections: list[ProjetSelectionCreate]
+
+class ProjetRead(ProjetBase):
+    id: int
+    selections: list[ProjetSelectionRead] = []
+
+    class Config:
+        from_attributes = True

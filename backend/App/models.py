@@ -122,3 +122,29 @@ class RobotProduitIncompatibilite(Base):
     __table_args__ = {'schema': 'dbo'}
     robot_id = Column(Integer, ForeignKey("dbo.FPM_robots.id", ondelete="CASCADE"), primary_key=True)
     produit_id = Column(Integer, ForeignKey("dbo.FPM_produits.id", ondelete="CASCADE"), primary_key=True)
+    
+#PROJET
+
+class Projet(Base):
+    __tablename__ = "FPM_projets"
+    __table_args__ = {'schema': 'dbo'}
+
+    id = Column(Integer, primary_key=True, autoincrement=True)
+    nom = Column(String, nullable=False)
+    client = Column(Integer, ForeignKey("dbo.FPM_clients.id", ondelete="CASCADE"), nullable=False)
+    fpack_id = Column(Integer, ForeignKey("dbo.FPM_fpacks.id", ondelete="CASCADE"), nullable=False)
+
+    selections = relationship("ProjetSelection", back_populates="projet", cascade="all, delete-orphan")
+
+
+class ProjetSelection(Base):
+    __tablename__ = "FPM_projet_selection"
+    __table_args__ =  {'schema': 'dbo'}
+
+
+    projet_id = Column(Integer, ForeignKey("dbo.FPM_projets.id", ondelete="CASCADE"), primary_key=True)
+    groupe_id = Column(Integer, ForeignKey("dbo.FPM_groupes.id", ondelete="CASCADE"), primary_key=True)
+    type_item = Column(String(50), nullable=False)
+    ref_id = Column(Integer, nullable=False)
+
+    projet = relationship("Projet", back_populates="selections")
