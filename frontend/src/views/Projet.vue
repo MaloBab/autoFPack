@@ -3,6 +3,7 @@ import { ref } from 'vue'
 import PageHeader from '../components/PageHeader.vue'
 import TopLevelTable from '../components/TopLevelTable.vue'
 import { showToast } from '../composables/useToast'
+import TextSearch from '../components/TextSearch.vue'
 import axios from 'axios'
 
 const projets = ref<any[]>([])
@@ -38,6 +39,7 @@ fetchProjets()
       @added="resetAjouter"
       @cancelled="resetAjouter"
     />
+    <TextSearch v-model="searchTerm" />
   </div>
 </template>
 

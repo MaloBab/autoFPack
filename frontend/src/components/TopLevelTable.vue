@@ -18,7 +18,7 @@ const router = useRouter()
 const filters = ref<Record<string, Set<any>>>({})
 
 const {
-  columns, rows, newRow, editingId, editRow, fournisseurs, clients,
+  columns, rows, newRow, editingId, editRow, fournisseurs, clients,fpacks,
   validateAdd, cancelAdd, startEdit, validateEdit, cancelEdit, deleteRow, duplicateRow, ExportRow, ExportAll, isExporting
 } = useTableReader(props, emit, filters)
 
@@ -46,9 +46,14 @@ const filteredRows = computed(() =>
       return columns.value.some(col => {
         let cellValue = row[col]
 
-        if (props.tableName === 'fpacks' && col === 'client') {
+        if ((props.tableName === 'projets' ||props.tableName === 'fpacks') && col === 'client') {
           const client = clients.value.find(c => c.id === cellValue)
           cellValue = client?.nom || ''
+        }
+
+        if (props.tableName === 'projets' && col === 'fpack_id') {
+          const fpack = fpacks.value.find(f => f.id === cellValue)
+          cellValue = fpack?.nom || ''
         }
 
         return String(cellValue).toLowerCase().includes(search)
@@ -75,11 +80,18 @@ const valueLabels = computed(() => {
     )
   }
 
-  if (props.tableName === 'fpacks') {
+  if (props.tableName === 'fpacks' || props.tableName === 'projets') {
     map['client'] = Object.fromEntries(
       clients.value.map(c => [c.id, c.nom])
     )
   }
+
+  if (props.tableName === 'projets') {
+    map['fpack'] = Object.fromEntries(
+      fpacks.value.map(f => [f.id, f.nom])
+    )
+  }
+
 
   return map
 })
@@ -89,6 +101,9 @@ function remplirEquipement(row: any) {
 }
 function remplirFPack(row: any) {
   router.push(`/configure/${props.tableName}/${row.id}`)
+}
+function remplirProjet(row: any) {
+  router.push(`/complete/${props.tableName}/${row.id}`)
 }
 </script>
 
@@ -122,9 +137,15 @@ function remplirFPack(row: any) {
         <tbody>
           <tr v-if="ajouter">
             <td v-for="col in columns" :key="col">
-              <template v-if="col === 'client' && props.tableName === 'fpacks'">
+              <template v-if="col === 'client' && (props.tableName === 'fpacks' || props.tableName === 'projets')">
                 <select v-model="newRow.client_nom">
                   <option v-for="c in clients" :key="c.id" :value="c.nom">{{ c.nom }}</option>
+                </select>
+              </template>
+
+              <template v-else-if="col === 'fpack_id' && props.tableName === 'projets'">
+                <select v-model="newRow.fpack_nom">
+                  <option v-for="f in fpacks" :key="f.id" :value="f.nom">{{ f.nom }}</option>
                 </select>
               </template>
 
@@ -141,18 +162,29 @@ function remplirFPack(row: any) {
           <tr v-for="row in filteredRows" :key="row.id">
             <td v-for="col in columns" :key="col">
 
-              <template v-if="editingId === row.id && col === 'client' && props.tableName === 'fpacks'">
+              <template v-if="editingId === row.id && col === 'client' && (props.tableName === 'fpacks' || props.tableName === 'projets')">
                 <select v-model="editRow.client_nom" @keyup.enter="validateEdit(row.id)">
                   <option v-for="c in clients" :key="c.id" :value="c.nom">{{ c.nom }}</option>
+                </select>
+              </template>
+
+              <template v-else-if="editingId === row.id && col === 'fpack_id' && props.tableName === 'projets'">
+                <select v-model="editRow.fpack_nom" @keyup.enter="validateEdit(row.id)">
+                  <option v-for="f in fpacks" :key="f.id" :value="f.nom">{{ f.nom }}</option>
                 </select>
               </template>
 
               <template v-else-if="editingId === row.id && col !== 'id'">
                 <input v-model="editRow[col]" @keyup.enter="validateEdit(row.id)" />
               </template>
-              <template v-else-if="col === 'client' && props.tableName === 'fpacks'">
+              <template v-else-if="col === 'client' && (props.tableName === 'fpacks' || props.tableName === 'projets')">
                 {{ clients.find(c => c.id === row.client)?.nom || row.client }}
               </template>
+
+              <template v-else-if="col === 'fpack_id' && props.tableName === 'projets'">
+                {{ fpacks.find(f => f.id === row.fpack_id)?.nom || row.fpack_id }}
+              </template>
+
               <template v-else>
                 {{ row[col] }}
               </template>
@@ -176,6 +208,9 @@ function remplirFPack(row: any) {
                 </span>
                 <span v-if="props.tableName === 'fpacks'">
                   <button title="Exporter" @click="ExportRow(row)">📤</button>
+                </span>
+                <span v-if="props.tableName === 'projets'">
+                  <button title="Completer" @click="remplirProjet(row)">📝</button>
                 </span>
                 
               </template>

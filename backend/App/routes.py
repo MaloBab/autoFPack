@@ -680,3 +680,47 @@ def update_projet(id: int, projet: schemas.ProjetCreate, db: Session = Depends(g
     db.commit()
     db.refresh(db_projet)
     return db_projet
+
+#############
+
+# PUT /projets/{id} - compléter un projet
+@router.put("/projets/{id}/completer", response_model=dict)
+def completer_projet(
+    id: int,
+    projet_data: schemas.ProjetSelectionCreate,
+    db: Session = Depends(get_db)
+):
+    # Vérifie que le projet existe
+    projet = db.query(models.Projet).filter(models.Projet.id == id).first()
+    if not projet:
+        raise HTTPException(status_code=404, detail="Projet non trouvé")
+
+    projet.nom = projet_data.nom
+    projet.client = projet_data.client
+    projet.fpack_id = projet_data.fpack_id
+    db.commit()
+
+    db.query(models.ProjetSelection).filter(models.ProjetSelection.projet_id == id).delete()
+    db.commit()
+
+    # Insérer les nouvelles sélections
+    for sel in projet_data.selections:
+        selection = models.ProjetSelection(
+            projet_id=id,
+            groupe_id=sel.groupe_id,
+            type_item=sel.type_item,
+            ref_id=sel.ref_id
+        )
+        db.add(selection)
+
+    db.commit()
+    return {"message": "Projet complété avec succès"}
+
+
+# GET /projets/{id} - charger les infos du projet pour préremplissage frontend
+@router.get("/projets/{id}/complete", response_model=schemas.ProjetSelectionRead)
+def get_projet(id: int, db: Session = Depends(get_db)):
+    projet = db.query(models.Projet).filter(models.Projet.id == id).first()
+    if not projet:
+        raise HTTPException(status_code=404, detail="Projet non trouvé")
+    return projet

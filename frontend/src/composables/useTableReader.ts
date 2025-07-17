@@ -25,6 +25,7 @@ export function useTableReader(
   const fournisseurs = ref<{ id: number, nom: string }[]>([])
   const clients = ref<{ id: number, nom: string }[]>([])
   const produits = ref<{ id: number, nom: string }[]>([])
+  const fpacks = ref<{ id: number, nom: string }[]>([])
   const isAdding = ref(false)
   const isDeleting = ref(false)
   const isDuplicating = ref(false)
@@ -48,6 +49,12 @@ export function useTableReader(
     produits.value = res.data
   }
 
+    const fetchFpack = async () => {
+    const url = props.apiUrl ? `${props.apiUrl}/produits` : `http://localhost:8000/fpacks`
+    const res = await axios.get(url)
+    fpacks.value = res.data
+  }
+
   const fetchData = async () => {
     const urlBase = props.apiUrl || 'http://localhost:8000'
     const colRes = await axios.get(`${urlBase}/table-columns/${props.tableName}`)
@@ -62,6 +69,7 @@ export function useTableReader(
     await fetchFournisseurs()
     await fetchClients()
     await fetchProduits()
+    await fetchFpack()
   }
 
   onMounted(fetchData)
@@ -129,9 +137,14 @@ async function ExportAll() {
       if (col === 'fournisseur_id') {
         newRow.value['fournisseur_nom'] = fournisseurs.value[0]?.nom || ''
       } 
-      if (col === 'client') {
+      else if (col === 'client') {
         newRow.value['client_nom'] = clients.value[0]?.nom || ''
       }
+
+      else if (col === 'fpack_id') {
+        newRow.value['fpack_nom'] = fpacks.value[0]?.nom || ''
+      }
+
       else {
         newRow.value[col] = ''
       }
@@ -165,7 +178,7 @@ async function duplicateRow(row: any) {
         delete dataToSend.fournisseur_nom
       }
 
-      if (props.tableName === 'robots' || props.tableName === 'fpacks') {
+      if (props.tableName === 'robots' || props.tableName === 'fpacks' || props.tableName === 'projets') {
         const client = clients.value.find(c => c.nom === dataToSend.client_nom)
         dataToSend.client = client?.id
         delete dataToSend.client_nom
@@ -175,10 +188,15 @@ async function duplicateRow(row: any) {
         const produit = produits.value.find(p => p.nom === dataToSend.produit_nom)
         dataToSend.produit_id = produit?.id
         delete dataToSend.produit_nom
-
         const client = clients.value.find(c => c.nom === dataToSend.client_nom)
         dataToSend.client_id = client?.id
         delete dataToSend.client_nom
+      }
+
+      if (props.tableName === 'projets') {
+        const fpack = fpacks.value.find(f => f.nom === dataToSend.fpack_nom)
+        dataToSend.fpack_id = fpack?.id
+        delete dataToSend.fpack_nom
       }
 
       delete dataToSend.id
@@ -206,7 +224,7 @@ async function duplicateRow(row: any) {
       editRow.value.fournisseur_nom = fournisseur?.nom || ''
     }
 
-    if ((props.tableName === 'robots' || props.tableName === 'fpacks') && 'client' in row) {
+    if ((props.tableName === 'robots' || props.tableName === 'fpacks' || props.tableName === 'projets') && 'client' in row) {
       const client = clients.value.find(c => c.id === row.client)
       editRow.value.client_nom = client?.nom || ''
     }
@@ -219,6 +237,11 @@ async function duplicateRow(row: any) {
       editRow.value.client_nom = client?.nom || ''
     }
 
+    if (props.tableName === 'projets' && 'fpack_id' in row) {
+      const fpack = fpacks.value.find(f => f.id === row.fpack_id)
+      editRow.value.fpack_nom = fpack?.nom || ''
+    }
+
   }
 
   async function validateEdit(rowId: number) {
@@ -229,7 +252,7 @@ async function duplicateRow(row: any) {
         dataToSend.fournisseur_id = fournisseur?.id
         delete dataToSend.fournisseur_nom
       }
-      if (props.tableName === 'robots' || props.tableName === 'fpacks') {
+      if (props.tableName === 'robots' || props.tableName === 'fpacks' || props.tableName === 'projets') {
         const client = clients.value.find(c => c.nom === dataToSend.client_nom)
         dataToSend.client = client?.id
         delete dataToSend.client_nom
@@ -243,6 +266,11 @@ async function duplicateRow(row: any) {
         const client = clients.value.find(c => c.nom === dataToSend.client_nom)
         dataToSend.client_id = client?.id
         delete dataToSend.client_nom
+      }
+      if (props.tableName === 'projets') {
+        const fpack = fpacks.value.find(f => f.nom === dataToSend.fpack_nom)
+        dataToSend.fpack_id = fpack?.id
+        delete dataToSend.fpack_nom
       }
 
       let url = props.apiUrl ? `${props.apiUrl}/${props.tableName}/${rowId}` : `http://localhost:8000/${props.tableName}/${rowId}`
@@ -268,10 +296,8 @@ async function duplicateRow(row: any) {
 
   function cancelEdit() {
         if (isDuplicating.value) {
-          console.warn("je vais annuler la duplication")
           deleteRow(editingId.value!)
     }
-    console.warn("je vais annuler l'édition")
     editingId.value = null
     isDuplicating.value = false
 
@@ -306,7 +332,7 @@ async function deleteRow(rowId: number | { produit_id: number; client_id: number
 }
 
   return {
-    columns, rows, newRow, editingId, editRow, fournisseurs, clients,produits,
+    columns, rows, newRow, editingId, editRow, fournisseurs, clients,produits, fpacks,
     validateAdd, cancelAdd, startEdit, validateEdit, cancelEdit, deleteRow,
     duplicateRow, ExportRow, ExportAll, isExporting
   }
