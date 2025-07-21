@@ -683,44 +683,27 @@ def update_projet(id: int, projet: schemas.ProjetCreate, db: Session = Depends(g
 
 #############
 
-# PUT /projets/{id} - compléter un projet
-@router.put("/projets/{id}/completer", response_model=dict)
-def completer_projet(
+@router.get("/projets/{id}/selections", response_model=list[schemas.ProjetSelectionRead])
+def get_projet_selections(id: int, db: Session = Depends(get_db)):
+    return db.query(models.ProjetSelection).filter(models.ProjetSelection.projet_id == id).all()
+
+from fastapi import Body
+
+@router.put("/projets/{id}/selections", response_model=dict)
+def save_projet_selections(
     id: int,
-    projet_data: schemas.ProjetSelectionCreate,
+    data: dict = Body(...),
     db: Session = Depends(get_db)
 ):
-    # Vérifie que le projet existe
-    projet = db.query(models.Projet).filter(models.Projet.id == id).first()
-    if not projet:
-        raise HTTPException(status_code=404, detail="Projet non trouvé")
-
-    projet.nom = projet_data.nom
-    projet.client = projet_data.client
-    projet.fpack_id = projet_data.fpack_id
-    db.commit()
-
     db.query(models.ProjetSelection).filter(models.ProjetSelection.projet_id == id).delete()
     db.commit()
-
-    # Insérer les nouvelles sélections
-    for sel in projet_data.selections:
+    for sel in data.get("selections", []):
         selection = models.ProjetSelection(
             projet_id=id,
-            groupe_id=sel.groupe_id,
-            type_item=sel.type_item,
-            ref_id=sel.ref_id
+            groupe_id=sel.get("groupe_id"),
+            ref_id=sel.get("ref_id"),
+            type_item=sel.get("type_item", "produit")  # ou "equipement" ou "groupe" selon le contexte
         )
         db.add(selection)
-
     db.commit()
-    return {"message": "Projet complété avec succès"}
-
-
-# GET /projets/{id} - charger les infos du projet pour préremplissage frontend
-@router.get("/projets/{id}/complete", response_model=schemas.ProjetSelectionRead)
-def get_projet(id: int, db: Session = Depends(get_db)):
-    projet = db.query(models.Projet).filter(models.Projet.id == id).first()
-    if not projet:
-        raise HTTPException(status_code=404, detail="Projet non trouvé")
-    return projet
+    return {"message": "Sélections enregistrées"}

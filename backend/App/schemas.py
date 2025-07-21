@@ -186,7 +186,7 @@ class RobotProduitIncompatibiliteRead(RobotProduitIncompatibiliteBase):
 
 class ProjetSelectionBase(BaseModel):
     groupe_id: int
-    type_item: str
+    type_item: Optional[str] = None
     ref_id: int
 
 class ProjetSelectionCreate(ProjetSelectionBase):

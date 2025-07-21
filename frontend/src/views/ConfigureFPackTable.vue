@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { ref, onMounted, onUnmounted, computed } from 'vue'
 import axios from 'axios'
-import AddGroupModal from './AddGroupModal.vue'
+import AddGroupModal from '../components/AddGroupModal.vue'
 import { useRouter } from 'vue-router'
 import { useIncompatibilitesChecker } from '../composables/useIncompatibilitesChecker'
 import { showToast } from '../composables/useToast'

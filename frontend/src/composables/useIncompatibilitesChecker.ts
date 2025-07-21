@@ -112,6 +112,12 @@ function getProduitsFromEquipement(eqId: number): number[] {
     return produits.some(pid => isProduitIncompatible(pid))
   }
 
+  function isRobotIncompatibleWithGroup(robotId: number): boolean {
+    const currentProduits = getAllProduits(columns())
+    return robotProduitIncompatibilites.value.some(
+      inc => inc.robot_id === robotId && currentProduits.includes(inc.produit_id))
+  }
+
   function GroupIncompatibilityLevel(groupItems: GroupItem[]): number {
     const produitsGroupe: number[] = []
     const robotsGroupe: number[] = []
@@ -289,7 +295,8 @@ function getFullyConflictingGroups(columns: ConfigColumn[]): number[] {
     isProduitIncompatibleWithGroup,
     isEquipementIncompatibleWithGroup,
     getFullyConflictingGroups,
-    getConflictingColumns
+    getConflictingColumns,
+    isRobotIncompatibleWithGroup
   }
 
 }
