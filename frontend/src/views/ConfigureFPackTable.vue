@@ -13,7 +13,6 @@ const {
     loadIncompatibilites,
     isProduitIncompatible,
     isEquipementIncompatible,
-    GroupIncompatibilityLevel,
     wouldCauseOtherGroupConflicts,
     getFullyConflictingGroups,
     getConflictingColumns
@@ -296,13 +295,8 @@ async function handleGroupUpdate(group: { type: 'group'; ref_id: null; display_n
     group_summary: summarizeGroupItems(enrichedGroupItems)
   }
 
-
-  if (GroupIncompatibilityLevel(enrichedGroupItems) === enrichedGroupItems.length) {
-    showToast("Ce groupe est entièrement incompatible avec la configuration actuelle.", "#ef4444")
-    return
-  }
   if (wouldCauseOtherGroupConflicts(enrichedGroupItems, editingGroupIndex.value)) {
-    showToast("Ce groupe entre en conflit avec un ou plusieurs groupes existants.", "#f97316")
+    showToast("Ce groupe entre en conflit avec un ou plusieurs groupes existants.", "#ef4444")
     return
   }
 

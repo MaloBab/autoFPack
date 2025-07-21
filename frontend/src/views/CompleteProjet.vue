@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref, onMounted, computed, nextTick } from 'vue'
+import { ref, onMounted, computed, nextTick, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import axios from 'axios'
 import { showToast } from '../composables/useToast'
@@ -9,6 +9,7 @@ const router = useRouter()
 
 const projet = ref<any>(null)
 const configColumns = ref<any[]>([])
+const produits = ref<any[]>([])
 const produitsSeuls = ref<any[]>([])
 const equipementsSeuls = ref<any[]>([])
 const groupes = ref<any[]>([])
@@ -21,6 +22,9 @@ const groupesRefs = ref<Record<number, HTMLElement | null>>({})
 const equipementProduitsMap = ref<Record<number, number[]>>({})
 const produitIncompatibilites = ref<{produit_id_1: number, produit_id_2: number}[]>([])
 const robotProduitIncompatibilites = ref<{robot_id: number, produit_id: number}[]>([])
+const prixItems = ref<any[]>([])
+const prixTotals = ref({ produit: 0, transport: 0, global: 0 })
+
 
 
 const groupesRemplis = computed(() =>
@@ -30,7 +34,6 @@ const groupesRestants = computed(() =>
   groupes.value.filter(g => !selections.value[g.ref_id])
 )
 
-// --- !!!!!!!!!!!!!!!!!!!!!! ---
 
 function areProduitsIncompatible(id1: number, id2: number): boolean {
   return produitIncompatibilites.value.some(
@@ -116,6 +119,12 @@ function onLeave(el: Element, done: () => void) {
   }, 300)
 }
 
+function resetSelections() {
+  Object.keys(selections.value).forEach((key:any) => {
+    selections.value[key] = ''
+  })
+}
+
 const allExpanded = computed(() => expandedGroups.value.size === groupes.value.length)
 
 function toggleGroup(ref_id: number) {
@@ -149,6 +158,10 @@ function goToNextUnfilled() {
 async function fetchData() {
   loading.value = true
   try {
+
+    const resProduits = await axios.get('http://localhost:8000/produits')
+    produits.value = resProduits.data
+
     const projetId = route.params.id
     const resProjet = await axios.get(`http://localhost:8000/projets/${projetId}`)
     projet.value = resProjet.data
@@ -184,12 +197,60 @@ async function fetchData() {
   }
 }
 
+async function fetchPrixForSelections() {
+  // Récupère les IDs des produits sélectionnés (directs ou via équipements/groupes)
+  const selectedProduitIds: number[] = []
+
+  // Ajoute les produits seuls
+  produitsSeuls.value.forEach(p => selectedProduitIds.push(p.ref_id))
+
+  // Ajoute les produits des équipements seuls
+  equipementsSeuls.value.forEach(eq => {
+    const produits = equipementProduitsMap.value[eq.ref_id] || []
+    produits.forEach(pid => selectedProduitIds.push(pid))
+  })
+
+  // Ajoute les produits sélectionnés dans les groupes
+  groupes.value.forEach(groupe => {
+    const selId = selections.value[groupe.ref_id]
+    if (!selId) return
+    const item = groupe.group_items.find((i:any) => i.ref_id === selId)
+    if (!item) return
+    if (item.type === 'produit') selectedProduitIds.push(item.ref_id)
+    if (item.type === 'equipement') {
+      const produits = equipementProduitsMap.value[item.ref_id] || []
+      produits.forEach(pid => selectedProduitIds.push(pid))
+    }
+    // robots : à adapter TODO
+  })
+
+  // Récupère les prix pour chaque produit sélectionné
+  prixItems.value = []
+  prixTotals.value = { produit: 0, transport: 0, global: 0 }
+  for (const pid of selectedProduitIds) {
+    const res = await axios.get(`http://localhost:8000/prix/${pid}/${projet.value.client}`)
+    const prix = res.data
+    prixItems.value.push({
+      produit_id: pid,
+      nom: produits.value.find(p => p.id === pid)?.nom ?? `Produit ${pid}`,
+      prix_produit: prix.prix_produit,
+      prix_transport: prix.prix_transport,
+      commentaire: prix.commentaire
+    })
+    prixTotals.value.produit += prix.prix_produit
+    prixTotals.value.transport += prix.prix_transport
+  }
+  prixTotals.value.global = prixTotals.value.produit + prixTotals.value.transport
+}
+
+watch(selections, fetchPrixForSelections, { deep: true })
 onMounted(async () => {
   const resProdInc = await axios.get('http://localhost:8000/produit-incompatibilites')
   produitIncompatibilites.value = resProdInc.data
   const resRobotInc = await axios.get('http://localhost:8000/robot-produit-incompatibilites')
   robotProduitIncompatibilites.value = resRobotInc.data
   fetchData()
+  fetchPrixForSelections()
 })
 
 async function saveSelections() {
@@ -200,7 +261,7 @@ async function saveSelections() {
       ref_id: selections.value[groupe.ref_id] ?? null
     }))
     await axios.put(`http://localhost:8000/projets/${projet.value.id}/selections`, { selections: payload })
-    showToast('Sélections enregistrées', "#059669")
+    showToast('Sélection enregistrée', "#059669")
   } catch (err) {
     showToast("Erreur lors de l'enregistrement","#EE1111")
   } finally {
@@ -211,101 +272,156 @@ async function saveSelections() {
 </script>
 
 <template>
-  <div class="complete-projet-container">
-    <header class="sticky-header">
-      <h1>
-        Compléter le projet : <span class="projet-nom">{{ projet?.nom }}</span>
-      </h1>
-      <div class="progress-bar">
-        <span>
-          Groupes remplis : <b>{{ groupesRemplis.length }}</b> / {{ groupes.length }}
-        </span>
-        <div class="progress-track">
-          <div class="progress-fill" :style="{width: (groupesRemplis.length/groupes.length*100)+'%'}"></div>
-        </div>
-      </div>
-      <div class="header-actions">
-        <button @click="goToNextUnfilled" :disabled="!groupesRestants.length" class="btn-next">
-          Aller au prochain groupe à remplir
-        </button>
-        <button v-if="!allExpanded" @click="expandAll" class="btn-expand">Tout déplier</button>
-        <button v-else @click="collapseAll" class="btn-collapse">Tout replier</button>
-      </div>
-    </header>
-    <div v-if="loading" class="loading">Chargement...</div>
-    <div v-else class="content-scroll">
-      <section class="section">
-        <h2>Produits seuls</h2>
-        <ul class="chips-list">
-          <li v-for="p in produitsSeuls" :key="p.ref_id" class="chip chip-produit">
-            🧩 {{ p.display_name }}
-          </li>
-        </ul>
-      </section>
-      <section class="section">
-        <h2>Équipements seuls</h2>
-        <ul class="chips-list">
-          <li v-for="e in equipementsSeuls" :key="e.ref_id" class="chip chip-equipement">
-            🔧 {{ e.display_name }}
-          </li>
-        </ul>
-      </section>
-      <section class="section groupes-section">
-        <h2>Groupes à compléter</h2>
-        <div class="groupes-list">
-          <div
-            v-for="groupe in groupes"
-            :key="groupe.ref_id"
-            class="groupe-accordion"
-            :class="{
-              'rempli': selections[groupe.ref_id],
-              'non-rempli': !selections[groupe.ref_id]
-            }"
-            ref="el => groupesRefs.value[groupe.ref_id] = el"
-          >
-            <div class="groupe-header" @click="toggleGroup(groupe.ref_id)">
-              <span class="groupe-title">
-                <span v-if="selections[groupe.ref_id]" class="checkmark">✔️</span>
-                <span v-else class="warning">⏳</span>
-                {{ groupe.display_name }}
-              </span>
-              <span class="arrow" :class="{open: expandedGroups.has(groupe.ref_id)}">▼</span>
-            </div>
-            <transition name="accordion" @enter="onEnter" @after-enter="onAfterEnter" @leave="onLeave">
-              <div v-show="expandedGroups.has(groupe.ref_id)" class="groupe-body" ref="el => groupesRefs.value[groupe.ref_id] = el">
-                <select v-model="selections[groupe.ref_id]" class="groupe-select">
-                  <option disabled value="">-- Choisir un élément --</option>
-                  <option
-                    v-for="item in groupe.group_items"
-                    :key="item.ref_id"
-                    :value="item.ref_id"
-                    :disabled="isItemIncompatible(groupe, item)"
-                    :class="{ 'option-incompatible': isItemIncompatible(groupe, item) }"
-                  >
-                    {{ item.label }}
-                    <span v-if="item.type === 'produit'">🧩</span>
-                    <span v-else-if="item.type === 'equipement'">🔧</span>
-                    <span v-else-if="item.type === 'robot'">🤖</span>
-                  </option>
-                </select>
-              </div>
-            </transition>
+  <div class="encarts-row">
+    <div class="complete-projet-container">
+      <header class="sticky-header">
+        <h1>
+          Compléter le projet : <span class="projet-nom">{{ projet?.nom }}</span>
+        </h1>
+        <div class="progress-bar">
+          <span>
+            Groupes remplis : <b>{{ groupesRemplis.length }}</b> / {{ groupes.length }}
+          </span>
+          <div class="progress-track">
+            <div class="progress-fill" :style="{width: (groupesRemplis.length/groupes.length*100)+'%'}"></div>
           </div>
         </div>
-      </section>
-    </div>
-          <div class="actions">
+        <div class="header-actions">
+          <button @click="goToNextUnfilled" :disabled="!groupesRestants.length" class="btn-next">
+            Aller au prochain groupe à remplir
+          </button>
+          <button v-if="!allExpanded" @click="expandAll" class="btn-expand">Tout déplier</button>
+          <button v-else @click="collapseAll" class="btn-collapse">Tout replier</button>
+        </div>
+      </header>
+      <div v-if="loading" class="loading">Chargement...</div>
+      <div v-else class="content-scroll">
+        <section class="section">
+          <h2>Produits seuls</h2>
+          <ul class="chips-list">
+            <li v-for="p in produitsSeuls" :key="p.ref_id" class="chip chip-produit">
+              🧩 {{ p.display_name }}
+            </li>
+          </ul>
+        </section>
+        <section class="section">
+          <h2>Équipements seuls</h2>
+          <ul class="chips-list">
+            <li v-for="e in equipementsSeuls" :key="e.ref_id" class="chip chip-equipement">
+              🔧 {{ e.display_name }}
+            </li>
+          </ul>
+        </section>
+        <section class="section groupes-section">
+          <h2>Groupes à compléter</h2>
+          <div class="groupes-list">
+            <div
+              v-for="groupe in groupes"
+              :key="groupe.ref_id"
+              class="groupe-accordion"
+              :class="{
+                'rempli': selections[groupe.ref_id],
+                'non-rempli': !selections[groupe.ref_id]
+              }"
+              ref="el => groupesRefs.value[groupe.ref_id] = el"
+            >
+              <div class="groupe-header" @click="toggleGroup(groupe.ref_id)">
+                <span class="groupe-title">
+                  <span v-if="selections[groupe.ref_id]" class="checkmark">✔️</span>
+                  <span v-else class="warning">⏳</span>
+                  {{ groupe.display_name }}
+                </span>
+                <span class="arrow" :class="{open: expandedGroups.has(groupe.ref_id)}">▼</span>
+              </div>
+              <transition name="accordion" @enter="onEnter" @after-enter="onAfterEnter" @leave="onLeave">
+                <div v-show="expandedGroups.has(groupe.ref_id)" class="groupe-body" ref="el => groupesRefs.value[groupe.ref_id] = el">
+                  <select v-model="selections[groupe.ref_id]" class="groupe-select">
+                    <option disabled value="">-- Choisir un élément --</option>
+                    <option
+                      v-for="item in groupe.group_items"
+                      :key="item.ref_id"
+                      :value="item.ref_id"
+                      :disabled="isItemIncompatible(groupe, item)"
+                      :class="{ 'option-incompatible': isItemIncompatible(groupe, item) }"
+                    >
+                      {{ item.label }}
+                      <span v-if="item.type === 'produit'">🧩</span>
+                      <span v-else-if="item.type === 'equipement'">🔧</span>
+                      <span v-else-if="item.type === 'robot'">🤖</span>
+                    </option>
+                  </select>
+                </div>
+              </transition>
+            </div>
+          </div>
+        </section>
+      </div>
+      <div class="actions">
         <button @click="saveSelections" :disabled="saving" class="btn-save">
           💾 Enregistrer
+        </button>
+        <button @click="resetSelections" class="btn-reset">
+          🔄 Réinitialiser
         </button>
         <button @click="router.back()" class="btn-back">
           Retour
         </button>
       </div>
+    </div>
+
+    <div class="facture-encart">
+      <h2>Facture détaillée</h2>
+      <table class="facture-table">
+        <thead>
+          <tr>
+            <th>Item</th>
+            <th>Prix produit</th>
+            <th>Prix transport</th>
+            <th>Commentaire</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr v-for="item in prixItems" :key="item.produit_id">
+            <td>{{ item.nom }}</td>
+            <td>{{ item.prix_produit }} €</td>
+            <td>{{ item.prix_transport }} €</td>
+            <td>{{ item.commentaire }}</td>
+          </tr>
+        </tbody>
+        <tfoot>
+          <tr>
+            <th>Total produits</th>
+            <td>{{ prixTotals.produit }} €</td>
+            <td></td>
+            <td></td>
+          </tr>
+          <tr>
+            <th>Total transport</th>
+            <td></td>
+            <td>{{ prixTotals.transport }} €</td>
+            <td></td>
+          </tr>
+          <tr>
+            <th>Total global</th>
+            <td colspan="2">{{ prixTotals.global }} €</td>
+            <td></td>
+          </tr>
+        </tfoot>
+      </table>
+    </div>
   </div>
+
 </template>
 
 <style scoped>
+
+.encarts-row {
+  display: flex;
+  gap: 0.5rem;
+  margin-right: 0.5rem;
+  align-items: flex-start;
+}
+
 .complete-projet-container {
   max-width: 900px;
   margin: 0 auto;
@@ -511,6 +627,11 @@ h1 {
   background: #a7f3d0;
   cursor: not-allowed;
 }
+
+.btn-save:hover {
+  background: #047752;
+}
+
 .btn-back {
   background: #e5e7eb;
   color: #1e293b;
@@ -525,6 +646,22 @@ h1 {
 .btn-back:hover {
   background: #cbd5e1;
 }
+
+.btn-reset {
+  background: #76a8e8;
+  color: white;
+  font-weight: 600;
+  padding: 0.7rem 1.5rem;
+  border: none;
+  border-radius: 8px;
+  font-size: 1.1rem;
+  cursor: pointer;
+  transition: background 0.2s;
+}
+.btn-reset:hover {
+  background: #3f87d4;
+}
+
 .loading {
   text-align: center;
   color: #64748b;
@@ -553,4 +690,36 @@ h1 {
     padding-bottom: 0.5rem;
   }
 }
+
+
+
+.facture-encart {
+  background: #fff;
+  border-radius: 12px;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.06);
+  padding: 2rem;
+  margin-top: 1rem;
+  min-width: 350px;
+  max-width: 500px;
+  font-family: 'Segoe UI', sans-serif;
+}
+.facture-table {
+  width: 100%;
+  border-collapse: collapse;
+  margin-top: 1rem;
+}
+.facture-table th, .facture-table td {
+  padding: 0.7rem 1rem;
+  border-bottom: 1px solid #e5e7eb;
+  text-align: left;
+}
+.facture-table tfoot th {
+  background: #f1f5f9;
+  font-weight: bold;
+}
+.facture-table tfoot td {
+  background: #f1f5f9;
+  font-weight: bold;
+}
+
 </style>

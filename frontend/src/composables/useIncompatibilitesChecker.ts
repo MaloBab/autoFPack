@@ -263,17 +263,21 @@ function getFullyConflictingGroups(columns: ConfigColumn[]): number[] {
     const otherCols = columns.filter((_, j) => j !== i)
     const otherProduits = otherCols.flatMap(c => getProduitsAndRobotsFromCol(c).produits)
 
-    const produitConflict = groupProduits.every(p =>
-      otherProduits.some(op =>
-        produitIncompatibilites.value.some(inc =>
-          (inc.produit_id_1 === p && inc.produit_id_2 === op) ||
-          (inc.produit_id_2 === p && inc.produit_id_1 === op)
-        )
+const produitConflict = groupProduits.length > 0 && groupProduits.every(p =>
+  otherProduits.length > 0 &&
+  otherProduits
+    .filter(op => op !== p) 
+    .every(op =>
+      produitIncompatibilites.value.some(inc =>
+        (inc.produit_id_1 === p && inc.produit_id_2 === op) ||
+        (inc.produit_id_2 === p && inc.produit_id_1 === op)
       )
     )
+)
 
     const robotConflict = groupRobots.every(r =>
-      otherProduits.some(p =>
+      otherProduits.length > 0 &&
+      otherProduits.every(p =>
         robotProduitIncompatibilites.value.some(inc => inc.robot_id === r && inc.produit_id === p)
       )
     )
