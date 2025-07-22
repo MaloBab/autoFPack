@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref, onMounted, computed, nextTick, watch } from 'vue'
+import { ref, onMounted, computed, nextTick } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import axios from 'axios'
 import { showToast } from '../composables/useToast'
@@ -22,8 +22,6 @@ const groupesRefs = ref<Record<number, HTMLElement | null>>({})
 const equipementProduitsMap = ref<Record<number, number[]>>({})
 const produitIncompatibilites = ref<{produit_id_1: number, produit_id_2: number}[]>([])
 const robotProduitIncompatibilites = ref<{robot_id: number, produit_id: number}[]>([])
-const prixItems = ref<any[]>([])
-const prixTotals = ref({ produit: 0, transport: 0, global: 0 })
 
 
 
@@ -203,63 +201,17 @@ function handleExport() {
 }
 
 function handleShowBill() {
-  // TODO : logique d’affichage de facture
-  showToast("Affichage de la facture en cours de développement", "#2563eb")
+  if (!projet.value) return
+  saveSelections()
+  router.push({ name: 'FactureProjet', params: { id: projet.value.id } })
 }
 
-async function fetchPrixForSelections() {
-  const selectedProduitIds: number[] = []
-
-  // Ajoute les produits seuls
-  produitsSeuls.value.forEach(p => selectedProduitIds.push(p.ref_id))
-
-  // Ajoute les produits des équipements seuls
-  equipementsSeuls.value.forEach(eq => {
-    const produits = equipementProduitsMap.value[eq.ref_id] || []
-    produits.forEach(pid => selectedProduitIds.push(pid))
-  })
-
-  // Ajoute les produits sélectionnés dans les groupes
-  groupes.value.forEach(groupe => {
-    const selId = selections.value[groupe.ref_id]
-    if (!selId) return
-    const item = groupe.group_items.find((i:any) => i.ref_id === selId)
-    if (!item) return
-    if (item.type === 'produit') selectedProduitIds.push(item.ref_id)
-    if (item.type === 'equipement') {
-      const produits = equipementProduitsMap.value[item.ref_id] || []
-      produits.forEach(pid => selectedProduitIds.push(pid))
-    }
-    // robots : à adapter TODO
-  })
-
-  // Récupère les prix pour chaque produit sélectionné
-  prixItems.value = []
-  prixTotals.value = { produit: 0, transport: 0, global: 0 }
-  for (const pid of selectedProduitIds) {
-    const res = await axios.get(`http://localhost:8000/prix/${pid}/${projet.value.client}`)
-    const prix = res.data
-    prixItems.value.push({
-      produit_id: pid,
-      nom: produits.value.find(p => p.id === pid)?.nom ?? `Produit ${pid}`,
-      prix_produit: prix.prix_produit,
-      prix_transport: prix.prix_transport,
-      commentaire: prix.commentaire
-    })
-    prixTotals.value.produit += prix.prix_produit
-    prixTotals.value.transport += prix.prix_transport
-  }
-  prixTotals.value.global = prixTotals.value.produit + prixTotals.value.transport
-}
-
-watch(selections, fetchPrixForSelections, { deep: true })
 onMounted(async () => {
   const resProdInc = await axios.get('http://localhost:8000/produit-incompatibilites')
   produitIncompatibilites.value = resProdInc.data
   const resRobotInc = await axios.get('http://localhost:8000/robot-produit-incompatibilites')
   robotProduitIncompatibilites.value = resRobotInc.data
   fetchData()
-  fetchPrixForSelections()
 })
 
 async function saveSelections() {

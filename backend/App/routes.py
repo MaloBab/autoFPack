@@ -707,3 +707,112 @@ def save_projet_selections(
         db.add(selection)
     db.commit()
     return {"message": "Sélections enregistrées"}
+
+### FACTURE
+
+@router.get("/projets/{id}/facture")
+def get_projet_facture(id: int, db: Session = Depends(get_db)):
+    from collections import defaultdict
+
+    # 1. Charger le projet
+    projet = db.query(models.Projet).filter_by(id=id).first()
+    if not projet:
+        raise HTTPException(status_code=404, detail="Projet non trouvé")
+
+    client_id = projet.client
+    fpack_id = projet.fpack_id
+
+    # 2. Config du FPack
+    config_cols = db.query(models.FPackConfigColumn).filter(models.FPackConfigColumn.fpack_id == fpack_id).order_by(models.FPackConfigColumn.ordre).all()
+
+    # 3. Sélections projet
+    sels = db.query(models.ProjetSelection).filter(models.ProjetSelection.projet_id == id).all()
+    sel_map = {s.groupe_id: s.ref_id for s in sels}
+
+    # 4. Mapping équipements -> produits
+    eq_prods = db.query(models.Equipement_Produit).all()
+    eq_map: dict[int, list[int]] = {}
+    for ep in eq_prods:
+        eq_map.setdefault(ep.equipement_id, []).append(ep.produit_id)
+
+    # 5. Compter les produits (avec quantités)
+    produit_counts = defaultdict(int)
+
+    # produits seuls
+    for col in config_cols:
+        if col.type == "produit":
+            produit_counts[col.ref_id] += 1
+
+    # équipements seuls
+    for col in config_cols:
+        if col.type == "equipement":
+            for pid in eq_map.get(col.ref_id, []):
+                produit_counts[pid] += 1
+
+    # groupes
+    for col in config_cols:
+        if col.type == "group":
+            chosen_ref = sel_map.get(col.ref_id)
+            if not chosen_ref:
+                continue
+            gi = db.query(models.GroupeItem).filter_by(group_id=col.ref_id, ref_id=chosen_ref).first()
+            if not gi:
+                continue
+            if gi.type == "produit":
+                produit_counts[gi.ref_id] += 1
+            elif gi.type == "equipement":
+                for pid in eq_map.get(gi.ref_id, []):
+                    produit_counts[pid] += 1
+            # robots pas facturables pour l’instant
+
+    all_produit_ids = list(produit_counts.keys())
+
+    # 6. Charger prix
+    prix_rows = db.query(models.Prix)\
+        .filter(models.Prix.client_id == client_id, models.Prix.produit_id.in_(all_produit_ids))\
+        .all()
+    prix_map = { (p.produit_id, p.client_id): p for p in prix_rows }
+
+    # 7. Charger noms produits
+    produits_rows = db.query(models.Produit).filter(models.Produit.id.in_(all_produit_ids)).all()
+    produit_nom_map = {p.id: p.nom for p in produits_rows}
+
+    # 8. Construire les lignes
+    lines = []
+    total_produit = 0
+    total_transport = 0
+
+    for pid in sorted(all_produit_ids):
+        qte = produit_counts[pid]
+        p_rec = prix_map.get((pid, client_id))
+        prix_prod = float(p_rec.prix_produit) if p_rec else 0.0
+        prix_tr = float(p_rec.prix_transport) if p_rec else 0.0
+        commentaire = p_rec.commentaire if p_rec else None
+
+        total_ligne = qte * (prix_prod + prix_tr)
+        total_produit += qte * prix_prod
+        total_transport += qte * prix_tr
+
+        lines.append({
+            "produit_id": pid,
+            "nom": produit_nom_map.get(pid, f"Produit {pid}"),
+            "qte": qte,
+            "prix_produit": prix_prod,
+            "prix_transport": prix_tr,
+            "commentaire": commentaire,
+            "total_ligne": total_ligne
+        })
+
+    return {
+        "projet_id": id,
+        "nom_projet": projet.nom,
+        "client_id": client_id,
+        "fpack_id": fpack_id,
+        "currency": "EUR",
+        "lines": lines,
+        "totaux": {
+            "produit": total_produit,
+            "transport": total_transport,
+            "global": total_produit + total_transport
+        }
+    }

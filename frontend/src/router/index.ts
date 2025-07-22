@@ -15,6 +15,7 @@ import FpackList from '../views/ConfigureFPackListe.vue'
 import Prix from '../views/Prix.vue'
 import Projet from '../views/Projet.vue'
 import CompProjet from '../views/CompleteProjet.vue'
+import FactureProjet from '../views/FactureProjet.vue'
 
 const routes = [
   { path: '/', component: Dashboard },
@@ -33,7 +34,7 @@ const routes = [
   {path: '/prix', name: 'Prix',component: Prix},
   {path: '/projet', name: 'Projet',component: Projet},
   { path: '/complete/:tableName/:id', name: 'CompleteProjet', component: CompProjet},
-
+  { path: '/facture/:id', name: 'FactureProjet', component: FactureProjet },
 ]
 
 const router = createRouter({

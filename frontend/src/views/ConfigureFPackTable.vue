@@ -13,7 +13,6 @@ const {
     loadIncompatibilites,
     isProduitIncompatible,
     isEquipementIncompatible,
-    wouldCauseOtherGroupConflicts,
     getFullyConflictingGroups,
     getConflictingColumns
 } = useIncompatibilitesChecker(() => columns.value)
@@ -293,11 +292,6 @@ async function handleGroupUpdate(group: { type: 'group'; ref_id: null; display_n
     ordre: editingGroupIndex.value ?? columns.value.length,
     group_items: enrichedGroupItems,
     group_summary: summarizeGroupItems(enrichedGroupItems)
-  }
-
-  if (wouldCauseOtherGroupConflicts(enrichedGroupItems, editingGroupIndex.value)) {
-    showToast("Ce groupe entre en conflit avec un ou plusieurs groupes existants.", "#ef4444")
-    return
   }
 
   if (editingGroupIndex.value !== null) {
