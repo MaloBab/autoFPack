@@ -3,6 +3,9 @@ import { ref, onMounted, computed, nextTick } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import axios from 'axios'
 import { showToast } from '../composables/useToast'
+import { useLoading } from '../composables/useLoading'
+
+const { startLoading, stopLoading } = useLoading()
 
 const route = useRoute()
 const router = useRouter()
@@ -192,6 +195,7 @@ async function fetchData() {
     showToast('Erreur lors du chargement du projet ou de la configuration', '#EE1111')
   } finally {
     loading.value = false
+    stopLoading()
   }
 }
 
@@ -202,11 +206,12 @@ function handleExport() {
 
 function handleShowBill() {
   if (!projet.value) return
-  saveSelections()
+  saveSelections(false)
   router.push({ name: 'FactureProjet', params: { id: projet.value.id } })
 }
 
 onMounted(async () => {
+  startLoading()
   const resProdInc = await axios.get('http://localhost:8000/produit-incompatibilites')
   produitIncompatibilites.value = resProdInc.data
   const resRobotInc = await axios.get('http://localhost:8000/robot-produit-incompatibilites')
@@ -214,7 +219,7 @@ onMounted(async () => {
   fetchData()
 })
 
-async function saveSelections() {
+async function saveSelections(goBack = true) {
   saving.value = true
   try {
     const payload = groupes.value.map(groupe => ({
@@ -228,7 +233,9 @@ async function saveSelections() {
   } finally {
     saving.value = false
   }
-  router.back()
+  if (goBack) {
+    router.back()
+  }
 }
 </script>
 
@@ -317,7 +324,7 @@ async function saveSelections() {
     </div>
     <div class="actions">
 
-      <button @click="saveSelections" :disabled="saving" class="btn-save">
+      <button @click="saveSelections(true)" :disabled="saving" class="btn-save">
         💾 Enregistrer
       </button>
       <button @click="resetSelections" class="btn-reset">

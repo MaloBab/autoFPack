@@ -17,7 +17,7 @@ const emit = defineEmits(['added', 'cancelled'])
 const filters = ref<Record<string, Set<any>>>({})
 const {
   columns, rows, newRow, editingId, editRow, fournisseurs, clients,produits,
-  validateAdd, cancelAdd, startEdit, validateEdit, cancelEdit, deleteRow
+  validateAdd, cancelAdd, startEdit, validateEdit, cancelEdit, deleteRow, startEditPrix
 } = useTableReader(props, emit,filters)
 
 
@@ -185,16 +185,20 @@ const valueLabels = computed(() => {
                 </select>
               </template>
 
-              <template v-else-if="editingId === row.id && col === 'client_id' && props.tableName === 'prix'">
-                <select v-model="editRow.client_nom" @keyup.enter="validateEdit(row.id)">
+              <template v-else-if="editingId === Number(`${row.produit_id}${row.client_id}`) && col === 'client_id' && props.tableName === 'prix'">
+                <select v-model="editRow.client_nom" @keyup.enter="validateEdit({ produit_id: row.produit_id, client_id: row.client_id })">
                   <option v-for="c in clients" :key="c.id" :value="c.nom">{{ c.nom }}</option>
                 </select>
               </template>
 
-              <template v-else-if="editingId === row.id && col === 'produit_id' && props.tableName === 'prix'">
-                <select v-model="editRow.produit_nom" @keyup.enter="validateEdit(row.id)">
+              <template v-else-if="editingId === Number(`${row.produit_id}${row.client_id}`) && col === 'produit_id' && props.tableName === 'prix'">
+                <select v-model="editRow.produit_nom" @keyup.enter="validateEdit({ produit_id: row.produit_id, client_id: row.client_id })">
                   <option v-for="p in produits" :key="p.id" :value="p.nom">{{ p.nom }}</option>
                 </select>
+              </template>
+
+              <template v-else-if="editingId === Number(`${row.produit_id}${row.client_id}`) && props.tableName === 'prix' && col !== 'produit_id' && col !== 'client_id'">
+                <input v-model="editRow[col]" @keyup.enter="validateEdit(row.id)" />
               </template>
 
               <template v-else-if="editingId === row.id && col !== 'id'">
@@ -221,8 +225,14 @@ const valueLabels = computed(() => {
                 <button @click="validateEdit(row.id)">✅</button>
                 <button @click="cancelEdit">❌</button>
               </template>
+              <template v-else-if="editingId === Number(`${row.produit_id}${row.client_id}`) && props.tableName === 'prix'">
+                <button @click="validateEdit({ produit_id: row.produit_id, client_id: row.client_id })">✅</button>
+                <button @click="cancelEdit">❌</button>
+              </template>
               <template v-else>
-                <button title="Éditer" @click="startEdit(row)">✏️</button>
+                <button v-if="props.tableName === 'prix'" title="Editer" @click="startEditPrix({ produit_id: row.produit_id, client_id: row.client_id })">✏️</button>
+                <button v-else title="Éditer" @click="startEdit(row.id)">✏️</button>
+
                 <button v-if="props.tableName === 'prix'" @click="deleteRow({ produit_id: row.produit_id, client_id: row.client_id })">🗑️</button>
                 <button v-else title="Supprimer" @click="deleteRow(row.id)">🗑️</button>
               </template>

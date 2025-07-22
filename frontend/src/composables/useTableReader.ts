@@ -160,8 +160,8 @@ async function duplicateRow(row: any) {
     const urlBase = props.apiUrl || 'http://localhost:8000'
     const res = await axios.post(`${urlBase}/fpacks/${row.id}/duplicate`)
     const newrow = res.data
-    startEdit(newrow)
     await fetchData()
+    startEdit(newrow.id)
   } catch (err) {
     handleError(err, "la duplication")
   }
@@ -215,36 +215,58 @@ async function duplicateRow(row: any) {
   function cancelAdd() {
     emit('cancelled')
   }
+  
 
-  function startEdit(row: any) {
-    editingId.value = row.id
-    editRow.value = { ...row }
-    if (props.tableName === 'produits' && 'fournisseur_id' in row) {
-      const fournisseur = fournisseurs.value.find(f => f.id === row.fournisseur_id)
-      editRow.value.fournisseur_nom = fournisseur?.nom || ''
-    }
+function startEdit(rowId: number) {
+    const id = rowId as number
+    const row = rows.value.find(r => r.id === id)
+  if (!row) {
+    console.warn("startEdit : ligne introuvable", rowId)
+    return
+  }
+  // Début de l’édition
+  editingId.value = rowId as any
+  editRow.value = { ...row }
 
-    if ((props.tableName === 'robots' || props.tableName === 'fpacks' || props.tableName === 'projets') && 'client' in row) {
-      const client = clients.value.find(c => c.id === row.client)
-      editRow.value.client_nom = client?.nom || ''
-    }
-
-    if (props.tableName === 'prix' && 'produit_id' in row && 'client_id' in row) {
-      const produit = produits.value.find(p => p.id === row.produit_id)
-      editRow.value.produit_nom = produit?.nom || ''
-      
-      const client = clients.value.find(c => c.id === row.client_id)
-      editRow.value.client_nom = client?.nom || ''
-    }
-
-    if (props.tableName === 'projets' && 'fpack_id' in row) {
-      const fpack = fpacks.value.find(f => f.id === row.fpack_id)
-      editRow.value.fpack_nom = fpack?.nom || ''
-    }
-
+  // Champs spécifiques à enrichir
+  if (props.tableName === 'produits') {
+    const fournisseur = fournisseurs.value.find(f => f.id === row.fournisseur_id)
+    editRow.value.fournisseur_nom = fournisseur?.nom || ''
   }
 
-  async function validateEdit(rowId: number) {
+  if (['robots', 'fpacks', 'projets'].includes(props.tableName)) {
+    const client = clients.value.find(c => c.id === row.client)
+    editRow.value.client_nom = client?.nom || ''
+  }
+
+  if (props.tableName === 'projets') {
+    const fpack = fpacks.value.find(f => f.id === row.fpack_id)
+    editRow.value.fpack_nom = fpack?.nom || ''
+  }
+}
+
+
+function startEditPrix(rowKey: { produit_id: number; client_id: number }) {
+  const row = rows.value.find(
+    r => r.produit_id === rowKey.produit_id && r.client_id === rowKey.client_id
+  )
+
+  if (!row) {
+    console.warn("startEditPrix : ligne introuvable", rowKey)
+    return
+  }
+  editingId.value = Number(`${rowKey.produit_id}${rowKey.client_id}`)
+  editRow.value = { ...row }
+
+  const produit = produits.value.find(p => p.id === row.produit_id)
+  editRow.value.produit_nom = produit?.nom || ''
+
+  const client = clients.value.find(c => c.id === row.client_id)
+  editRow.value.client_nom = client?.nom || ''
+}
+
+
+  async function validateEdit(rowId: number | { produit_id: number; client_id: number }) {
     try {
       const dataToSend = { ...editRow.value }
       if (props.tableName === 'produits') {
@@ -276,10 +298,10 @@ async function duplicateRow(row: any) {
       let url = props.apiUrl ? `${props.apiUrl}/${props.tableName}/${rowId}` : `http://localhost:8000/${props.tableName}/${rowId}`
 
       if (props.tableName === "prix") {
-        console.log(editRow.value)
-        const produitId = editRow.value.produit_id;
-        const clientId = editRow.value.client_id;
-        url = props.apiUrl ? `${props.apiUrl}/prix/${produitId}/${clientId}` : `http://localhost:8000/prix/${produitId}/${clientId}`;
+        const ids = rowId as { produit_id: number; client_id: number }
+        url = props.apiUrl
+          ? `${props.apiUrl}/prix/${ids.produit_id}/${ids.client_id}`
+          : `http://localhost:8000/prix/${ids.produit_id}/${ids.client_id}`
       } else {
         url = props.apiUrl ? `${props.apiUrl}/${props.tableName}/${rowId}` : `http://localhost:8000/${props.tableName}/${rowId}`;
       }
@@ -333,7 +355,7 @@ async function deleteRow(rowId: number | { produit_id: number; client_id: number
 
   return {
     columns, rows, newRow, editingId, editRow, fournisseurs, clients,produits, fpacks,
-    validateAdd, cancelAdd, startEdit, validateEdit, cancelEdit, deleteRow,
+    validateAdd, cancelAdd, startEdit, validateEdit, cancelEdit, deleteRow, startEditPrix,
     duplicateRow, ExportRow, ExportAll, isExporting
   }
 }

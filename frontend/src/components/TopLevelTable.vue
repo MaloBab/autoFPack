@@ -195,7 +195,7 @@ function remplirProjet(row: any) {
                 <button @click="cancelEdit">❌</button>
               </template>
               <template v-else>
-                <button title="Éditer" @click="startEdit(row)">✏️</button>
+                <button title="Éditer" @click="startEdit(row.id)">✏️</button>
                 <button title="Supprimer" @click="deleteRow(row.id)">🗑️</button>
                 <span v-if="props.tableName === 'equipements'">
                   <button title="Remplir" @click="remplirEquipement(row)">🗂️</button>
