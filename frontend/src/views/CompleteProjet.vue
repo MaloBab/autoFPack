@@ -197,8 +197,17 @@ async function fetchData() {
   }
 }
 
+function handleExport() {
+  // TODO : logique d’export
+  showToast("Fonction Export en cours de développement", "#2563eb")
+}
+
+function handleShowBill() {
+  // TODO : logique d’affichage de facture
+  showToast("Affichage de la facture en cours de développement", "#2563eb")
+}
+
 async function fetchPrixForSelections() {
-  // Récupère les IDs des produits sélectionnés (directs ou via équipements/groupes)
   const selectedProduitIds: number[] = []
 
   // Ajoute les produits seuls
@@ -272,142 +281,107 @@ async function saveSelections() {
 </script>
 
 <template>
-  <div class="encarts-row">
-    <div class="complete-projet-container">
-      <header class="sticky-header">
-        <h1>
-          Compléter le projet : <span class="projet-nom">{{ projet?.nom }}</span>
-        </h1>
-        <div class="progress-bar">
-          <span>
-            Groupes remplis : <b>{{ groupesRemplis.length }}</b> / {{ groupes.length }}
-          </span>
-          <div class="progress-track">
-            <div class="progress-fill" :style="{width: (groupesRemplis.length/groupes.length*100)+'%'}"></div>
-          </div>
+  <div class="complete-projet-container">
+    <header class="sticky-header">
+      <h1>
+        Compléter le projet : <span class="projet-nom">{{ projet?.nom }}</span>
+      </h1>
+      <div class="progress-bar">
+        <span>
+          Groupes remplis : <b>{{ groupesRemplis.length }}</b> / {{ groupes.length }}
+        </span>
+        <div class="progress-track">
+          <div class="progress-fill" :style="{width: (groupesRemplis.length/groupes.length*100)+'%'}"></div>
         </div>
-        <div class="header-actions">
-          <button @click="goToNextUnfilled" :disabled="!groupesRestants.length" class="btn-next">
-            Aller au prochain groupe à remplir
-          </button>
-          <button v-if="!allExpanded" @click="expandAll" class="btn-expand">Tout déplier</button>
-          <button v-else @click="collapseAll" class="btn-collapse">Tout replier</button>
-        </div>
-      </header>
-      <div v-if="loading" class="loading">Chargement...</div>
-      <div v-else class="content-scroll">
-        <section class="section">
-          <h2>Produits seuls</h2>
-          <ul class="chips-list">
-            <li v-for="p in produitsSeuls" :key="p.ref_id" class="chip chip-produit">
-              🧩 {{ p.display_name }}
-            </li>
-          </ul>
-        </section>
-        <section class="section">
-          <h2>Équipements seuls</h2>
-          <ul class="chips-list">
-            <li v-for="e in equipementsSeuls" :key="e.ref_id" class="chip chip-equipement">
-              🔧 {{ e.display_name }}
-            </li>
-          </ul>
-        </section>
-        <section class="section groupes-section">
-          <h2>Groupes à compléter</h2>
-          <div class="groupes-list">
-            <div
-              v-for="groupe in groupes"
-              :key="groupe.ref_id"
-              class="groupe-accordion"
-              :class="{
-                'rempli': selections[groupe.ref_id],
-                'non-rempli': !selections[groupe.ref_id]
-              }"
-              ref="el => groupesRefs.value[groupe.ref_id] = el"
-            >
-              <div class="groupe-header" @click="toggleGroup(groupe.ref_id)">
-                <span class="groupe-title">
-                  <span v-if="selections[groupe.ref_id]" class="checkmark">✔️</span>
-                  <span v-else class="warning">⏳</span>
-                  {{ groupe.display_name }}
-                </span>
-                <span class="arrow" :class="{open: expandedGroups.has(groupe.ref_id)}">▼</span>
-              </div>
-              <transition name="accordion" @enter="onEnter" @after-enter="onAfterEnter" @leave="onLeave">
-                <div v-show="expandedGroups.has(groupe.ref_id)" class="groupe-body" ref="el => groupesRefs.value[groupe.ref_id] = el">
-                  <select v-model="selections[groupe.ref_id]" class="groupe-select">
-                    <option disabled value="">-- Choisir un élément --</option>
-                    <option
-                      v-for="item in groupe.group_items"
-                      :key="item.ref_id"
-                      :value="item.ref_id"
-                      :disabled="isItemIncompatible(groupe, item)"
-                      :class="{ 'option-incompatible': isItemIncompatible(groupe, item) }"
-                    >
-                      {{ item.label }}
-                      <span v-if="item.type === 'produit'">🧩</span>
-                      <span v-else-if="item.type === 'equipement'">🔧</span>
-                      <span v-else-if="item.type === 'robot'">🤖</span>
-                    </option>
-                  </select>
-                </div>
-              </transition>
+      </div>
+      <div class="header-actions">
+        <button @click="goToNextUnfilled" :disabled="!groupesRestants.length" class="btn-next">
+          Aller au prochain groupe à remplir
+        </button>
+        <button v-if="!allExpanded" @click="expandAll" class="btn-expand">Tout déplier</button>
+        <button v-else @click="collapseAll" class="btn-collapse">Tout replier</button>
+      </div>
+    </header>
+    <div v-if="loading" class="loading">Chargement...</div>
+    <div v-else class="content-scroll">
+      <section class="section">
+        <h2>Produits seuls</h2>
+        <ul class="chips-list">
+          <li v-for="p in produitsSeuls" :key="p.ref_id" class="chip chip-produit">
+            🧩 {{ p.display_name }}
+          </li>
+        </ul>
+      </section>
+      <section class="section">
+        <h2>Équipements seuls</h2>
+        <ul class="chips-list">
+          <li v-for="e in equipementsSeuls" :key="e.ref_id" class="chip chip-equipement">
+            🔧 {{ e.display_name }}
+          </li>
+        </ul>
+      </section>
+      <section class="section groupes-section">
+        <h2>Groupes à compléter</h2>
+        <div class="groupes-list">
+          <div
+            v-for="groupe in groupes"
+            :key="groupe.ref_id"
+            class="groupe-accordion"
+            :class="{
+              'rempli': selections[groupe.ref_id],
+              'non-rempli': !selections[groupe.ref_id]
+            }"
+            ref="el => groupesRefs.value[groupe.ref_id] = el"
+          >
+            <div class="groupe-header" @click="toggleGroup(groupe.ref_id)">
+              <span class="groupe-title">
+                <span v-if="selections[groupe.ref_id]" class="checkmark">✔️</span>
+                <span v-else class="warning">⏳</span>
+                {{ groupe.display_name }}
+              </span>
+              <span class="arrow" :class="{open: expandedGroups.has(groupe.ref_id)}">▼</span>
             </div>
+            <transition name="accordion" @enter="onEnter" @after-enter="onAfterEnter" @leave="onLeave">
+              <div v-show="expandedGroups.has(groupe.ref_id)" class="groupe-body" ref="el => groupesRefs.value[groupe.ref_id] = el">
+                <select v-model="selections[groupe.ref_id]" class="groupe-select">
+                  <option disabled value="">-- Choisir un élément --</option>
+                  <option
+                    v-for="item in groupe.group_items"
+                    :key="item.ref_id"
+                    :value="item.ref_id"
+                    :disabled="isItemIncompatible(groupe, item)"
+                    :class="{ 'option-incompatible': isItemIncompatible(groupe, item) }">
+                    {{ item.label }}
+                    <span v-if="item.type === 'produit'">🧩</span>
+                    <span v-else-if="item.type === 'equipement'">🔧</span>
+                    <span v-else-if="item.type === 'robot'">🤖</span>
+                  </option>
+                </select>
+              </div>
+            </transition>
           </div>
-        </section>
-      </div>
-      <div class="actions">
-        <button @click="saveSelections" :disabled="saving" class="btn-save">
-          💾 Enregistrer
-        </button>
-        <button @click="resetSelections" class="btn-reset">
-          🔄 Réinitialiser
-        </button>
-        <button @click="router.back()" class="btn-back">
-          Retour
-        </button>
-      </div>
+        </div>
+      </section>
     </div>
+    <div class="actions">
 
-    <div class="facture-encart">
-      <h2>Facture détaillée</h2>
-      <table class="facture-table">
-        <thead>
-          <tr>
-            <th>Item</th>
-            <th>Prix produit</th>
-            <th>Prix transport</th>
-            <th>Commentaire</th>
-          </tr>
-        </thead>
-        <tbody>
-          <tr v-for="item in prixItems" :key="item.produit_id">
-            <td>{{ item.nom }}</td>
-            <td>{{ item.prix_produit }} €</td>
-            <td>{{ item.prix_transport }} €</td>
-            <td>{{ item.commentaire }}</td>
-          </tr>
-        </tbody>
-        <tfoot>
-          <tr>
-            <th>Total produits</th>
-            <td>{{ prixTotals.produit }} €</td>
-            <td></td>
-            <td></td>
-          </tr>
-          <tr>
-            <th>Total transport</th>
-            <td></td>
-            <td>{{ prixTotals.transport }} €</td>
-            <td></td>
-          </tr>
-          <tr>
-            <th>Total global</th>
-            <td colspan="2">{{ prixTotals.global }} €</td>
-            <td></td>
-          </tr>
-        </tfoot>
-      </table>
+      <button @click="saveSelections" :disabled="saving" class="btn-save">
+        💾 Enregistrer
+      </button>
+      <button @click="resetSelections" class="btn-reset">
+        🔄 Réinitialiser
+      </button>
+
+      <button @click="handleExport" class="btn-export">
+        📤 Exporter
+      </button>
+      <button @click="handleShowBill" class="btn-bill">
+        🪙 Voir la facture
+      </button>
+
+      <button @click="router.back()" class="btn-back">
+        Retour
+      </button>
     </div>
   </div>
 
@@ -415,17 +389,11 @@ async function saveSelections() {
 
 <style scoped>
 
-.encarts-row {
-  display: flex;
-  gap: 0.5rem;
-  margin-right: 0.5rem;
-  align-items: flex-start;
-}
-
 .complete-projet-container {
   max-width: 900px;
   margin: 0 auto;
   margin-top: 1rem;
+  margin-bottom: 1rem;
   background: #f8fafc;
   border-radius: 16px;
   padding: 0 0 2rem 0;
@@ -434,8 +402,7 @@ async function saveSelections() {
   height: 82vh;           
   min-height: unset;       
   display: flex;
-  flex-direction: column;
-  overflow: hidden;        
+  flex-direction: column;        
 }
 .sticky-header {
   position: sticky;
@@ -662,6 +629,21 @@ h1 {
   background: #3f87d4;
 }
 
+.btn-export, .btn-bill {
+  background: #e0e7ff;
+  color: #3730a3;
+  font-weight: 600;
+  padding: 0.7rem 1.5rem;
+  border: none;
+  border-radius: 8px;
+  font-size: 1.1rem;
+  cursor: pointer;
+  transition: background 0.2s;
+}
+.btn-export:hover, .btn-bill:hover {
+  background: #c7d2fe;
+}
+
 .loading {
   text-align: center;
   color: #64748b;
@@ -675,51 +657,6 @@ h1 {
 .accordion-enter-from, .accordion-leave-to {
   height: 0;
   overflow: hidden;
-}
-
-@media (max-width: 700px) {
-  .complete-projet-container,
-  .sticky-header,
-  .content-scroll,
-  .actions {
-    padding-left: 0.5rem !important;
-    padding-right: 0.5rem !important;
-  }
-  .sticky-header {
-    padding-top: 1rem;
-    padding-bottom: 0.5rem;
-  }
-}
-
-
-
-.facture-encart {
-  background: #fff;
-  border-radius: 12px;
-  box-shadow: 0 2px 8px rgba(0,0,0,0.06);
-  padding: 2rem;
-  margin-top: 1rem;
-  min-width: 350px;
-  max-width: 500px;
-  font-family: 'Segoe UI', sans-serif;
-}
-.facture-table {
-  width: 100%;
-  border-collapse: collapse;
-  margin-top: 1rem;
-}
-.facture-table th, .facture-table td {
-  padding: 0.7rem 1rem;
-  border-bottom: 1px solid #e5e7eb;
-  text-align: left;
-}
-.facture-table tfoot th {
-  background: #f1f5f9;
-  font-weight: bold;
-}
-.facture-table tfoot td {
-  background: #f1f5f9;
-  font-weight: bold;
 }
 
 </style>

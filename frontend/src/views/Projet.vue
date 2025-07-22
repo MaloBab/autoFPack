@@ -18,9 +18,10 @@ function resetAjouter() {
 async function fetchProjets() {
   loading.value = true
   try {
-    const response = await axios.get('/projets')
+    const response = await axios.get('http://localhost:8000/projets')
     projets.value = response.data
   } catch (e) {
+    console.error(e)
     showToast('Erreur lors du chargement des projets', 'error')
   } finally {
     loading.value = false

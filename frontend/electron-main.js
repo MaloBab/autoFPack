@@ -9,6 +9,7 @@ const __filename = fileURLToPath(import.meta.url)
 const __dirname = dirname(__filename)
 
 let win = null
+let backendStarted = false
 let backendProcess = null
 
 function waitForBackend(url, retries = 20, interval = 500) {
@@ -60,7 +61,8 @@ function createWindow() {
 
   let backendExePath = ''
 
-  if (app.isPackaged) {
+  if (app.isPackaged && !backendStarted) {
+    backendStarted = true
     backendExePath = path.join(process.resourcesPath, 'backend.exe')
     console.log('Starting backend:', backendExePath)
 
@@ -103,6 +105,12 @@ app.on('activate', () => {
   if (BrowserWindow.getAllWindows().length === 0) createWindow()
 })
 
+app.on('before-quit', () => {
+  if (backendProcess) {
+    backendProcess.kill()
+  }
+})
+
 app.on('window-all-closed', () => {
   if (process.platform !== 'darwin') {
     if (backendProcess) {
@@ -111,3 +119,4 @@ app.on('window-all-closed', () => {
     app.quit()
   }
 })
+
