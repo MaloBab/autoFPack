@@ -43,7 +43,9 @@
       "preload.js",
       "package.json",
       "../backend/dist/backend.exe",
-      "../backend/.env"
+      "../backend/.env",
+      "build/msodbcsql.msi",
+      "build/postInstall.bat"
     ],
     "extraResources": [
       {
