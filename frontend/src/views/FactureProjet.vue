@@ -14,6 +14,54 @@ const totalProduit = computed(() => facture.value?.totaux?.produit ?? 0)
 const totalTransport = computed(() => facture.value?.totaux?.transport ?? 0)
 const totalGlobal = computed(() => facture.value?.totaux?.global ?? 0)
 
+
+const exportFactureExcel = async () => {
+  try {
+    const projetId = route.params.id
+    const response = await axios.get(`http://localhost:8000/projets/${projetId}/facture-excel`, {
+      responseType: 'blob'
+    })
+
+    const blob = new Blob([response.data], {
+      type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
+    })
+
+    const url = URL.createObjectURL(blob)
+    const link = document.createElement('a')
+    link.href = url
+    link.download = `facture-projet-${projetId}.xlsx`
+    document.body.appendChild(link)
+    link.click()
+    document.body.removeChild(link)
+    URL.revokeObjectURL(url)
+  } catch (error) {
+    console.error("Erreur export Excel :", error)
+  }
+}
+
+const exportFacturePDF = async () => {
+  const projetId = route.params.id
+  try {
+    const response = await axios.get(`http://localhost:8000/projets/${projetId}/facture-pdf`, {
+      responseType: 'blob'
+    })
+
+    const blob = new Blob([response.data], { type: 'application/pdf' })
+    const url = URL.createObjectURL(blob)
+
+    const link = document.createElement('a')
+    link.href = url
+    link.download = `facture-projet-${projetId}.pdf`
+    document.body.appendChild(link)
+    link.click()
+    document.body.removeChild(link)
+    URL.revokeObjectURL(url)
+  } catch (error) {
+    console.error("Erreur export PDF :", error)
+  }
+}
+
+
 async function fetchFacture() {
   loading.value = true
   try {
@@ -79,8 +127,8 @@ onMounted(fetchFacture)
       </table>
 
       <div class="facture-actions">
-        <button class="btn btn-green">Exporter en PDF</button>
-        <button class="btn btn-blue">Télécharger Excel</button>
+        <button @click="exportFacturePDF" class="btn btn-green">Exporter en PDF</button>
+        <button @click="exportFactureExcel" class="btn btn-blue">Télécharger Excel</button>
       </div>
     </div>
   </div>

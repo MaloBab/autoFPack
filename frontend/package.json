@@ -34,6 +34,9 @@
   "build": {
     "appId": "com.fpack.app",
     "productName": "F-Pack App",
+    "nsis": {
+      "include": "build/installer.nsh"
+    },
     "files": [
       "dist/",
       "electron-main.js",
