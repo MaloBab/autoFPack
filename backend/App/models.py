@@ -67,7 +67,8 @@ class Equipement_Produit(Base):
     __table_args__ = {'schema': 'dbo'}
     equipement_id = Column(Integer, ForeignKey("dbo.FPM_equipements.id", ondelete="CASCADE"), primary_key=True)
     produit_id = Column(Integer, ForeignKey("dbo.FPM_produits.id", ondelete="CASCADE"), primary_key=True)
-
+    quantite = Column(Integer, nullable=False, default=1)
+    
     produits = relationship("Produit", back_populates="equipement_produit", passive_deletes=True)
     equipements = relationship("Equipements", back_populates="equipement_produit", passive_deletes=True)
 

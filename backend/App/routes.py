@@ -371,11 +371,22 @@ def get_equipement_produit_by_equipement(equipement_id: int, db: Session = Depen
 
 @router.post("/equipementproduit", response_model=schemas.EquipementProduitRead)
 def create_equipement_produit(equipement_produit: schemas.EquipementProduitCreate, db: Session = Depends(get_db)):
-    db_equipement_produit = models.Equipement_Produit(**equipement_produit.dict())
-    db.add(db_equipement_produit)
+    ep = db.query(models.Equipement_Produit).filter_by(
+        equipement_id=equipement_produit.equipement_id,
+        produit_id=equipement_produit.produit_id
+    ).first()
+
+    if ep:
+        # Remplace la quantité au lieu de l'incrémenter
+        print(f"Produit existant, mise à jour quantité : {ep.quantite} -> {equipement_produit.quantite}")
+        ep.quantite = equipement_produit.quantite
+    else:
+        ep = models.Equipement_Produit(**equipement_produit.dict())
+        db.add(ep)
+
     db.commit()
-    db.refresh(db_equipement_produit)
-    return db_equipement_produit
+    db.refresh(ep)
+    return ep
 
 
 @router.delete("/equipementproduit/{id}")
@@ -762,7 +773,7 @@ def get_projet_facture(id: int, db: Session = Depends(get_db)):
     eq_prods = db.query(models.Equipement_Produit).all()
     eq_map: dict[int, list[int]] = {}
     for ep in eq_prods:
-        eq_map.setdefault(ep.equipement_id, []).append(ep.produit_id)
+        eq_map.setdefault(ep.equipement_id, []).append((ep.produit_id, ep.quantite))
 
     # 5. Compter les produits (avec quantités)
     produit_counts = defaultdict(int)
@@ -790,8 +801,8 @@ def get_projet_facture(id: int, db: Session = Depends(get_db)):
             if gi.type == "produit":
                 produit_counts[gi.ref_id] += 1
             elif gi.type == "equipement":
-                for pid in eq_map.get(gi.ref_id, []):
-                    produit_counts[pid] += 1
+                for pid, qte in eq_map.get(col.ref_id, []):
+                    produit_counts[pid] += qte
             # robots pas facturables pour l’instant
 
     all_produit_ids = list(produit_counts.keys())

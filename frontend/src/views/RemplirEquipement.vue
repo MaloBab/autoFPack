@@ -10,6 +10,7 @@ const filterMode = ref<'all' | 'selected' | 'unselected'>('all')
 const route = useRoute()
 const router = useRouter()
 const searchTerm = ref('')
+const quantites = ref<Record<number, number>>({})
 
 const equipementId = Number(route.params.id)
 const nomEquipement = ref('')
@@ -23,18 +24,27 @@ async function fetchNomEquipement() {
 
 async function fetchAssociations() {
   const res = await axios.get(`http://localhost:8000/equipementproduit/${equipementId}`)
-  produitsAssocies.value = new Set(res.data.map((p: any) => p.produit_id))
+  const data = res.data
+  produitsAssocies.value = new Set(data.map((p: any) => p.produit_id))
+  quantites.value = Object.fromEntries(data.map((p: any) => [p.produit_id, p.quantite || 1]))
 }
 
 async function enregistrer() {
   await axios.delete(`http://localhost:8000/equipementproduit/clear/${equipementId}`)
   for (const produitId of produitsAssocies.value) {
+    const quantite = quantites.value[produitId] ?? 1 
     await axios.post(`http://localhost:8000/equipementproduit`, {
       equipement_id: equipementId,
-      produit_id: produitId
+      produit_id: produitId,
+      quantite: quantite
     })
   }
   router.back()
+}
+
+function handleSelectionChanged(ids: Set<number>, qtes: Record<number, number>) {
+  produitsAssocies.value = new Set(ids)
+  quantites.value = qtes
 }
 
 onMounted(async () => {
@@ -52,9 +62,9 @@ onMounted(async () => {
       tableName="produits"
       :selectedIds="produitsAssocies"
       :search="searchTerm"
-      @selection-changed="produitsAssocies = $event"
       :filter-mode="filterMode"
-    />
+      @selection-changed="handleSelectionChanged"/>
+      
     <div class="research">
       <TextSearch v-model="searchTerm" />
       <SelectionFilter v-model="filterMode" />

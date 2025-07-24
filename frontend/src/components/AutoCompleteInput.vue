@@ -4,7 +4,8 @@ import { ref, watch, nextTick, defineProps, defineEmits } from 'vue'
 const props = defineProps({
   modelValue: {
     type: String,
-    required: true
+    required: false, 
+    default: ''           
   },
   suggestions: {
     type: Array as () => string[],

@@ -67,16 +67,13 @@ const filteredRows = computed(() =>
         const label = nameMapping.value[col]?.[cellValue]
         return (label || String(cellValue)).toLowerCase().includes(search)
       })
-    })
-)
+    }))
 
 const valueLabels = computed(() => nameMapping.value)
 
 function updateFilter(col: string, values: Set<any>) {
   filters.value[col] = values
 }
-
-
 
 const sortOrders = reactive<Record<string, 'asc' | 'desc' | null>>({})
 
@@ -194,7 +191,7 @@ watch(() => props.ajouter, (val) => {
               </template>
 
               <template v-else-if="col !== 'id'">
-                <AutoComplete v-model="editRow[col]" @keyup.enter="validateAdd" :suggestions="[...columnValues[col] || []]" />
+                <AutoComplete v-model="newRow[col]" @keyup.enter="validateAdd" :suggestions="[...columnValues[col] || []]" />
               </template>
             </td>
             <td class="actions">

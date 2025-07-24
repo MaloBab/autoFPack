@@ -187,7 +187,7 @@ export function useTableReader(
       await fetchData()
       emit('added')
     } catch (err) {
-      handleError(err, "l'ajout")
+      //handleError(err, "l'ajout")
     } finally {
       isAdding.value = false
     }
@@ -262,7 +262,7 @@ export function useTableReader(
       await fetchData()
     } catch (err) {
       console.error("Erreur lors de la modification :", err)
-      //handleError(err, "la modification")
+      handleError(err, "la modification")
     } finally {
       isDuplicating.value = false
     }

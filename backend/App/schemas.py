@@ -84,6 +84,7 @@ class EquipementCreate(EquipementBase):
 
 class EquipementProduitRead(BaseModel):
     produit_id: int
+    quantite: int
 
     class Config:
         from_attributes = True
@@ -101,7 +102,9 @@ class EquipementProduitBase(BaseModel):
     produit_id: int
 
 class EquipementProduitCreate(EquipementProduitBase):
-    pass
+    equipement_id: int
+    produit_id: int
+    quantite: int = 1  # Par défaut à 1
 
 class FPackBase(BaseModel):
     nom: str

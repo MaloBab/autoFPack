@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref, computed, defineProps, defineEmits, onMounted, watch } from 'vue'
+import { ref, computed, defineProps, defineEmits, onMounted, watch, reactive } from 'vue'
 import axios from 'axios'
 import Filters from '../components/Filters.vue'
 import { showToast } from '../composables/useToast'
@@ -16,7 +16,7 @@ const props = defineProps<{
 }>()
 
 const emit = defineEmits<{
-  (e: 'selection-changed', selected: Set<number>): void
+  (e: 'selection-changed', selected: Set<number>, quantities: Record<number, number>): void
 }>()
 
 const columns = ref<string[]>([])
@@ -24,6 +24,7 @@ const rows = ref<any[]>([])
 const fournisseurs = ref<{ id: number, nom: string }[]>([])
 const filters = ref<Record<string, Set<any>>>({})
 const selected = ref(new Set<number>(props.selectedIds))
+const quantities = ref<Record<number, number>>({})
 const scrollContainer = ref<HTMLElement | null>(null)
 const produitIncompatibilites = ref<{ produit_id_1: number, produit_id_2: number }[]>([])
 
@@ -56,6 +57,7 @@ onMounted(async () => {
 function toggleSelect(id: number) {
   if (selected.value.has(id)) {
     selected.value.delete(id)
+    delete quantities.value[id]
   } else {
     const produitsExistants = Array.from(selected.value)
     if (!isProduitCompatibleAvecListe(id, produitsExistants)) {
@@ -63,8 +65,10 @@ function toggleSelect(id: number) {
       return
     }
     selected.value.add(id)
+    quantities.value[id] = 1
   }
-  emit('selection-changed', new Set(selected.value))
+
+  emit('selection-changed', new Set(selected.value), { ...quantities.value })
 }
 
 watch(() => props.selectedIds, (newVal) => {
@@ -124,6 +128,39 @@ function updateFilter(col: string, values: Set<any>) {
   filters.value[col] = values
 }
 
+const sortOrders = reactive<Record<string, 'asc' | 'desc' | null>>({})
+
+function onSortChange(column: string, order: 'asc' | 'desc' | null) {
+  sortOrders[column] = order
+}
+
+const filteredAndSortedRows = computed(() => {
+  let result = filteredRows.value.slice()
+
+  for (const [col, order] of Object.entries(sortOrders)) {
+    if (order) {
+      result.sort((a, b) => {
+        const valA = a[col]
+        const valB = b[col]
+        const labelA = valueLabels.value[col]?.[valA] ?? valA
+        const labelB = valueLabels.value[col]?.[valB] ?? valB
+
+        if (typeof labelA === 'string' && typeof labelB === 'string') {
+          const aLower = labelA.toLowerCase()
+          const bLower = labelB.toLowerCase()
+          return order === 'asc' ? aLower.localeCompare(bLower) : bLower.localeCompare(aLower)
+        }
+        if (typeof valA === 'number' && typeof valB === 'number') {
+          return order === 'asc' ? valA - valB : valB - valA
+        }
+        return 0
+      })
+    }
+  }
+
+  return result
+})
+
 
 function isProduitCompatibleAvecListe(nouveauProduitId: number, produitsExistants: number[]): boolean {
   return !produitsExistants.some(existant =>
@@ -158,16 +195,18 @@ function isProduitIncompatibleAvecSelection(id: number): boolean {
                 :selected="filters[col] || new Set([...columnValues[col] || []])"
                 :labels="valueLabels[col]"
                 @filter-change="updateFilter"
+                @sort-change="onSortChange"
               />
             </div>
           </th>
+          <th>Quantité</th>
         </tr>
       </thead>
     </table>
     <div class="table-body-scroll" ref="scrollContainer">
       <table>
         <tbody>
-            <tr v-for="row in filteredRows" :key="row.id" @click="toggleSelect(row.id)"
+            <tr v-for="row in filteredAndSortedRows" :key="row.id" @click="toggleSelect(row.id)"
               :class="{ conflict: isProduitIncompatibleAvecSelection(row.id),
                 selected: selected.has(row.id) && !isProduitIncompatibleAvecSelection(row.id)}">
                 <td v-for="col in columns" :key="col">
@@ -178,6 +217,16 @@ function isProduitIncompatibleAvecSelection(id: number): boolean {
                         {{ row[col] }}
                     </template>
                 </td>
+                <td>
+                <input
+                  v-if="selected.has(row.id)"
+                  type="number"
+                  min="1"
+                  v-model.number="quantities[row.id]"
+                  @click.stop
+                  class="quantite-input"
+                />
+              </td>
           </tr>
         </tbody>
       </table>
@@ -260,6 +309,14 @@ td {
   font-size: 1rem;
   color: #222;
 }
+
+.quantite-input {
+  width: 60px;
+  padding: 0.2rem;
+  border: 1px solid #ccc;
+  border-radius: 4px;
+}
+
 tr:hover {
   background-color: #f0f0f0;
   cursor: pointer;
@@ -271,6 +328,5 @@ tr.selected {
 tr.conflict {
   background-color: #f6b3b7;
 }
-
 
 </style>
