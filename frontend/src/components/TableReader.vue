@@ -1,8 +1,9 @@
 <script setup lang="ts">
-import { computed, defineEmits, defineProps } from 'vue'
+import { computed, defineEmits, defineProps, reactive } from 'vue'
 import { useTableReader } from '../composables/useTableReader'
 import Filters from './Filters.vue'
 import { ref, watch } from 'vue'
+import AutoComplete from '../components/AutoCompleteInput.vue'
 
 const scrollContainer = ref<HTMLElement | null>(null)
 
@@ -16,10 +17,28 @@ const emit = defineEmits(['added', 'cancelled'])
 
 const filters = ref<Record<string, Set<any>>>({})
 const {
-  columns, rows, newRow, editingId, editRow, fournisseurs, clients,produits,
-  validateAdd, cancelAdd, startEdit, validateEdit, cancelEdit, deleteRow, startEditPrix
-} = useTableReader(props, emit,filters)
+  columns, rows, newRow, editingId, editRow,
+  fournisseurs, clients, produits,
+  validateAdd, cancelAdd, startEdit, duplicateRow,
+  validateEdit, cancelEdit, deleteRow, startEditPrix
+} = useTableReader(props, emit, filters)
 
+const nameMapping = computed(() => {
+  const map: Record<string, Record<number, string>> = {}
+
+  if (props.tableName === 'produits') {
+    map['fournisseur_id'] = Object.fromEntries(fournisseurs.value.map(f => [f.id, f.nom]))
+  }
+  if (props.tableName === 'robots') {
+    map['client'] = Object.fromEntries(clients.value.map(c => [c.id, c.nom]))
+  }
+  if (props.tableName === 'prix') {
+    map['produit_id'] = Object.fromEntries(produits.value.map(p => [p.id, p.nom]))
+    map['client_id'] = Object.fromEntries(clients.value.map(c => [c.id, c.nom]))
+  }
+
+  return map
+})
 
 
 const columnValues = computed(() => {
@@ -44,66 +63,71 @@ const filteredRows = computed(() =>
       if (!props.search) return true
       const search = props.search.toLowerCase()
       return columns.value.some(col => {
-      let cellValue = row[col]
-
-      if (props.tableName === 'produits' && col === 'fournisseur_id') {
-        const fournisseur = fournisseurs.value.find(f => f.id === cellValue)
-        cellValue = fournisseur?.nom || ''
-      }
-
-      if (props.tableName === 'robots' && col === 'client') {
-        const client = clients.value.find(c => c.id === cellValue)
-        cellValue = client?.nom || ''
-      }
-      if (props.tableName === 'prix' && col === 'client_id') {
-        const client = clients.value.find(c => c.id === cellValue)
-        cellValue = client?.nom || ''
-      }
-      if (props.tableName === 'prix' && col === 'produit_id') {
-        const produit = produits.value.find(p => p.id === cellValue)
-        cellValue = produit?.nom || ''
-      }
-
-      return String(cellValue).toLowerCase().includes(search)
-    })})
+        let cellValue = row[col]
+        const label = nameMapping.value[col]?.[cellValue]
+        return (label || String(cellValue)).toLowerCase().includes(search)
+      })
+    })
 )
+
+const valueLabels = computed(() => nameMapping.value)
 
 function updateFilter(col: string, values: Set<any>) {
   filters.value[col] = values
 }
+
+
+
+const sortOrders = reactive<Record<string, 'asc' | 'desc' | null>>({})
+
+function onSortChange(column: string, order: 'asc' | 'desc' | null) {
+  sortOrders[column] = order
+}
+
+const filteredAndSortedRows = computed(() => {
+  let result = filteredRows.value.slice()
+
+  for (const [col, order] of Object.entries(sortOrders)) {
+    if (order) {
+      result.sort((a, b) => {
+        const valA = a[col]
+        const valB = b[col]
+
+        // utilise valueLabels.value[col] pour récupérer les labels
+        const labelA = valueLabels.value[col]?.[valA] ?? valA
+        const labelB = valueLabels.value[col]?.[valB] ?? valB
+
+        if (typeof labelA === 'string' && typeof labelB === 'string') {
+          const aLower = labelA.toLowerCase()
+          const bLower = labelB.toLowerCase()
+          return order === 'asc' ? aLower.localeCompare(bLower) : bLower.localeCompare(aLower)
+        }
+        if (typeof valA === 'number' && typeof valB === 'number') {
+          return order === 'asc' ? valA - valB : valB - valA
+        }
+        return 0
+      })
+    }
+  }
+
+  return result
+})
+
+
+
+async function onDuplicate(row: any) {
+  await duplicateRow(row)
+  if (scrollContainer.value) {
+    scrollContainer.value.scrollTop = scrollContainer.value.scrollHeight
+  }
+}
+
 
 watch(() => props.ajouter, (val) => {
   if (val && scrollContainer.value) {
     scrollContainer.value.scrollTop = 0
   }
 })
-
-const valueLabels = computed(() => {
-  const map: Record<string, Record<any, string>> = {}
-
-  if (props.tableName === 'produits') {
-    map['fournisseur_id'] = Object.fromEntries(
-      fournisseurs.value.map(f => [f.id, f.nom])
-    )
-  }
-
-  if (props.tableName === 'robots') {
-    map['client'] = Object.fromEntries(
-      clients.value.map(c => [c.id, c.nom])
-    )
-  }
-
-    if (props.tableName === 'prix') {
-      map['produit_id'] = Object.fromEntries(
-      produits.value.map(p => [p.id, p.nom])
-    )
-      map['client_id'] = Object.fromEntries(
-        clients.value.map(c => [c.id, c.nom])
-      )
-  }
-  return map
-})
-
 </script>
 
 
@@ -118,14 +142,16 @@ const valueLabels = computed(() => {
                 <template v-if="col === 'fournisseur_id' && props.tableName === 'produits'">fournisseur</template>
                 <template v-else-if="col === 'client_id' && props.tableName === 'prix'">client</template>
                 <template v-else-if="col === 'produit_id' && props.tableName === 'prix'">produit</template>
+                <template v-else-if="col === 'robot_id' && props.tableName === 'prix_robot'">produit</template>
                 <template v-else>{{ col }}</template>
               </span>
               <Filters
                 :column="col"
                 :values="[...columnValues[col] || []]"
                 :selected="filters[col] || new Set([...columnValues[col] || []])"
-                :labels="valueLabels[col]"
+                :labels="valueLabels[col] || {}"
                 @filter-change="updateFilter"
+                @sort-change="onSortChange"
               />
             </div>
           </th>
@@ -163,8 +189,14 @@ const valueLabels = computed(() => {
                 </select>
               </template>
 
+              <template v-else-if="col === 'robot_id' && props.tableName === 'prix_robot'">
+                <select v-model="newRow.client_nom">
+                  <option v-for="c in clients" :key="c.id" :value="c.nom">{{ c.nom }}</option>
+                </select>
+              </template>
+
               <template v-else-if="col !== 'id'">
-                <input v-model="newRow[col]" @keyup.enter="validateAdd" />
+                <AutoComplete v-model="editRow[col]" @keyup.enter="validateAdd" :suggestions="[...columnValues[col] || []]" />
               </template>
             </td>
             <td class="actions">
@@ -172,7 +204,7 @@ const valueLabels = computed(() => {
               <button @click="cancelAdd">❌</button>
             </td>
           </tr>
-          <tr v-for="row in filteredRows" :key="row.id">
+          <tr v-for="row in filteredAndSortedRows" :key="row.id">
             <td v-for="col in columns" :key="col">
               <template v-if="editingId === row.id && col === 'fournisseur_id' && props.tableName === 'produits'">
                 <select v-model="editRow.fournisseur_nom" @keyup.enter="validateEdit(row.id)">
@@ -197,12 +229,14 @@ const valueLabels = computed(() => {
                 </select>
               </template>
 
+
               <template v-else-if="editingId === Number(`${row.produit_id}${row.client_id}`) && props.tableName === 'prix' && col !== 'produit_id' && col !== 'client_id'">
-                <input v-model="editRow[col]" @keyup.enter="validateEdit(row.id)" />
+                <AutoComplete v-model="editRow[col]" @keyup.enter="validateEdit({ produit_id: row.produit_id, client_id: row.client_id })" :suggestions="[...columnValues[col] || []]" />
+  
               </template>
 
               <template v-else-if="editingId === row.id && col !== 'id'">
-                <input v-model="editRow[col]" @keyup.enter="validateEdit(row.id)" />
+                <AutoComplete v-model="editRow[col]" @keyup.enter="validateEdit(row.id)" :suggestions="[...columnValues[col] || []]" />
               </template>
               <template v-else-if="col === 'fournisseur_id' && props.tableName === 'produits'">
                 {{ fournisseurs.find(f => f.id === row.fournisseur_id)?.nom || row.fournisseur_id }}
@@ -233,6 +267,7 @@ const valueLabels = computed(() => {
                 <button v-if="props.tableName === 'prix'" title="Editer" @click="startEditPrix({ produit_id: row.produit_id, client_id: row.client_id })">✏️</button>
                 <button v-else title="Éditer" @click="startEdit(row.id)">✏️</button>
 
+                <button v-if="props.tableName === 'produits'" title="Dupliquer" @click="onDuplicate(row)">🔁</button>
                 <button v-if="props.tableName === 'prix'" @click="deleteRow({ produit_id: row.produit_id, client_id: row.client_id })">🗑️</button>
                 <button v-else title="Supprimer" @click="deleteRow(row.id)">🗑️</button>
               </template>

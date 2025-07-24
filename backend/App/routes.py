@@ -41,6 +41,7 @@ def get_table_columns(table_name: str, db: Session = Depends(get_db)):
             "fournisseurs": "FPM_fournisseurs",
             "fpacks": "FPM_fpacks",
             "prix": "FPM_prix",
+            "prix_robot": "FPM_prix_robot",
             "projets": "FPM_projets",
         }
 
@@ -165,6 +166,26 @@ def get_prix(produit_id: int, client_id: int, db: Session = Depends(get_db)):
     if not db_prix:
         raise HTTPException(status_code=404, detail="Prix non trouvé")
     return db_prix
+
+
+
+@router.post("/produits/{produit_id}/duplicate", response_model=schemas.ProduitRead)
+def duplicate_produit(produit_id: int, db: Session = Depends(get_db)):
+    original = db.query(models.Produit).filter(models.Produit.id == produit_id).first()
+    if not original:
+        raise HTTPException(status_code=404, detail="Produit non trouvé")
+
+    new_produit = models.Produit(
+        nom=original.nom + " (copie)",
+        description=original.description,
+        fournisseur_id=original.fournisseur_id,
+        type=original.type,
+    )
+    db.add(new_produit)
+    db.commit()
+    db.refresh(new_produit)
+
+    return new_produit
 
 
 # FOURNISSEURS
@@ -449,6 +470,7 @@ def duplicate_fpack(fpack_id: int, db: Session = Depends(get_db)):
     db.commit()
 
     return new_fpack
+
 
 # GROUPS
 @router.get("/groupes", response_model=list[schemas.GroupesRead])
@@ -833,7 +855,6 @@ def export_projet_facture_pdf(id: int, db: Session = Depends(get_db)):
     elements = []
     styles = getSampleStyleSheet()
 
-    # ➕ Logo
     BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
     logo_path = os.path.join(BASE_DIR, "frontend", "assets", "FANUCLOGO.jpg")
     if os.path.exists(logo_path):
@@ -842,11 +863,9 @@ def export_projet_facture_pdf(id: int, db: Session = Depends(get_db)):
 
     elements.append(Spacer(1, 12))
 
-    # ➕ Titre
     elements.append(Paragraph(f"<b>FACTURE - {facture['nom_projet']}</b>", styles['Title']))
     elements.append(Spacer(1, 12))
 
-    # ➕ Tableau des lignes
     data = [["Produit", "Quantité", "Prix Unité", "Transport", "Commentaire", "Total ligne"]]
     for ligne in facture["lines"]:
         data.append([
@@ -869,7 +888,6 @@ def export_projet_facture_pdf(id: int, db: Session = Depends(get_db)):
     elements.append(table)
     elements.append(Spacer(1, 24))
 
-    # ➕ Totaux
     for label, value in facture["totaux"].items():
         elements.append(Paragraph(f"<b>{label.title()} :</b> {value} €", styles['Normal']))
 
@@ -889,24 +907,14 @@ def export_projet_facture_excel(id: int, db: Session = Depends(get_db)):
     ws = wb.active
     ws.title = "Facture Projet"
 
-    # ➕ Logo FANUC
-    logo_path = os.path.join("frontend", "FANUCLOGO.jpg")
-    if os.path.exists(logo_path):
-        img = ExcelImage(logo_path)
-        img.width = 120
-        img.height = 40
-        ws.add_image(img, "A1")
-
-    # ➕ Titre
     ws.merge_cells("C2:F2")
     cell = ws["C2"]
     cell.value = f"FACTURE - {facture['nom_projet']}"
     cell.font = Font(size=14, bold=True)
     cell.alignment = Alignment(horizontal="center")
 
-    # ➕ En-têtes stylés
     headers = ["Produit", "Quantité", "Prix Unité", "Transport", "Commentaire", "Total ligne"]
-    ws.append([""] * len(headers))  # ligne vide après titre
+    ws.append([""] * len(headers))  
     ws.append(headers)
     header_row = ws.max_row
     header_fill = PatternFill(start_color="FFFF00", end_color="FFFF00", fill_type="solid")
@@ -916,7 +924,6 @@ def export_projet_facture_excel(id: int, db: Session = Depends(get_db)):
         cell.fill = header_fill
         cell.alignment = Alignment(horizontal="center")
 
-    # ➕ Données
     for ligne in facture["lines"]:
         ws.append([
             ligne.get("nom", ""),
@@ -927,7 +934,6 @@ def export_projet_facture_excel(id: int, db: Session = Depends(get_db)):
             float(ligne.get("total_ligne") or 0)
         ])
 
-    # ➕ Totaux
     ws.append([])
     ws.append(["", "", "", "", "Total produit", facture["totaux"]["produit"]])
     ws.append(["", "", "", "", "Total transport", facture["totaux"]["transport"]])

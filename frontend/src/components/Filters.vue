@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref, watch } from 'vue'
+import { ref, watch, computed } from 'vue'
 import { onClickOutside } from '@vueuse/core'
 
 const props = defineProps<{
@@ -10,12 +10,14 @@ const props = defineProps<{
 }>()
 
 const emit = defineEmits<{
-  (e: 'filter-change', column: string, newSet: Set<any>): void
+  (e: 'filter-change', column: string, newSet: Set<any>): void,
+  (e: 'sort-change', column: string, order: 'asc' | 'desc' | null): void
 }>()
 
 const dropdownOpen = ref(false)
 const localSelections = ref<Set<any>>(new Set(props.values))
 const container = ref(null)
+const sortOrder = ref<'asc' | 'desc' | null>(null)
 
 onClickOutside(container, () => {
   dropdownOpen.value = false
@@ -24,8 +26,6 @@ onClickOutside(container, () => {
 watch(() => props.selected, (newSelected) => {
   localSelections.value = new Set([...newSelected])
 }, { immediate: true })
-
-
 
 function toggleValue(val: any) {
   if (localSelections.value.has(val)) {
@@ -45,11 +45,24 @@ function uncheckAll() {
   localSelections.value = new Set()
   emit('filter-change', props.column, new Set())
 }
+
+const isFilterOrSortActive = computed(() => {
+  return localSelections.value.size !== props.values.length || sortOrder.value !== null
+})
+
+function onSortClick(order: 'asc' | 'desc') {
+  if (sortOrder.value === order) {
+    sortOrder.value = null
+  } else {
+    sortOrder.value = order
+  }
+  emit('sort-change', props.column, sortOrder.value)
+}
 </script>
 
 <template>
   <div class="searcher" ref="container">
-    <button class="filter-icon" @click="dropdownOpen = !dropdownOpen">
+    <button class="filter-icon" :class="{ 'active-filter': isFilterOrSortActive }" @click="dropdownOpen = !dropdownOpen" type="button">
       <img src="../assets/filtre.png" alt="filtrer" class="filter-img" />
     </button>
     <div v-if="dropdownOpen" class="dropdown">
@@ -57,14 +70,24 @@ function uncheckAll() {
         <button @click="checkAll">Cocher tout</button>
         <button @click="uncheckAll">Décocher tout</button>
       </div>
+      <div class="dropdown-actions">
+        <button
+          :class="{ active: sortOrder === 'asc' }"
+          @click="onSortClick('asc')"
+        > A-Z</button>
+        <button
+          :class="{ active: sortOrder === 'desc' }"
+          @click="onSortClick('desc')"
+        > Z-A</button>
+      </div>
       <div class="dropdown-values">
-        <label v-for="val in values" :key="val">
-        <input
+        <label v-for="val in props.values" :key="val">
+          <input
             type="checkbox"
             :checked="localSelections.has(val)"
             @change="() => toggleValue(val)"
-        />
-        {{ props.labels?.[val] ?? val }}
+          />
+          {{ props.labels?.[val] ?? val }}
         </label>
       </div>
     </div>
@@ -95,6 +118,11 @@ function uncheckAll() {
 .filter-icon:hover .filter-img {
   filter: invert(34%) sepia(87%) saturate(1535%) hue-rotate(203deg) brightness(95%) contrast(90%);
 }
+
+.filter-icon.active-filter .filter-img {
+  filter: invert(35%) sepia(86%) saturate(2920%) hue-rotate(199deg) brightness(92%) contrast(89%);
+}
+
 .filter-icon:focus {
   outline: none;
 }
@@ -113,36 +141,40 @@ function uncheckAll() {
   max-height: 300px;
   overflow-y: auto;
 }
+
 .dropdown-actions {
   display: flex;
   justify-content: space-between;
   margin-bottom: 0.5rem;
 }
-.dropdown-values {
-  display: flex;
-  flex-direction: column;
-  gap: 0.25rem;
-}
-
 
 .dropdown-actions button {
   background-color: #464646;
   margin-left: 0.2rem;
   border: none;
   border-radius: 4px;
-  padding: 0.2rem 0.2rem;
+  padding: 0.2rem 0.4rem;
   font-size: 0.80rem;
   cursor: pointer;
   transition: background-color 0.2s, border-color 0.2s;
+  color: white;
+}
+
+.dropdown-actions button.active {
+  background-color: #0092ff;
 }
 
 .dropdown-actions button:hover {
-    background-color: #313131;
+  background-color: #313131;
 }
-
 
 .dropdown-actions button:focus {
   outline: none;
 }
 
+.dropdown-values {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+}
 </style>

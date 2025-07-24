@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, defineEmits, defineProps, ref, watch } from 'vue'
+import { computed, defineEmits, defineProps, reactive, ref, watch } from 'vue'
 import { useTableReader } from '../composables/useTableReader'
 import Filters from './Filters.vue'
 import { useRouter } from 'vue-router'
@@ -91,9 +91,38 @@ const valueLabels = computed(() => {
       fpacks.value.map(f => [f.id, f.nom])
     )
   }
-
-
   return map
+})
+
+
+const sortOrders = reactive<Record<string, 'asc' | 'desc' | null>>({})
+
+function onSortChange(column: string, order: 'asc' | 'desc' | null) {
+  sortOrders[column] = order
+}
+
+const filteredAndSortedRows = computed(() => {
+  let result = filteredRows.value.slice()
+
+  for (const [col, order] of Object.entries(sortOrders)) {
+    if (order) {
+      result.sort((a, b) => {
+        const valA = a[col]
+        const valB = b[col]
+        if (typeof valA === 'string' && typeof valB === 'string') {
+          return order === 'asc'
+            ? valA.localeCompare(valB)
+            : valB.localeCompare(valA)
+        }
+        if (typeof valA === 'number' && typeof valB === 'number') {
+          return order === 'asc' ? valA - valB : valB - valA
+        }
+        return 0
+      })
+    }
+  }
+
+  return result
 })
 
 function remplirEquipement(row: any) {
@@ -125,6 +154,7 @@ function remplirProjet(row: any) {
                 :selected="filters[col] || new Set([...columnValues[col] || []])"
                 :labels="valueLabels[col]"
                 @filter-change="updateFilter"
+                @sort-change="onSortChange"
               />
             </div>
           </th>
@@ -159,7 +189,7 @@ function remplirProjet(row: any) {
               <button @click="cancelAdd">❌</button>
             </td>
           </tr>
-          <tr v-for="row in filteredRows" :key="row.id">
+          <tr v-for="row in filteredAndSortedRows" :key="row.id">
             <td v-for="col in columns" :key="col">
 
               <template v-if="editingId === row.id && col === 'client' && (props.tableName === 'fpacks' || props.tableName === 'projets')">

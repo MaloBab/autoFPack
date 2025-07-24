@@ -14,9 +14,9 @@ function resetAjouter() {
 
 <template>
   <div>
-    <PageHeader titre="Prix Produit" @ajouter="ajouter = true" />
+    <PageHeader titre="Prix Robot" @ajouter="ajouter = true" />
     <TableReader
-      tableName="prix"
+      tableName="prix_robot"
       :ajouter="ajouter"
       :search="searchTerm"
       @added="resetAjouter"

@@ -43,6 +43,7 @@ const selectedItems = ref<SelectedItem[]>(props.initialGroup?.group_items ? [...
 const produits = ref<any[]>([])
 const equipements = ref<any[]>([])
 const robots = ref<any[]>([])
+const iscreating = ref(false)
 
 
 async function loadData() {
@@ -107,6 +108,7 @@ function valider() {
     showToast("Veuillez saisir un nom pour le groupe.")
     return
   }
+  iscreating.value = true
   emit('created', {
     type: 'group',
     ref_id: null,
@@ -158,7 +160,7 @@ function valider() {
 </div>
 
       <div class="actions">
-        <button @click="valider">✅ {{ props.initialGroup ? 'Modifier' : 'Créer' }}</button>
+        <button :disabled="iscreating" @click="valider">✅ {{ props.initialGroup ? 'Modifier' : 'Créer' }}</button>
         <button @click="$emit('close')">❌ Annuler</button>
       </div>
     </div>
