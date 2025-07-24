@@ -186,8 +186,6 @@ function isProduitIncompatibleAvecSelection(id: number): boolean {
 </template>
 
 
-
-
 <style scoped>
 .table-container {
   width: 100%;

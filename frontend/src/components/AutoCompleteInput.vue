@@ -27,19 +27,15 @@ function completeInput(userInput: string) {
   )
 
   if (match && inputRef.value) {
-    // Garder le texte exact que l'utilisateur a tapé
     const preservedUserInput = userInput
 
-    // Partie complétée automatiquement
     const completion = match.slice(userInput.length)
 
-    // Appliquer dans l'input la concaténation
     const finalText = preservedUserInput + completion
     inputRef.value.value = finalText
     inputValue.value = finalText
     emit('update:modelValue', finalText)
 
-    // Sélectionner uniquement la complétion
     nextTick(() => {
       inputRef.value?.setSelectionRange(preservedUserInput.length, finalText.length)
     })

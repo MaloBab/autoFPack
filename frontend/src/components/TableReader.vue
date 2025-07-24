@@ -92,8 +92,6 @@ const filteredAndSortedRows = computed(() => {
       result.sort((a, b) => {
         const valA = a[col]
         const valB = b[col]
-
-        // utilise valueLabels.value[col] pour récupérer les labels
         const labelA = valueLabels.value[col]?.[valA] ?? valA
         const labelB = valueLabels.value[col]?.[valB] ?? valB
 

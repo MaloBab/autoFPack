@@ -145,12 +145,12 @@ function onSortClick(order: 'asc' | 'desc') {
 .dropdown-actions {
   display: flex;
   justify-content: space-between;
-  gap: 0.5rem; /* espace entre les boutons */
-  margin: 0 0.25rem 0.5rem 0.25rem; /* petite marge sur les côtés */
+  gap: 0.5rem; 
+  margin: 0 0.25rem 0.5rem 0.25rem; 
 }
 
 .dropdown-actions button {
-  flex: 1 1 0; /* chaque bouton prend 50% moins l'écart */
+  flex: 1 1 0; 
   background-color: #464646;
   border: none;
   border-radius: 4px;
