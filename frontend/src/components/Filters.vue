@@ -145,19 +145,21 @@ function onSortClick(order: 'asc' | 'desc') {
 .dropdown-actions {
   display: flex;
   justify-content: space-between;
-  margin-bottom: 0.5rem;
+  gap: 0.5rem; /* espace entre les boutons */
+  margin: 0 0.25rem 0.5rem 0.25rem; /* petite marge sur les côtés */
 }
 
 .dropdown-actions button {
+  flex: 1 1 0; /* chaque bouton prend 50% moins l'écart */
   background-color: #464646;
-  margin-left: 0.2rem;
   border: none;
   border-radius: 4px;
-  padding: 0.2rem 0.4rem;
-  font-size: 0.80rem;
+  padding: 0.4rem 0.6rem;
+  font-size: 0.8rem;
   cursor: pointer;
-  transition: background-color 0.2s, border-color 0.2s;
   color: white;
+  transition: background-color 0.2s, border-color 0.2s;
+  text-align: center;
 }
 
 .dropdown-actions button.active {
