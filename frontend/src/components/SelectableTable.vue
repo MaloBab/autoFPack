@@ -8,6 +8,7 @@ import { useLoading } from '../composables/useLoading'
 const { startLoading, stopLoading } = useLoading()
 
 const props = defineProps<{
+  equipementId: number
   apiUrl?: string
   ajouter?: boolean
   search?: string
@@ -46,9 +47,18 @@ async function fetchData() {
   fournisseurs.value = fournisseursRes.data
 }
 
+
 onMounted(async () => {
   startLoading()
   await fetchData()
+
+  const response = await axios.get(`http://localhost:8000/equipementproduit/${props.equipementId}`)
+  const data = response.data
+
+  data.forEach((item: { produit_id: number, quantite: number }) => {
+    selected.value.add(item.produit_id)
+    quantities.value[item.produit_id] = item.quantite
+  })
   const res = await axios.get('http://localhost:8000/produit-incompatibilites')
   produitIncompatibilites.value = res.data
   stopLoading()
@@ -74,6 +84,13 @@ function toggleSelect(id: number) {
 watch(() => props.selectedIds, (newVal) => {
   selected.value = new Set(newVal)
 })
+watch(
+  () => quantities.value,
+  (newQty) => {
+    emit('selection-changed', new Set(selected.value), { ...newQty })
+  },
+  { deep: true }
+)
 
 // Valeurs distinctes par colonne
 const columnValues = computed(() => {

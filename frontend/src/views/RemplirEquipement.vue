@@ -30,21 +30,27 @@ async function fetchAssociations() {
 }
 
 async function enregistrer() {
-  await axios.delete(`http://localhost:8000/equipementproduit/clear/${equipementId}`)
+
+  await axios.delete(`http://localhost:8000/equipementproduit/clear/${equipementId}`);
+
   for (const produitId of produitsAssocies.value) {
-    const quantite = quantites.value[produitId] ?? 1 
-    await axios.post(`http://localhost:8000/equipementproduit`, {
-      equipement_id: equipementId,
-      produit_id: produitId,
-      quantite: quantite
-    })
+      const quantite = quantites.value[produitId] || 1;
+      console.log(`🚀 POSTing { equip=${equipementId}, prod=${produitId}, qte=${quantite} }`);
+      await axios.post(`http://localhost:8000/equipementproduit`, {
+        equipement_id: equipementId,
+        produit_id: produitId,
+        quantite: quantite
+      });
+
+
   }
-  router.back()
+
+  router.back();
 }
 
-function handleSelectionChanged(ids: Set<number>, qtes: Record<number, number>) {
-  produitsAssocies.value = new Set(ids)
-  quantites.value = qtes
+function handleSelectionChanged(newSelected: Set<number>, newQuantities: Record<number, number>) {
+  produitsAssocies.value = new Set(newSelected)
+  quantites.value = { ...newQuantities }
 }
 
 onMounted(async () => {
@@ -60,6 +66,7 @@ onMounted(async () => {
     <h2>Contenu de l'équipement <span class="title">{{ nomEquipement }}</span></h2>
     <SelectableTable
       tableName="produits"
+      :equipement-id="equipementId"
       :selectedIds="produitsAssocies"
       :search="searchTerm"
       :filter-mode="filterMode"

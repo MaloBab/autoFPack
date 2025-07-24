@@ -100,11 +100,12 @@ class EquipementRead(BaseModel):
 class EquipementProduitBase(BaseModel):
     equipement_id: int
     produit_id: int
+    quantite: int = 1 
 
-class EquipementProduitCreate(EquipementProduitBase):
+class EquipementProduitCreate(BaseModel):
     equipement_id: int
     produit_id: int
-    quantite: int = 1  # Par défaut à 1
+    quantite: int = 1  # par défaut à 1 si non fourni
 
 class FPackBase(BaseModel):
     nom: str

@@ -10,11 +10,12 @@ from io import BytesIO
 import os
 from openpyxl import Workbook
 from openpyxl.styles import Font, Alignment, PatternFill
-from openpyxl.drawing.image import Image as ExcelImage
 from reportlab.lib.pagesizes import A4
 from reportlab.platypus import SimpleDocTemplate, Table, TableStyle, Image, Paragraph, Spacer
 from reportlab.lib import colors
 from reportlab.lib.styles import getSampleStyleSheet
+
+os.makedirs("logs", exist_ok=True)
 
 router = APIRouter()
 
@@ -370,19 +371,16 @@ def get_equipement_produit_by_equipement(equipement_id: int, db: Session = Depen
     return db.query(models.Equipement_Produit).filter(models.Equipement_Produit.equipement_id == equipement_id).all()
 
 @router.post("/equipementproduit", response_model=schemas.EquipementProduitRead)
-def create_equipement_produit(equipement_produit: schemas.EquipementProduitCreate, db: Session = Depends(get_db)):
-    ep = db.query(models.Equipement_Produit).filter_by(
-        equipement_id=equipement_produit.equipement_id,
-        produit_id=equipement_produit.produit_id
+def create_or_update_equipement_produit(equipement_produit: schemas.EquipementProduitCreate, db: Session = Depends(get_db)):
+    ep = db.query(models.Equipement_Produit).filter(
+        models.Equipement_Produit.equipement_id == equipement_produit.equipement_id,
+        models.Equipement_Produit.produit_id == equipement_produit.produit_id
     ).first()
-
     if ep:
-        # Remplace la quantité au lieu de l'incrémenter
-        print(f"Produit existant, mise à jour quantité : {ep.quantite} -> {equipement_produit.quantite}")
         ep.quantite = equipement_produit.quantite
     else:
         ep = models.Equipement_Produit(**equipement_produit.dict())
-        db.add(ep)
+    db.add(ep)
 
     db.commit()
     db.refresh(ep)
