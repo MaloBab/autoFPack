@@ -34,8 +34,7 @@ async function enregistrer() {
   await axios.delete(`http://localhost:8000/equipementproduit/clear/${equipementId}`);
 
   for (const produitId of produitsAssocies.value) {
-      const quantite = quantites.value[produitId] || 1;
-      console.log(`🚀 POSTing { equip=${equipementId}, prod=${produitId}, qte=${quantite} }`);
+      const quantite = quantites.value[produitId] || 1;;
       await axios.post(`http://localhost:8000/equipementproduit`, {
         equipement_id: equipementId,
         produit_id: produitId,
