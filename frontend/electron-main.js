@@ -4,6 +4,7 @@ import { fileURLToPath } from 'node:url'
 import { dirname } from 'node:path'
 import { spawn } from 'node:child_process'
 import http from 'http'
+import { kill } from 'node:process'
 
 const __filename = fileURLToPath(import.meta.url)
 const __dirname = dirname(__filename)
@@ -37,6 +38,17 @@ function waitForBackend(url, retries = 20, interval = 500) {
 
     attempt()
   })
+}
+
+function killBackendProcess() {
+  if (backendProcess) {
+    const pid = backendProcess.pid
+    if (process.platform === 'win32') {
+      spawn('taskkill', ['/PID', `${pid}`, '/F', '/T'])
+    } else {
+      process.kill(-pid, 'SIGTERM')
+    }
+  }
 }
 
 function createWindow() {
@@ -106,16 +118,12 @@ app.on('activate', () => {
 })
 
 app.on('before-quit', () => {
-  if (backendProcess) {
-    backendProcess.kill()
-  }
+  killBackendProcess()
 })
 
 app.on('window-all-closed', () => {
   if (process.platform !== 'darwin') {
-    if (backendProcess) {
-      backendProcess.kill()
-    }
+    killBackendProcess()
     app.quit()
   }
 })

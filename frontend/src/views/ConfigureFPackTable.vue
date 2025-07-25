@@ -97,8 +97,11 @@ async function fetchConfiguration() {
         enriched.push({
           ...col,
           display_name: eq.nom,
-          produits_count: eq.equipement_produit?.length ?? 0
+          produits_count: eq.equipement_produit?.reduce((sum: number, ep: any) => sum + (ep.quantite || 0), 0) ?? 0
         })
+        eq.equipement_produit.forEach((ep:any) => {
+          console.log(ep)
+      })
       } catch {
         enriched.push(col)
       }
@@ -200,7 +203,6 @@ function startEdit(index: number) {
 function validerAjoutOuModif() {
   const list = modeAjout.value === 'produit' ? produits.value : equipements.value
   const item = list.find(e => e.id === selectedRefId.value)
-  console.log(item)
   if (!item) return
 
   const col: ConfigColumn = {
@@ -239,7 +241,7 @@ function validerAjoutOuModif() {
     }
 
     // Enrichissement
-    col.produits_count = item.equipement_produit?.length ?? 0
+    col.produits_count = item.equipement_produit?.reduce((sum: number, ep: any) => sum + (ep.quantite || 0), 0) ?? 0
   }
 
   if (editingIndex.value !== null) {
@@ -348,14 +350,12 @@ async function listeView() {
 
 onMounted(async () => {
   startLoading()
-  console.log("Configuration en cours de chargement...")
   await fetchProduitsEtEquipements()
   await fetchConfiguration()
   if (columnsRowRef.value) {
     columnsRowRef.value.addEventListener('wheel', handleWheel, { passive: false })
   }
   await loadIncompatibilites()
-  console.log("Configuration chargée avec succès.")
   stopLoading()
 })
 

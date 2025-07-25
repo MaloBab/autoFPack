@@ -775,6 +775,7 @@ def get_projet_facture(id: int, db: Session = Depends(get_db)):
 
     # 5. Compter les produits (avec quantités)
     produit_counts = defaultdict(int)
+    robot_counts = defaultdict(int)
 
     # produits seuls
     for col in config_cols:
@@ -799,9 +800,10 @@ def get_projet_facture(id: int, db: Session = Depends(get_db)):
             if gi.type == "produit":
                 produit_counts[gi.ref_id] += 1
             elif gi.type == "equipement":
-                for pid, qte in eq_map.get(col.ref_id, []):
+                for pid, qte in eq_map.get(gi.ref_id, []):  # correction ici
                     produit_counts[pid] += qte
-            # robots pas facturables pour l’instant
+            elif gi.type == "robot":
+                robot_counts[gi.ref_id] += 1  # à prix 0
 
     all_produit_ids = list(produit_counts.keys())
 
@@ -840,6 +842,23 @@ def get_projet_facture(id: int, db: Session = Depends(get_db)):
             "commentaire": commentaire,
             "total_ligne": total_ligne
         })
+    """
+    # 9. Ajouter les robots
+    robot_rows = db.query(models.Robot).filter(models.Robot.id.in_(robot_counts.keys())).all()
+    robot_nom_map = {r.id: r.nom for r in robot_rows}
+
+    for rid in sorted(robot_counts.keys()):
+        qte = robot_counts[rid]
+        lines.append({
+            "produit_id": rid,
+            "nom": robot_nom_map.get(rid, f"Robot {rid}"),
+            "qte": qte,
+            "prix_produit": 0.0,
+            "prix_transport": 0.0,
+            "commentaire": "Robot (non facturé -- temporaire)",
+            "total_ligne": 0.0
+        })
+    """
 
     return {
         "projet_id": id,

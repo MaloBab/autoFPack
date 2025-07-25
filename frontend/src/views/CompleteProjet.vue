@@ -222,10 +222,15 @@ onMounted(async () => {
 async function saveSelections(goBack = true) {
   saving.value = true
   try {
-    const payload = groupes.value.map(groupe => ({
-      groupe_id: groupe.ref_id,
-      ref_id: selections.value[groupe.ref_id] ?? null
-    }))
+    const payload = groupes.value.map(groupe => {
+      const selectedRefId = selections.value[groupe.ref_id]
+      const selectedItem = groupe.group_items.find((item: any) => item.ref_id === selectedRefId)
+      return {
+        groupe_id: groupe.ref_id,
+        ref_id: selectedRefId ?? null,
+        type_item: selectedItem?.type ?? null
+      }
+    })
     await axios.put(`http://localhost:8000/projets/${projet.value.id}/selections`, { selections: payload })
     showToast('Sélection enregistrée', "#059669")
   } catch (err) {

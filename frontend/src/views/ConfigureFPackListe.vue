@@ -70,7 +70,8 @@ onMounted(async () => {
       return {
         ...col,
         display_name: equipement.nom,
-        produits_count: produitsInternes.length,
+        content: equipement.equipement_produit,
+        produits_count: equipement.equipement_produit.reduce((sum: number, p: any) => sum + (p.quantite || 0), 0),
         produits: produitsInternes
       }
     } else if (col.type === 'group') {
@@ -136,7 +137,7 @@ onMounted(async () => {
               <template v-else-if="col.type === 'equipement'">
                 <p><strong>Nombre de produits liés :</strong> {{ col.produits_count }}</p>
                 <ul class="sub-list" v-if="col.produits && col.produits.length">
-                  <li v-for="p in col.produits" :key="p.id">• {{ p.nom }}</li>
+                  <li v-for="p in col.produits" :key="p.id">• {{ p.nom }} <strong> x{{ col.content.find((prod: any) => prod.produit_id === p.id)?.quantite}}</strong></li>
                 </ul>
               </template>
 
