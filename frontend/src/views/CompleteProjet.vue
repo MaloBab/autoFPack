@@ -170,6 +170,7 @@ async function fetchData() {
     const resConfig = await axios.get(`http://localhost:8000/fpack_config_columns/${projet.value.fpack_id}`)
     configColumns.value = resConfig.data
 
+
     produitsSeuls.value = configColumns.value.filter(c => c.type === 'produit' && !c.group_items)
     equipementsSeuls.value = configColumns.value.filter(c => c.type === 'equipement' && !c.group_items)
     groupes.value = configColumns.value.filter(c => c.type === 'group')
@@ -315,6 +316,7 @@ async function saveSelections(goBack = true) {
                     :value="item.ref_id"
                     :disabled="isItemIncompatible(groupe, item)"
                     :class="{ 'option-incompatible': isItemIncompatible(groupe, item) }">
+                    <span v-if="(item.statut ?? 'optionnel') === 'standard'" class="badge-standard">⭐</span>
                     {{ item.label }}
                     <span v-if="item.type === 'produit'">🧩</span>
                     <span v-else-if="item.type === 'equipement'">🔧</span>
