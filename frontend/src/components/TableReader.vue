@@ -23,6 +23,13 @@ const {
   validateEdit, cancelEdit, deleteRow, startEditPrix
 } = useTableReader(props, emit, filters)
 
+const orderedColumns = computed(() => {
+  if (!columns.value) return []
+  const cols = columns.value.filter(col => col.toLowerCase() !== 'id' && col.toLowerCase() !== 'reference')
+  if (columns.value.some(col => col.toLowerCase() === 'reference')) {cols.unshift('reference')}
+  return cols
+})
+
 const nameMapping = computed(() => {
   const map: Record<string, Record<number, string>> = {}
 
@@ -131,7 +138,7 @@ watch(() => props.ajouter, (val) => {
     <table class="table-head">
       <thead>
         <tr>
-          <th v-for="col in columns" :key="col">
+          <th v-for="col in orderedColumns " :key="col">
             <div style="display: flex; align-items: center; gap: 0.3rem;">
               <span>
                 <template v-if="col === 'fournisseur_id' && props.tableName === 'produits'">fournisseur</template>
@@ -158,7 +165,7 @@ watch(() => props.ajouter, (val) => {
       <table>
         <tbody>
           <tr v-if="ajouter">
-            <td v-for="col in columns" :key="col">
+            <td v-for="col in orderedColumns " :key="col">
 
               <template v-if="col === 'fournisseur_id' && props.tableName === 'produits'">
                 <select v-model="newRow.fournisseur_nom">
@@ -200,7 +207,7 @@ watch(() => props.ajouter, (val) => {
             </td>
           </tr>
           <tr v-for="row in filteredAndSortedRows" :key="row.id">
-            <td v-for="col in columns" :key="col">
+            <td v-for="col in orderedColumns " :key="col">
               <template v-if="editingId === row.id && col === 'fournisseur_id' && props.tableName === 'produits'">
                 <select v-model="editRow.fournisseur_nom" @keyup.enter="validateEdit(row.id)">
                   <option v-for="f in fournisseurs" :key="f.id" :value="f.nom">{{ f.nom }}</option>

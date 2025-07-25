@@ -193,6 +193,12 @@ function isProduitIncompatibleAvecSelection(id: number): boolean {
   return !isProduitCompatibleAvecListe(id, produitsExistants)
 }
 
+const orderedColumns = computed(() => {
+  if (!columns.value) return []
+  const cols = columns.value.filter(col => col.toLowerCase() !== 'id' && col.toLowerCase() !== 'reference')
+  if (columns.value.some(col => col.toLowerCase() === 'reference')) {cols.unshift('reference')}
+  return cols
+})
 </script>
 
 <template>
@@ -200,7 +206,7 @@ function isProduitIncompatibleAvecSelection(id: number): boolean {
     <table class="table-head">
       <thead>
         <tr>
-          <th v-for="col in columns" :key="col">
+          <th v-for="col in orderedColumns" :key="col">
             <div style="display: flex; align-items: center; gap: 0.3rem;">
               <span>
                 <template v-if="col === 'fournisseur_id'">fournisseur</template>
@@ -226,7 +232,7 @@ function isProduitIncompatibleAvecSelection(id: number): boolean {
             <tr v-for="row in filteredAndSortedRows" :key="row.id" @click="toggleSelect(row.id)"
               :class="{ conflict: isProduitIncompatibleAvecSelection(row.id),
                 selected: selected.has(row.id) && !isProduitIncompatibleAvecSelection(row.id)}">
-                <td v-for="col in columns" :key="col">
+                <td v-for="col in orderedColumns" :key="col">
                     <template v-if="col === 'fournisseur_id'">
                         {{ fournisseurs.find(f => f.id === row.fournisseur_id)?.nom || row.fournisseur_id }}
                     </template>

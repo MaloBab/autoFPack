@@ -147,6 +147,7 @@ onMounted(fetchData)
             <tr>
               <th>Produit</th>
               <th>Produit</th>
+              <th></th>
             </tr>
           </thead>
           <tbody class="table-scrollable-body">

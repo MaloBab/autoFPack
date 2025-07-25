@@ -111,6 +111,24 @@ def get_produit(id: int, db: Session = Depends(get_db)):
     return produit
 
 
+@router.post("/produits/{produit_id}/duplicate", response_model=schemas.ProduitRead)
+def duplicate_produit(produit_id: int, db: Session = Depends(get_db)):
+    original = db.query(models.Produit).filter(models.Produit.id == produit_id).first()
+    if not original:
+        raise HTTPException(status_code=404, detail="Produit non trouvé")
+
+    new_produit = models.Produit(
+        nom=original.nom + " (copie)",
+        description=original.description,
+        fournisseur_id=original.fournisseur_id,
+        type=original.type,
+    )
+    db.add(new_produit)
+    db.commit()
+    db.refresh(new_produit)
+
+    return new_produit
+
 # PRIX
 
 @router.get("/prix", response_model=list[schemas.PrixRead])
@@ -168,25 +186,6 @@ def get_prix(produit_id: int, client_id: int, db: Session = Depends(get_db)):
         raise HTTPException(status_code=404, detail="Prix non trouvé")
     return db_prix
 
-
-
-@router.post("/produits/{produit_id}/duplicate", response_model=schemas.ProduitRead)
-def duplicate_produit(produit_id: int, db: Session = Depends(get_db)):
-    original = db.query(models.Produit).filter(models.Produit.id == produit_id).first()
-    if not original:
-        raise HTTPException(status_code=404, detail="Produit non trouvé")
-
-    new_produit = models.Produit(
-        nom=original.nom + " (copie)",
-        description=original.description,
-        fournisseur_id=original.fournisseur_id,
-        type=original.type,
-    )
-    db.add(new_produit)
-    db.commit()
-    db.refresh(new_produit)
-
-    return new_produit
 
 
 # FOURNISSEURS
@@ -498,12 +497,14 @@ def create_groupe(group: schemas.GroupesCreate, db: Session = Depends(get_db)):
 def list_groupe_items(groupe_id: int, db: Session = Depends(get_db)):
     return db.query(models.GroupeItem).filter(models.GroupeItem.group_id == groupe_id).all()
 
+
 @router.post("/groupe_items", response_model=schemas.GroupeItemRead)
 def create_groupe_item(item: schemas.GroupeItemCreate, db: Session = Depends(get_db)):
     db_item = models.GroupeItem(**item.dict())
     db.add(db_item)
     db.commit()
     db.refresh(db_item)
+
     return db_item
 
 # FPACK CONFIG COLUMNS
@@ -536,12 +537,17 @@ def get_config_columns(fpack_id: int, db: Session = Depends(get_db)):
                 {
                     "type": item.type,
                     "ref_id": item.ref_id,
-                    "label": get_item_label(item.type, item.ref_id, db)
+                    "label": get_item_label(item.type, item.ref_id, db),
+                    "statut": item.statut,
+                    
                 }
                 for item in items
             ]
 
         result.append(entry)
+        
+        with open("logs/fpack_config_columns.log", "a") as log_file:
+            log_file.write(f"{result}\n")
 
     return result
 

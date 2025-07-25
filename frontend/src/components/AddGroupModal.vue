@@ -10,6 +10,7 @@ const props = defineProps<{
       type: 'produit' | 'equipement' | 'robot'
       ref_id: number
       label: string
+      statut?: 'standard' | 'optionnel'
     }[]
   }
 }>()
@@ -32,13 +33,20 @@ type SelectedItem = {
   type: 'produit' | 'equipement' | 'robot'
   ref_id: number
   label: string
+  statut: 'optionnel' | 'standard'
   description?: string
   generation?: string
 }
 
 const nomGroupe = ref(props.initialGroup?.display_name ?? '')
-const selectedItems = ref<SelectedItem[]>(props.initialGroup?.group_items ? [...props.initialGroup.group_items] : [])
-
+const selectedItems = ref<SelectedItem[]>(
+  props.initialGroup?.group_items
+    ? props.initialGroup.group_items.map(item => ({
+        ...item,
+        statut: item.statut ?? 'optionnel'
+      }))
+    : []
+)
 
 const produits = ref<any[]>([])
 const equipements = ref<any[]>([])
@@ -72,6 +80,7 @@ function addItem(type: 'produit' | 'equipement' | 'robot', id: number) {
       type, 
       ref_id: id, 
       label: item.nom,
+      statut: 'optionnel',
       description: item.description,
       generation: item.generation      
     })
@@ -140,7 +149,7 @@ function valider() {
 
       <select :value="''" @change="onRobotChange">
         <option value="">➕ Robot</option>
-        <option v-for="r in robots" :key="r.id" :value="r.id"> {{ r.nom}}{{r.generation ? r.generation.length > 6 ? r.generation.slice(0,6) + '...': r.generation: ''}} </option>
+        <option v-for="r in robots" :key="r.id" :value="r.id"> {{ r.nom}} - {{r.generation ? r.generation.length > 6 ? r.generation.slice(0,6) + '...': r.generation: ''}} </option>
       </select>
       </div>
 
@@ -154,7 +163,19 @@ function valider() {
       </template>
       <template v-else-if="item.type === 'robot' && item.generation">{{ item.generation }}</template>
       ({{ item.type }})
-      <button @click="removeItem(i)">❌</button>
+      <div class="footer-buttons">
+        <label class="statut-label">
+          <input
+            type="checkbox"
+            v-model="selectedItems[i].statut"
+            :true-value="'standard'"
+            :false-value="'optionnel'"
+          />
+          <span class="tooltip-text">Standard</span>
+        </label>
+
+        <button class="cancel-button" @click="removeItem(i)">❌</button>
+      </div>
     </li>
   </ul>
 </div>
@@ -354,6 +375,78 @@ select:hover {
 .actions button:last-child:hover {
   background-color: #dc2626;
   box-shadow: 0 8px 20px rgb(220 38 38 / 0.6);
+}
+
+.footer-buttons {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  padding-top: 12px;
+}
+
+.statut-label {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+}
+
+.statut-label input[type="checkbox"] {
+  width: 14px;
+  height: 14px;
+  appearance: none;
+  border: 2px solid #555;
+  border-radius: 4px;
+  background-color: white;
+  display: grid;
+  place-content: center;
+  transition: all 0.2s ease;
+  margin-top: 5px;
+}
+
+.statut-label input[type="checkbox"]::before {
+  content: "✔";
+  font-size: 12px;
+  color: white;
+  transform: scale(0);
+  transition: transform 0.2s ease;
+}
+
+.statut-label input[type="checkbox"]:checked {
+  background-color: #0e76fd;
+  border-color: #0e76fd;
+}
+
+.statut-label input[type="checkbox"]:checked::before {
+  transform: scale(1);
+}
+
+.tooltip-text {
+  visibility: hidden;
+  opacity: 0;
+  background-color: #1f2937;
+  color: white;
+  border-radius: 6px;
+  padding: 5px 8px;
+  position: absolute;
+  left: 120%;
+  top: 50%;
+  transform: translateY(-50%);
+  white-space: nowrap;
+  font-size: 12px;
+  transition: opacity 0.2s ease;
+  pointer-events: none;
+  z-index: 2;
+}
+
+.statut-label:hover .tooltip-text {
+  visibility: visible;
+  opacity: 1;
+}
+
+.cancel-button:hover {
+  background-color: #f3f4f6;
 }
 
 

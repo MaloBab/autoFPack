@@ -22,7 +22,7 @@ const lastKey = ref<string>('')
 
 
 function completeInput(userInput: string) {
-  const match = props.suggestions.find(s =>
+  const match = props.suggestions.find(s => typeof s === 'string' && 
     s.toLowerCase().startsWith(userInput.toLowerCase()) &&
     s.length > userInput.length
   )

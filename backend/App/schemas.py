@@ -4,6 +4,7 @@ from typing import List, Optional
 
 
 class ProduitBase(BaseModel):
+    reference: str
     nom: str
     description: Optional[str] = None
     fournisseur_id: int
@@ -77,6 +78,7 @@ class RobotRead(RobotBase):
         from_attributes = True
 
 class EquipementBase(BaseModel):
+    reference: str
     nom: str
 
 class EquipementCreate(EquipementBase):
@@ -138,6 +140,7 @@ class GroupeItemBase(BaseModel):
     group_id: int
     type: str  # 'produit' | 'equipement' | 'robot'
     ref_id: int
+    statut: Optional[str] = 'optionnel'
 
 class GroupeItemCreate(GroupeItemBase):
     pass

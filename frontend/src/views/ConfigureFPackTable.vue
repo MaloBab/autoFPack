@@ -34,6 +34,7 @@ type GroupItem = {
   label: string
   description?: string
   generation?: string
+  statut?: 'standard' | 'optionnel'
 }
 
 type ConfigColumn = {
@@ -72,6 +73,7 @@ function summarizeGroupItems(items: GroupItem[]) {
 async function fetchConfiguration() {
   if (typeof props.fpackId !== 'number' || isNaN(props.fpackId)) return
   const res = await axios.get(`http://localhost:8000/fpack_config_columns/${props.fpackId}`)
+  console.log('Données reçues:', res.data)
   const enriched: ConfigColumn[] = []
 
   for (const col of res.data) {
@@ -99,9 +101,6 @@ async function fetchConfiguration() {
           display_name: eq.nom,
           produits_count: eq.equipement_produit?.reduce((sum: number, ep: any) => sum + (ep.quantite || 0), 0) ?? 0
         })
-        eq.equipement_produit.forEach((ep:any) => {
-          console.log(ep)
-      })
       } catch {
         enriched.push(col)
       }
@@ -109,12 +108,12 @@ async function fetchConfiguration() {
       const enrichedGroupItems = (col.group_items || []).map((item: any) => {
         if (item.type === 'produit') {
           const p = produits.value.find(p => p.id === item.ref_id)
-          return { ...item, description: p?.description ?? '' }
+          return { ...item, description: p?.description ?? '', statut: item.statut ?? 'optionnel' }
         } else if (item.type === 'robot') {
           const r = robots.value.find(r => r.id === item.ref_id)
-          return { ...item, generation: r?.generation ?? '' }
+          return { ...item, generation: r?.generation ?? '', statut: item.statut ?? 'optionnel' }
         }
-        return item
+        return { ...item, statut: item.statut ?? 'optionnel' }
       })
 
       enriched.push({
@@ -126,7 +125,9 @@ async function fetchConfiguration() {
       enriched.push(col)
     }
   }
+
   columns.value = enriched
+
 }
 
 async function fetchProduitsEtEquipements() {
@@ -256,19 +257,21 @@ function validerAjoutOuModif() {
   editingIndex.value = null
 }
 
-async function handleGroupUpdate(group: { type: 'group'; ref_id: null; display_name: string; group_items: GroupItem[] }) {
+async function handleGroupUpdate(group: { type: 'group'; ref_id: null; display_name: string; group_items: (GroupItem & { statut?: 'standard' | 'optionnel' })[]; }) {
   const enrichedGroupItems = group.group_items.map(item => {
     if (item.type === 'produit') {
       const produit = produits.value.find(p => p.id === item.ref_id)
       return {
         ...item,
-        description: produit?.description ?? ''
+        description: produit?.description ?? '',
+        statut: item.statut ?? 'optionnel',
       }
     } else if (item.type === 'robot') {
       const robot = robots.value.find(r => r.id === item.ref_id)
       return {
         ...item,
-        generation: robot?.generation ?? ''
+        generation: robot?.generation ?? '',
+        statut: item.statut ?? 'optionnel',
       }
     }
     return item
@@ -282,8 +285,10 @@ async function handleGroupUpdate(group: { type: 'group'; ref_id: null; display_n
       axios.post('http://localhost:8000/groupe_items', {
         group_id: groupe_id,
         type: item.type,
-        ref_id: item.ref_id
+        ref_id: item.ref_id,
+        statut: item.statut ?? 'optionnel'
       })
+      
     )
   )
 
@@ -369,7 +374,7 @@ onUnmounted(() => {
 <template>
   <div class="fpack-config-wrapper">
     <h2 class="fpack-title">
-      🛠️ Configuration de la F-Pack :
+      🛠️ Configuration du F-Pack :
       <span class="fpack-name">{{ props.fpackName }}</span>
     </h2>
     <button class="vue-liste-btn" @click="listeView()">
@@ -414,13 +419,14 @@ onUnmounted(() => {
           </div>
 
           <ul v-if="col.type === 'group'" class="group-list">
-            <li v-for="item in col.group_items" :key="item.ref_id">
+            <li v-for="item in col.group_items" :key="item.ref_id + '-' + item.statut">
+              <span v-if="(item.statut ?? 'optionnel') === 'standard'" class="badge-standard">⭐</span>
               {{ item.label }}
               <template v-if="item.type === 'produit' && item.description">
                 - {{ item.description.length > 10 ? item.description.slice(0, 10) + '…' : item.description }}
               </template>
               <template v-else-if="item.type === 'robot' && item.generation">
-                {{item.generation.length > 6 ? item.generation.slice(0,6) + '...' : item.generation }}
+                {{ item.generation.length > 6 ? item.generation.slice(0, 6) + '...' : item.generation }}
               </template>
             </li>
           </ul>
@@ -761,4 +767,17 @@ onUnmounted(() => {
 .footer-actions .clear:hover {
   background-color: #dc2626;
 }
+
+.badge-standard {
+  background-color: #eaeaea;
+  color: white;
+  font-size: 0.7rem;
+  border: #cdab22 solid 1px;
+  font-weight: 700;
+  border-radius: 4px;
+  padding: 1px 6px;
+  margin-left: 8px;
+  user-select: none;
+}
+
 </style>

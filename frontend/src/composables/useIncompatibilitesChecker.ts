@@ -4,6 +4,7 @@ import axios from 'axios'
 type GroupItem = {
   type: 'produit' | 'equipement' | 'robot'
   ref_id: number
+  statut?: 'optionnel' | 'standard'
 }
 
 type ConfigColumn = {

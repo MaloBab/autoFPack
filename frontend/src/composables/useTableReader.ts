@@ -182,9 +182,9 @@ export function useTableReader(
         showToast("Tous les champs de la ligne n'ont pas été remplis.", "#ef9144")
         return
       }
-      if (props.tableName === 'fpacks') {
-      dataToSend.client = dataToSend.client_id
-      delete dataToSend.client_id
+      if (['fpacks', 'projets', 'robots'].includes(props.tableName)) {
+        dataToSend.client = dataToSend.client_id
+        delete dataToSend.client_id
       }
       console.log(`${baseUrl}/${props.tableName}`, dataToSend)
       await axios.post(`${baseUrl}/${props.tableName}`, dataToSend)

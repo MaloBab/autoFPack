@@ -91,7 +91,7 @@ onMounted(async () => {
 <template>
   <div class="liste-page">
     <div class="header-bar">
-      <h2>🧾 Liste de la F-Pack : <span class="fpack-name">{{ fpackName }}</span></h2>
+      <h2>🧾 Liste du F-Pack : <span class="fpack-name">{{ fpackName }}</span></h2>
       <div class="header-actions">
         <button class="btn-secondary" @click="toggleAll"> {{ allExpanded ? 'Tout replier' : 'Tout déplier' }} </button>
         <button class="btn-retour" @click="router.push({ name: 'ConfigureFPack', params: { tableName: 'fpacks', id: fpackId } })">

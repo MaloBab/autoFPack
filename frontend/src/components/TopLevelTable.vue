@@ -94,6 +94,13 @@ const valueLabels = computed(() => {
   return map
 })
 
+const orderedColumns = computed(() => {
+  if (!columns.value) return []
+  const cols = columns.value.filter(col => col.toLowerCase() !== 'id' && col.toLowerCase() !== 'reference')
+  if (columns.value.some(col => col.toLowerCase() === 'reference')) {cols.unshift('reference')}
+  return cols
+})
+
 
 const sortOrders = reactive<Record<string, 'asc' | 'desc' | null>>({})
 
@@ -145,7 +152,7 @@ function remplirProjet(row: any) {
     <table class="table-head">
       <thead>
         <tr>
-          <th v-for="col in columns" :key="col">
+          <th v-for="col in orderedColumns" :key="col">
             <div style="display: flex; align-items: center; gap: 0.3rem;">
               <span>{{ col }}</span>
               <Filters
@@ -166,7 +173,7 @@ function remplirProjet(row: any) {
       <table>
         <tbody>
           <tr v-if="ajouter">
-            <td v-for="col in columns" :key="col">
+            <td v-for="col in orderedColumns" :key="col">
               <template v-if="col === 'client' && (props.tableName === 'fpacks' || props.tableName === 'projets')">
                 <select v-model="newRow.client_nom">
                   <option v-for="c in clients" :key="c.id" :value="c.nom">{{ c.nom }}</option>
@@ -190,7 +197,7 @@ function remplirProjet(row: any) {
             </td>
           </tr>
           <tr v-for="row in filteredAndSortedRows" :key="row.id">
-            <td v-for="col in columns" :key="col">
+            <td v-for="col in orderedColumns" :key="col">
 
               <template v-if="editingId === row.id && col === 'client' && (props.tableName === 'fpacks' || props.tableName === 'projets')">
                 <select v-model="editRow.client_nom" @keyup.enter="validateEdit(row.id)">

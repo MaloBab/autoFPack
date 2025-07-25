@@ -23,6 +23,7 @@ class Produit(Base):
     __tablename__ = "FPM_produits"
     __table_args__ = {'schema': 'dbo'}
     id = Column(Integer, primary_key=True, index=True)
+    reference = Column(String(60), nullable=False)
     nom = Column(String(255), nullable=False)
     description = Column(String(255), nullable=True)
     fournisseur_id = Column(Integer, ForeignKey("dbo.FPM_fournisseurs.id", ondelete="CASCADE"), nullable=False)
@@ -58,7 +59,10 @@ class Equipements(Base):
     __tablename__ = "FPM_equipements"
     __table_args__ = {'schema': 'dbo'}
     id = Column(Integer, primary_key=True, index=True)
+    reference = Column(String(60), nullable=False)
     nom = Column(String(255), nullable=False)
+    
+    
     equipement_produit = relationship("Equipement_Produit", back_populates="equipements", cascade="all, delete-orphan", passive_deletes=True)
 
 
@@ -99,6 +103,7 @@ class GroupeItem(Base):
     group_id = Column(Integer, ForeignKey("dbo.FPM_groupes.id", ondelete="CASCADE"), nullable=False)
     type = Column(String(50), nullable=False)  # 'produit' | 'equipement' | 'robot'
     ref_id = Column(Integer, nullable=False)
+    statut = Column(String(20), nullable=False, server_default='optionnel')
 
     groupe = relationship("Groupes", back_populates="items", passive_deletes=True)
 
