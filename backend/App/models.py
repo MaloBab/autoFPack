@@ -54,6 +54,18 @@ class Robots(Base):
     payload = Column(Integer, nullable=False)
     range = Column(Integer, nullable=False)
     client_rel = relationship("Client", back_populates="robots", passive_deletes=True)
+    prix = relationship("PrixRobot", uselist=False, back_populates="robot")
+    
+class PrixRobot(Base):
+    __table_args__ = {'schema': 'dbo'}
+    __tablename__ = "FPM_prix_robot"
+
+    robot_id = Column(Integer, ForeignKey("dbo.FPM_robots.id"), primary_key=True)
+    prix_robot = Column(Numeric(10, 2), nullable=False)
+    prix_transport = Column(Numeric(10, 2), nullable=False)
+    commentaire = Column(String(255))
+
+    robot = relationship("Robots", back_populates="prix")
 
 class Equipements(Base):
     __tablename__ = "FPM_equipements"

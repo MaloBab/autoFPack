@@ -19,7 +19,7 @@ const filters = ref<Record<string, Set<any>>>({})
 
 const {
   columns, rows, newRow, editingId, editRow, fournisseurs, clients,fpacks,
-  validateAdd, cancelAdd, startEdit, validateEdit, cancelEdit, deleteRow, duplicateRow, ExportRow, ExportAll, isExporting
+  validateAdd, cancelAdd, startEdit, validateEdit, cancelEdit, deleteRow, duplicateRow, ExportRow
 } = useTableReader(props, emit, filters)
 
 const columnValues = computed(() => {
@@ -144,10 +144,6 @@ function remplirProjet(row: any) {
 </script>
 
 <template>
-  <button v-if="props.tableName === 'fpacks'" @click="ExportAll" :disabled="isExporting" class="ExportAll">
-    Tout exporter
-    <span v-if="isExporting" class="loader"></span>
-  </button>
   <div class="table-container">
     <table class="table-head">
       <thead>
@@ -412,18 +408,6 @@ input:focus, select:focus {
 .ExportAll:active {
   background-color: #3e8e41;
   transform: scale(0.98);
-}
-
-.loader {
-  border: 3px solid #f3f3f3;
-  border-top: 3px solid #09d871;
-  border-radius: 50%;
-  width: 14px;
-  height: 14px;
-  animation: spin 1s linear infinite;
-  display: inline-block;
-  margin-left: 8px;
-  vertical-align: middle;
 }
 
 @keyframes spin {

@@ -66,3 +66,41 @@ def delete_robot_produit_incompatibilite(incomp: schemas.RobotProduitIncompatibi
     ).delete()
     db.commit()
     return {"ok": True}
+
+
+@router.get("/prix_robot", response_model=list[schemas.PrixRobotOut])
+def get_all_prices(db: Session = Depends(get_db)):
+    return db.query(models.PrixRobot).all()
+
+
+@router.post("/prix_robot", response_model=schemas.PrixRobotOut)
+def create_price(data: schemas.PrixRobotCreate, db: Session = Depends(get_db)):
+    if db.query(models.PrixRobot).filter(models.PrixRobot.robot_id == data.robot_id).first():
+        raise HTTPException(status_code=400, detail="Ce robot a déjà un prix défini")
+    prix = models.PrixRobot(**data.dict())
+    db.add(prix)
+    db.commit()
+    db.refresh(prix)
+    return prix
+
+# PUT
+@router.put("/prix_robot/{robot_id}", response_model=schemas.PrixRobotOut)
+def update_price(robot_id: int, data: schemas.PrixRobotUpdate, db: Session = Depends(get_db)):
+    prix = db.query(models.PrixRobot).filter(models.PrixRobot.robot_id == robot_id).first()
+    if not prix:
+        raise HTTPException(status_code=404, detail="Prix non trouvé")
+    for key, value in data.dict().items():
+        setattr(prix, key, value)
+    db.commit()
+    db.refresh(prix)
+    return prix
+
+
+@router.delete("/prix_robot/{robot_id}")
+def delete_price(robot_id: int, db: Session = Depends(get_db)):
+    prix = db.query(models.PrixRobot).filter(models.PrixRobot.robot_id == robot_id).first()
+    if not prix:
+        raise HTTPException(status_code=404, detail="Prix non trouvé")
+    db.delete(prix)
+    db.commit()
+    return {"message": "Prix supprimé avec succès"}

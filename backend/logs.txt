@@ -1,0 +1,27 @@
+Using SQL Server, table name: produits
+Header: ['reference', 'nom', 'description', 'fournisseur_id', 'type']
+Expected columns: ['nom', 'description', 'fournisseur_id', 'type', 'reference']
+Row data: {'reference': 'C-125HFR3', 'nom': 'Cable Test Import', 'description': '15m length', 'fournisseur_id': 'Murr', 'type': 'Hardware'}
+Row data: {'reference': 'M-20FR2', 'nom': 'Module Test Import', 'description': 'Module to control', 'fournisseur_id': 'Bizlink', 'type': 'Hardware'}
+Using SQL Server, table name: produits
+Header: ['reference', 'nom', 'description', 'fournisseur_id', 'type']
+Expected columns: ['nom', 'description', 'fournisseur_id', 'type', 'reference']
+Row data: {'reference': 'C-125HFR3', 'nom': 'Cable Test Import', 'description': '15m length', 'fournisseur_id': 'Murr', 'type': 'Hardware'}
+Row data: {'reference': 'M-20FR2', 'nom': 'Module Test Import', 'description': 'Module to control', 'fournisseur_id': 'Bizlink', 'type': 'Hardware'}
+Using SQL Server, table name: produits
+Header: ['reference', 'nom', 'description', 'fournisseur_id', 'type']
+Expected columns: ['nom', 'description', 'fournisseur_id', 'type', 'reference']
+Row data: {'reference': 'reference test', 'nom': 'Robot Arm LR Mate 200iD', 'description': 'high speed and precision robot arm', 'fournisseur_id': 'FANUC', 'type': 'Hardware'}
+Row data: {'reference': None, 'nom': 'Robot Arm M-20iA', 'description': 'High speed and precision robot arm', 'fournisseur_id': 'Mitsubishi Electric', 'type': 'Hardware'}
+Row data: {'reference': None, 'nom': 'Servo Drive Alpha', 'description': 'High performance servo drive', 'fournisseur_id': 'Yaskawa Electric', 'type': 'Hardware'}
+Using SQL Server, table name: produits
+Header: ['reference', 'nom', 'description', 'fournisseur_id', 'type']
+Expected columns: ['nom', 'description', 'fournisseur_id', 'type', 'reference']
+Row data: {'reference': 'C-125HFR3', 'nom': 'Cable Test Import', 'description': '15m length', 'fournisseur_id': 'KYOKUTOH', 'type': 'Hardware'}
+Row data: {'reference': 'M-20FR2', 'nom': 'Module Test Import', 'description': 'Module to control', 'fournisseur_id': 'Bizlink', 'type': 'Hardware'}
+Clients: ['Toyota Manufacturing', 'Bosch Robotics', 'Siemens Automation', 'General Electric', 'VOLVO']
+Using SQL Server, table name: robots
+Header: ['nom', 'generation', 'client', 'payload', 'range']
+Expected columns: ['nom', 'generation', 'client', 'payload', 'range']
+Row data: {'nom': 'Fanuc R-50', 'generation': 'iA', 'client': 'Siemens Automation', 'payload': 50, 'range': 10}
+Row data: {'nom': 'Fanuc R-50', 'generation': 'iB', 'client': 'Siemens Automation', 'payload': 50, 'range': 15}

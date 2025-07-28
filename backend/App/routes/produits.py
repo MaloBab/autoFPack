@@ -2,9 +2,6 @@ from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session 
 from App.database import SessionLocal
 from App import models, schemas
-from reportlab.lib.pagesizes import A4
-from reportlab.lib import colors
-from reportlab.lib.styles import getSampleStyleSheet
 
 router = APIRouter()
 

@@ -76,6 +76,25 @@ class RobotRead(RobotBase):
 
     class Config:
         from_attributes = True
+        
+        
+
+class PrixRobotBase(BaseModel):
+    prix_robot: float
+    prix_transport: float
+    commentaire: Optional[str] = None
+
+class PrixRobotCreate(PrixRobotBase):
+    robot_id: int
+
+class PrixRobotUpdate(PrixRobotBase):
+    pass
+
+class PrixRobotOut(PrixRobotBase):
+    robot_id: int
+
+    class Config:
+        orm_mode = True
 
 class EquipementBase(BaseModel):
     reference: str
