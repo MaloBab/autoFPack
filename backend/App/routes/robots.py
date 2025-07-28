@@ -74,19 +74,24 @@ def get_all_prices(db: Session = Depends(get_db)):
 
 
 @router.post("/prix_robot", response_model=schemas.PrixRobotOut)
-def create_price(data: schemas.PrixRobotCreate, db: Session = Depends(get_db)):
-    if db.query(models.PrixRobot).filter(models.PrixRobot.robot_id == data.robot_id).first():
-        raise HTTPException(status_code=400, detail="Ce robot a déjà un prix défini")
-    prix = models.PrixRobot(**data.dict())
-    db.add(prix)
+def create_prix(prixRobot: schemas.PrixRobotCreate, db: Session = Depends(get_db)):
+    existing = db.query(models.PrixRobot).filter(
+        models.PrixRobot.id == prixRobot.id,
+    ).first()
+    if existing:
+        raise HTTPException(status_code=400, detail="Prix déjà défini pour ce produit et client")
+
+    db_prix = models.PrixRobot(**prixRobot.dict())
+    db.add(db_prix)
     db.commit()
-    db.refresh(prix)
-    return prix
+    db.refresh(db_prix)
+    return db_prix
+
 
 # PUT
-@router.put("/prix_robot/{robot_id}", response_model=schemas.PrixRobotOut)
-def update_price(robot_id: int, data: schemas.PrixRobotUpdate, db: Session = Depends(get_db)):
-    prix = db.query(models.PrixRobot).filter(models.PrixRobot.robot_id == robot_id).first()
+@router.put("/prix_robot/{id}", response_model=schemas.PrixRobotOut)
+def update_price(id: int, data: schemas.PrixRobotUpdate, db: Session = Depends(get_db)):
+    prix = db.query(models.PrixRobot).filter(models.PrixRobot.id == id).first()
     if not prix:
         raise HTTPException(status_code=404, detail="Prix non trouvé")
     for key, value in data.dict().items():
@@ -96,9 +101,9 @@ def update_price(robot_id: int, data: schemas.PrixRobotUpdate, db: Session = Dep
     return prix
 
 
-@router.delete("/prix_robot/{robot_id}")
-def delete_price(robot_id: int, db: Session = Depends(get_db)):
-    prix = db.query(models.PrixRobot).filter(models.PrixRobot.robot_id == robot_id).first()
+@router.delete("/prix_robot/{id}")
+def delete_price(id: int, db: Session = Depends(get_db)):
+    prix = db.query(models.PrixRobot).filter(models.PrixRobot.id == id).first()
     if not prix:
         raise HTTPException(status_code=404, detail="Prix non trouvé")
     db.delete(prix)

@@ -3,7 +3,7 @@ import { ref, watch, nextTick, defineProps, defineEmits } from 'vue'
 
 const props = defineProps({
   modelValue: {
-    type: String,
+    type: [String, Number],
     required: false, 
     default: ''           
   },
@@ -15,13 +15,19 @@ const props = defineProps({
 
 const emit = defineEmits(['update:modelValue'])
 
-const inputValue = ref(props.modelValue)
+const inputValue = ref(String(props.modelValue ?? ''))
 const inputRef = ref<HTMLInputElement | null>(null)
 const isUserTyping = ref(true) 
 const lastKey = ref<string>('')
 
 
 function completeInput(userInput: string) {
+    if (typeof props.modelValue === 'number') {
+      inputValue.value = userInput
+      emit('update:modelValue', userInput)
+      return
+  }
+
   const match = props.suggestions.find(s => typeof s === 'string' && 
     s.toLowerCase().startsWith(userInput.toLowerCase()) &&
     s.length > userInput.length
@@ -88,7 +94,7 @@ function onInput(e: Event) {
 
 watch(() => props.modelValue, (val) => {
   if (!isUserTyping.value) {
-    inputValue.value = val
+    inputValue.value = String(val)
   }
 })
 </script>

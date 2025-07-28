@@ -80,18 +80,19 @@ class RobotRead(RobotBase):
         
 
 class PrixRobotBase(BaseModel):
+    id: int
     prix_robot: float
     prix_transport: float
     commentaire: Optional[str] = None
 
 class PrixRobotCreate(PrixRobotBase):
-    robot_id: int
+    id: int
 
 class PrixRobotUpdate(PrixRobotBase):
     pass
 
 class PrixRobotOut(PrixRobotBase):
-    robot_id: int
+    id: int
 
     class Config:
         orm_mode = True

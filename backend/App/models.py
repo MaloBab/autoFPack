@@ -60,7 +60,7 @@ class PrixRobot(Base):
     __table_args__ = {'schema': 'dbo'}
     __tablename__ = "FPM_prix_robot"
 
-    robot_id = Column(Integer, ForeignKey("dbo.FPM_robots.id"), primary_key=True)
+    id = Column(Integer, ForeignKey("dbo.FPM_robots.id"), primary_key=True)
     prix_robot = Column(Numeric(10, 2), nullable=False)
     prix_transport = Column(Numeric(10, 2), nullable=False)
     commentaire = Column(String(255))

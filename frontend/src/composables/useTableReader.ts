@@ -27,6 +27,7 @@ export function useTableReader(
   const clients = ref<{ id: number, nom: string }[]>([])
   const produits = ref<{ id: number, nom: string }[]>([])
   const fpacks = ref<{ id: number, nom: string }[]>([])
+  const robots = ref<{ id: number, nom: string }[]>([])
 
   const isAdding = ref(false)
   const isDeleting = ref(false)
@@ -55,6 +56,7 @@ export function useTableReader(
       fetchDataList('fournisseurs', fournisseurs),
       fetchDataList('clients', clients),
       fetchDataList('produits', produits),
+      fetchDataList('robots', robots),
       fetchDataList('fpacks', fpacks)
     ])
   }
@@ -85,6 +87,10 @@ export function useTableReader(
       mapNomToId(data, clients.value, 'client', 'client_id')
     }
     if (t === 'projets') mapNomToId(data, fpacks.value, 'fpack')
+    if (t === 'prix_robot') {
+      mapNomToId(data, robots.value, 'robot', 'id')
+    }
+
   }
 
   async function ExportRow(row: any) {
@@ -142,10 +148,24 @@ export function useTableReader(
     if (isAdding.value) return
     isAdding.value = true
     try {
+      if (props.tableName === 'prix_robot') {
+        const matched = robots.value.find(r => r.nom === newRow.value.robot_nom)
+        if (matched) {
+          newRow.value.id = matched.id
+        } else {
+          showToast('Robot inconnu', 'error')
+          return
+        }
+      }
+
       const dataToSend = { ...newRow.value }
+      console.log("validateAdd", dataToSend)
 
       enrichDataWithForeignKeys(dataToSend)
-      delete dataToSend.id
+      if (props.tableName != 'prix_robot') {
+        delete dataToSend.id
+      }
+      
 
       const missing = validateRequiredFields(dataToSend, ["commentaire"])
       if (missing.length > 0) {
@@ -174,6 +194,7 @@ export function useTableReader(
   }
 
   function startEdit(rowId: number) {
+    console.log("startEdit", rowId)
     const row = rows.value.find(r => r.id === rowId)
     if (!row) return
 
@@ -192,6 +213,10 @@ export function useTableReader(
       const fpack = fpacks.value.find(f => f.id === row.fpack_id)
       editRow.value.fpack_nom = fpack?.nom || ''
     }
+    if (props.tableName === 'prix_robot') {
+      const robot = robots.value.find(r => r.id === row.id)
+      editRow.value.robot_nom = robot?.nom || ''
+    }
   }
 
   function startEditPrix(rowKey: { produit_id: number; client_id: number }) {
@@ -209,6 +234,7 @@ export function useTableReader(
 
     const client = clients.value.find(c => c.id === row.client_id)
     editRow.value.client_nom = client?.nom || ''
+
   }
 
   async function validateEdit(rowId: number | { produit_id: number; client_id: number }) {
@@ -276,7 +302,7 @@ export function useTableReader(
 
   return {
     columns, rows, newRow, editingId, editRow,
-    fournisseurs, clients, produits, fpacks,
+    fournisseurs, clients, produits, fpacks, robots,
     validateAdd, cancelAdd,
     startEdit, validateEdit, cancelEdit,
     deleteRow, startEditPrix, duplicateRow,

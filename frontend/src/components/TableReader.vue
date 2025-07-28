@@ -18,14 +18,14 @@ const emit = defineEmits(['added', 'cancelled'])
 const filters = ref<Record<string, Set<any>>>({})
 const {
   columns, rows, newRow, editingId, editRow,
-  fournisseurs, clients, produits,
+  fournisseurs, clients, produits, robots,
   validateAdd, cancelAdd, startEdit, duplicateRow,
   validateEdit, cancelEdit, deleteRow, startEditPrix
 } = useTableReader(props, emit, filters)
 
 const orderedColumns = computed(() => {
   if (!columns.value) return []
-  const cols = columns.value.filter(col => col.toLowerCase() !== 'id' && col.toLowerCase() !== 'reference')
+  const cols = columns.value.filter(col => (col.toLowerCase() !== 'id' || props.tableName==='prix_robot') && col.toLowerCase() !== 'reference')
   if (columns.value.some(col => col.toLowerCase() === 'reference')) {cols.unshift('reference')}
   return cols
 })
@@ -42,6 +42,9 @@ const nameMapping = computed(() => {
   if (props.tableName === 'prix') {
     map['produit_id'] = Object.fromEntries(produits.value.map(p => [p.id, p.nom]))
     map['client_id'] = Object.fromEntries(clients.value.map(c => [c.id, c.nom]))
+  }
+    if (props.tableName === 'prix_robot') {
+    map['id'] = Object.fromEntries(robots.value.map(r => [r.id, r.nom]))
   }
 
   return map
@@ -144,7 +147,7 @@ watch(() => props.ajouter, (val) => {
                 <template v-if="col === 'fournisseur_id' && props.tableName === 'produits'">fournisseur</template>
                 <template v-else-if="col === 'client_id' && props.tableName === 'prix'">client</template>
                 <template v-else-if="col === 'produit_id' && props.tableName === 'prix'">produit</template>
-                <template v-else-if="col === 'robot_id' && props.tableName === 'prix_robot'">produit</template>
+                <template v-else-if="col === 'id' && props.tableName === 'prix_robot'">robot</template>
                 <template v-else>{{ col }}</template>
               </span>
               <Filters
@@ -191,9 +194,9 @@ watch(() => props.ajouter, (val) => {
                 </select>
               </template>
 
-              <template v-else-if="col === 'robot_id' && props.tableName === 'prix_robot'">
-                <select v-model="newRow.client_nom">
-                  <option v-for="c in clients" :key="c.id" :value="c.nom">{{ c.nom }}</option>
+              <template v-else-if="col === 'id' && props.tableName === 'prix_robot'">
+                <select v-model="newRow.robot_nom">
+                  <option v-for="r in robots" :key="r.id" :value="r.nom">{{r.nom}}</option>
                 </select>
               </template>
 
@@ -219,6 +222,12 @@ watch(() => props.ajouter, (val) => {
                 </select>
               </template>
 
+              <template v-else-if="editingId === row.id && col === 'id' && props.tableName === 'prix_robot'">
+                <select v-model="editRow.robot_nom" @keyup.enter="validateEdit(row.id)">
+                  <option v-for="r in robots" :key="r.id" :value="r.nom">{{ r.nom }}</option>
+                </select>
+              </template>
+
               <template v-else-if="editingId === Number(`${row.produit_id}${row.client_id}`) && col === 'client_id' && props.tableName === 'prix'">
                 <select v-model="editRow.client_nom" @keyup.enter="validateEdit({ produit_id: row.produit_id, client_id: row.client_id })">
                   <option v-for="c in clients" :key="c.id" :value="c.nom">{{ c.nom }}</option>
@@ -234,7 +243,6 @@ watch(() => props.ajouter, (val) => {
 
               <template v-else-if="editingId === Number(`${row.produit_id}${row.client_id}`) && props.tableName === 'prix' && col !== 'produit_id' && col !== 'client_id'">
                 <AutoComplete v-model="editRow[col]" @keyup.enter="validateEdit({ produit_id: row.produit_id, client_id: row.client_id })" :suggestions="[...columnValues[col] || []]" />
-  
               </template>
 
               <template v-else-if="editingId === row.id && col !== 'id'">
@@ -252,6 +260,11 @@ watch(() => props.ajouter, (val) => {
               <template v-else-if="col === 'client_id' && props.tableName === 'prix'">
                 {{ clients.find(c => c.id === row.client_id)?.nom || row.client_id }}
               </template>
+
+              <template v-else-if="col === 'id' && props.tableName === 'prix_robot'">
+                {{ robots.find(r => r.id === row.id)?.nom || row.id }}
+              </template>
+
               <template v-else>
                 {{ row[col] }}
               </template>
