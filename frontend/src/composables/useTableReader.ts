@@ -27,7 +27,7 @@ export function useTableReader(
   const clients = ref<{ id: number, nom: string }[]>([])
   const produits = ref<{ id: number, nom: string }[]>([])
   const fpacks = ref<{ id: number, nom: string }[]>([])
-  const robots = ref<{ id: number, nom: string }[]>([])
+  const robots = ref<{ id: number, nom: string, reference: string }[]>([])
 
   const isAdding = ref(false)
   const isDeleting = ref(false)
@@ -87,7 +87,13 @@ export function useTableReader(
       mapNomToId(data, clients.value, 'client', 'client_id')
     }
     if (t === 'projets') mapNomToId(data, fpacks.value, 'fpack')
-    if (t === 'prix_robot') {mapNomToId(data, robots.value, 'robot', 'id')}
+    if (t === 'prix_robot') {
+      const robot = robots.value.find(r => r.nom === data.robot_nom)
+      data.id = robot?.id
+      data.reference = robot?.reference || ''
+      delete data.robot_nom
+      delete data.robot_reference
+    }
   }
 
   async function ExportRow(row: any) {
@@ -116,6 +122,10 @@ export function useTableReader(
   function startAddRow() {
     newRow.value = {}
     columns.value.forEach(col => {
+      if (props.tableName === 'prix_robot') {
+        newRow.value.robot_nom = robots.value[0]?.nom || ''
+        newRow.value.robot_reference = robots.value[0]?.reference || ''
+      }
       if (col === 'fournisseur_id') {
         newRow.value['fournisseur_nom'] = fournisseurs.value[0]?.nom || ''
       } else if (col === 'client') {
@@ -167,6 +177,7 @@ export function useTableReader(
       const missing = validateRequiredFields(dataToSend, ["commentaire", "description", "type"])
       if (missing.length > 0) {
         isAdding.value = false
+        console.error("Champs manquants :", missing)
         showToast("Tous les champs de la ligne n'ont pas été remplis.", "#ef9144")
         return
       }
@@ -212,6 +223,13 @@ export function useTableReader(
       const robot = robots.value.find(r => r.id === row.id)
       editRow.value.robot_nom = robot?.nom || ''
     }
+
+    if (props.tableName === 'prix_robot') {
+      const robot = robots.value.find(r => r.id === row.id)
+      editRow.value.robot_nom = robot?.nom || ''
+      editRow.value.robot_reference = robot?.reference || ''
+    }
+
   }
 
   function startEditPrix(rowKey: { produit_id: number; client_id: number }) {
@@ -248,6 +266,7 @@ export function useTableReader(
 
       const missing = validateRequiredFields(dataToSend, ["commentaire", "description", "type"])
       if (missing.length > 0) {
+        console.error("Champs manquants :", missing)
         showToast("Tous les champs de la ligne n'ont pas été remplis.", "#ef9144")
         isDuplicating.value = false
         return

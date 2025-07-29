@@ -131,8 +131,28 @@ async function onDuplicate(row: any) {
 watch(() => props.ajouter, (val) => {
   if (val && scrollContainer.value) {
     scrollContainer.value.scrollTop = 0
-  }
-})
+  }})
+
+  watch(() => newRow.value.robot_nom, (nom) => {
+  const r = robots.value.find(r => r.nom === nom)
+  if (r) newRow.value.robot_reference = r.reference
+  })
+
+watch(() => newRow.value.robot_reference, (ref) => {
+  const r = robots.value.find(r => r.reference === ref)
+  if (r) newRow.value.robot_nom = r.nom
+  })
+
+watch(() => editRow.value.robot_nom, (nom) => {
+  const r = robots.value.find(r => r.nom === nom)
+  if (r) editRow.value.robot_reference = r.reference
+  })
+
+watch(() => editRow.value.robot_reference, (ref) => {
+  const r = robots.value.find(r => r.reference === ref)
+  if (r) editRow.value.robot_nom = r.nom
+  })
+
 </script>
 
 
@@ -194,6 +214,12 @@ watch(() => props.ajouter, (val) => {
                 </select>
               </template>
 
+              <template v-else-if="col === 'reference' && props.tableName === 'prix_robot'">
+                <select v-model="newRow.robot_reference">
+                  <option v-for="r in robots" :key="r.id" :value="r.reference">{{ r.reference }}</option>
+                </select>
+              </template>
+
               <template v-else-if="col === 'id' && props.tableName === 'prix_robot'">
                 <select v-model="newRow.robot_nom">
                   <option v-for="r in robots" :key="r.id" :value="r.nom">{{r.nom}}</option>
@@ -219,6 +245,12 @@ watch(() => props.ajouter, (val) => {
               <template v-else-if="editingId === row.id && col === 'client' && props.tableName === 'robots'">
                 <select v-model="editRow.client_nom" @keyup.enter="validateEdit(row.id)">
                   <option v-for="c in clients" :key="c.id" :value="c.nom">{{ c.nom }}</option>
+                </select>
+              </template>
+              
+              <template v-else-if="editingId === row.id && col === 'reference' && props.tableName === 'prix_robot'">
+                <select v-model="editRow.robot_reference">
+                  <option v-for="r in robots" :key="r.id" :value="r.reference">{{ r.reference }}</option>
                 </select>
               </template>
 
