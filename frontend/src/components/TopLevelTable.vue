@@ -3,6 +3,7 @@ import { computed, defineEmits, defineProps, reactive, ref, watch } from 'vue'
 import { useTableReader } from '../composables/useTableReader'
 import Filters from './Filters.vue'
 import { useRouter } from 'vue-router'
+import AutoComplete from '../components/AutoCompleteInput.vue'
 
 const scrollContainer = ref<HTMLElement | null>(null)
 
@@ -183,7 +184,7 @@ function remplirProjet(row: any) {
               </template>
 
                 <template v-else-if="col !== 'id'">
-                <input v-model="newRow[col]" @keyup.enter="validateAdd" />
+                <AutoComplete v-model="newRow[col]" @keyup.enter="validateAdd" :suggestions="[...columnValues[col] || []]" />
               </template>
 
             </td>
@@ -208,7 +209,7 @@ function remplirProjet(row: any) {
               </template>
 
               <template v-else-if="editingId === row.id && col !== 'id'">
-                <input v-model="editRow[col]" @keyup.enter="validateEdit(row.id)" />
+                <AutoComplete v-model="editRow[col]" @keyup.enter="validateEdit(row.id)" :suggestions="[...columnValues[col] || []]" />
               </template>
               <template v-else-if="col === 'client' && (props.tableName === 'fpacks' || props.tableName === 'projets')">
                 {{ clients.find(c => c.id === row.client)?.nom || row.client }}

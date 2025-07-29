@@ -29,7 +29,7 @@ def get_db():
         db.close()
 
 
-def validate_and_parse_excel(file: UploadFile, table_name: str, db):
+def validate_and_parse_excel(file: UploadFile, table_name: str, db, required_fields: list[str] = []):
     content = file.file.read()
     wb = openpyxl.load_workbook(filename=BytesIO(content), data_only=True)
     ws = wb.active
@@ -37,28 +37,19 @@ def validate_and_parse_excel(file: UploadFile, table_name: str, db):
     inspector = inspect(db.bind)
     use_sql_server = os.getenv("USE_SQL_SERVER", "false").lower() == "true"
 
-    if use_sql_server:
-        
-        with open('logs.txt', 'a') as log_file:
-            log_file.write(f"Using SQL Server, table name: {table_name}\n")
-        
-        table_mapping = {
-            "clients": "FPM_clients",
-            "produits": "FPM_produits",
-            "equipements": "FPM_equipements",
-            "robots": "FPM_robots",
-            "fournisseurs": "FPM_fournisseurs",
-            "fpacks": "FPM_fpacks",
-            "prix": "FPM_prix",
-            "prix_robot": "FPM_prix_robot",
-            "projets": "FPM_projets",
-        }
-        
-        actual_name = table_mapping.get(table_name)
-        if not actual_name:
-            raise HTTPException(status_code=404, detail=f"Table inconnue : {table_name}")
-    else:
-        actual_name = table_name
+    table_mapping = {
+        "clients": "FPM_clients",
+        "produits": "FPM_produits",
+        "equipements": "FPM_equipements",
+        "robots": "FPM_robots",
+        "fournisseurs": "FPM_fournisseurs",
+        "fpacks": "FPM_fpacks",
+        "prix": "FPM_prix",
+        "prix_robot": "FPM_prix_robot",
+        "projets": "FPM_projets",
+    }
+    
+    actual_name = table_mapping.get(table_name, table_name)
 
     expected_columns = [col["name"].lower() for col in inspector.get_columns(actual_name)]
     if "id" in expected_columns:
@@ -69,32 +60,30 @@ def validate_and_parse_excel(file: UploadFile, table_name: str, db):
     if "fournisseur" in header:
         header[header.index("fournisseur")] = "fournisseur_id"
 
-    with open('logs.txt', 'a') as log_file:
-        log_file.write(f"Header: {header}\n")
-        log_file.write(f"Expected columns: {expected_columns}\n")
-    
-    if "id" in header:
-        idx_id = header.index("id")
+    idx_id = header.index("id") if "id" in header else None
+    if idx_id is not None:
         header.pop(idx_id)
-    else:
-        idx_id = None
 
     for col in header:
         if col not in expected_columns:
-            with open('logs.txt', 'a') as log_file:
-                log_file.write(f"Colonne inconnue dans Excel : {col}\n")
-            
             raise HTTPException(status_code=400, detail=f"Colonne inconnue dans Excel : {col}")
 
     data_rows = []
-    for row in ws.iter_rows(min_row=2, values_only=True):
+    for row_num, row in enumerate(ws.iter_rows(min_row=2, values_only=True), start=2):
         row = list(row)
         if idx_id is not None:
             row.pop(idx_id)
         entry = dict(zip(header, row))
+
+        # Vérification des champs obligatoires non vides
+        for field in required_fields:
+            if entry.get(field) in [None, ""]:
+                raise HTTPException(
+                    status_code=400,
+                    detail=f"Champ '{field}' vide à la ligne {row_num} dans le fichier Excel"
+                )
+
         data_rows.append(entry)
-        with open('logs.txt', 'a') as log_file:
-            log_file.write(f"Row data: {entry}\n")
 
     return data_rows
 
@@ -157,7 +146,7 @@ def export_produits_excel(db: Session = Depends(get_db)):
 @router.post("/produits/import/add")
 async def import_produits_add(file: UploadFile = File(...), db: Session = Depends(get_db)):
     
-    data_rows = validate_and_parse_excel(file, "produits", db)     
+    data_rows = validate_and_parse_excel(file, "produits", db, required_fields=["nom", "reference", "fournisseur_id"])  
     fournisseurs_non_trouves = set()
     for row in data_rows:
         fournisseur_nom = row.get('fournisseur_id')
@@ -201,7 +190,7 @@ def export_robots_excel(db: Session = Depends(get_db)):
     ws = wb.active
     ws.title = "Robots"
 
-    headers = ["Nom", "Generation", "Client", "Payload", "Range"]
+    headers = ["Reference", "Nom", "Generation", "Client", "Payload", "Range"]
     ws.append(headers)
 
 
@@ -216,6 +205,7 @@ def export_robots_excel(db: Session = Depends(get_db)):
         client = db.query(models.Client).filter(models.Client.id == r.client).first()
         client_nom = client.nom if client else ""
         ws.append([
+            r.reference or "",
             r.nom or "",
             r.generation or "",
             client_nom,
@@ -225,7 +215,7 @@ def export_robots_excel(db: Session = Depends(get_db)):
 
     dv = DataValidation(type="list", formula1=f'"{",".join(clients)}"', allow_blank=True)
     ws.add_data_validation(dv)
-    dv.add(f"C2:C{ws.max_row}")
+    dv.add(f"D2:D{ws.max_row}")
 
     from openpyxl.utils import get_column_letter
     for col_idx, col in enumerate(ws.columns, 1):
@@ -248,7 +238,7 @@ def export_robots_excel(db: Session = Depends(get_db)):
 @router.post("/robots/import/add")
 async def import_robots_add(file: UploadFile = File(...), db: Session = Depends(get_db)):
     
-    data_rows = validate_and_parse_excel(file, "robots", db)     
+    data_rows = validate_and_parse_excel(file, "robots", db, required_fields=["reference", "nom", "generation", "client", "payload", "range"])    
     clients_non_trouves = set()
     for row in data_rows:
         client_nom = row.get('client')

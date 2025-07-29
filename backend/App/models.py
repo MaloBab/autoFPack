@@ -73,9 +73,8 @@ class Equipements(Base):
     __tablename__ = "FPM_equipements"
     __table_args__ = {'schema': 'dbo'}
     id = Column(Integer, primary_key=True, index=True)
-    reference = Column(String(60), nullable=False)
+    reference = Column(String(255), nullable=False)
     nom = Column(String(255), nullable=False)
-    
     
     equipement_produit = relationship("Equipement_Produit", back_populates="equipements", cascade="all, delete-orphan", passive_deletes=True)
 

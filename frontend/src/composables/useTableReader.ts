@@ -155,14 +155,16 @@ export function useTableReader(
         }
       }
       const dataToSend = { ...newRow.value }
+      console.log("Data to send:", dataToSend)
 
       enrichDataWithForeignKeys(dataToSend)
+      console.log("Enriched data:", dataToSend)
       if (props.tableName != 'prix_robot') {
         delete dataToSend.id
       }
       
 
-      const missing = validateRequiredFields(dataToSend, ["commentaire"])
+      const missing = validateRequiredFields(dataToSend, ["commentaire", "description", "type"])
       if (missing.length > 0) {
         isAdding.value = false
         showToast("Tous les champs de la ligne n'ont pas été remplis.", "#ef9144")
@@ -244,7 +246,7 @@ export function useTableReader(
         url = `${baseUrl}/${props.tableName}/${id}`
       }
 
-      const missing = validateRequiredFields(dataToSend, ["commentaire"])
+      const missing = validateRequiredFields(dataToSend, ["commentaire", "description", "type"])
       if (missing.length > 0) {
         showToast("Tous les champs de la ligne n'ont pas été remplis.", "#ef9144")
         isDuplicating.value = false

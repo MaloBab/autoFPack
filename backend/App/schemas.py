@@ -101,10 +101,24 @@ class PrixRobotOut(PrixRobotBase):
 
 class EquipementBase(BaseModel):
     reference: str
+    reference: str
     nom: str
+
+class EquipementRead(BaseModel):
+    id: int
+    reference : str
+    nom: str
+    equipement_produit: list[EquipementProduitRead] = []
+
+    class Config:
+        from_attributes = True
 
 class EquipementCreate(EquipementBase):
     pass
+
+class EquipementUpdate(BaseModel):
+    reference: str
+    nom: str
 
 class EquipementProduitRead(BaseModel):
     produit_id: int
@@ -113,13 +127,6 @@ class EquipementProduitRead(BaseModel):
     class Config:
         from_attributes = True
 
-class EquipementRead(BaseModel):
-    id: int
-    nom: str
-    equipement_produit: list[EquipementProduitRead] = []
-
-    class Config:
-        from_attributes = True
 
 class EquipementProduitBase(BaseModel):
     equipement_id: int

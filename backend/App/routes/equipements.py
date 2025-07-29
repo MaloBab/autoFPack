@@ -29,12 +29,16 @@ def create_equipement(equipement: schemas.EquipementCreate, db: Session = Depend
     return db_equipement
 
 @router.put("/equipements/{id}", response_model=schemas.EquipementRead)
-def update_equipement(id: int, equipement: schemas.EquipementCreate, db: Session = Depends(get_db)):
+def update_equipement(id: int, equipement: schemas.EquipementUpdate, db: Session = Depends(get_db)):
     db_equipement = db.query(models.Equipements).get(id)
     if not db_equipement:
         raise HTTPException(status_code=404, detail="Equipement non trouvé")
-    for key, value in equipement.dict().items():
+
+    update_data = equipement.dict(exclude_unset=True)
+
+    for key, value in update_data.items():
         setattr(db_equipement, key, value)
+
     db.commit()
     db.refresh(db_equipement)
     return db_equipement
