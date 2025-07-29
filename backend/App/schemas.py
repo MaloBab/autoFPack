@@ -63,6 +63,7 @@ class ClientRead(ClientBase):
 
 class RobotBase(BaseModel):
     nom: str
+    reference: str
     generation: str
     client: int
     payload: int
@@ -81,6 +82,7 @@ class RobotRead(RobotBase):
 
 class PrixRobotBase(BaseModel):
     id: int
+    reference: str
     prix_robot: float
     prix_transport: float
     commentaire: Optional[str] = None
@@ -95,7 +97,7 @@ class PrixRobotOut(PrixRobotBase):
     id: int
 
     class Config:
-        orm_mode = True
+        from_attributes = True
 
 class EquipementBase(BaseModel):
     reference: str

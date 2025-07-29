@@ -48,6 +48,7 @@ class Robots(Base):
     __tablename__ = "FPM_robots"
     __table_args__ = {'schema': 'dbo'}
     id = Column(Integer, primary_key=True, index=True)
+    reference = Column(String(255), nullable=False)
     nom = Column(String(255), nullable=False)
     generation = Column(String(255), nullable=False)
     client = Column(Integer, ForeignKey("dbo.FPM_clients.id", ondelete="CASCADE"), nullable=False)
@@ -61,6 +62,7 @@ class PrixRobot(Base):
     __tablename__ = "FPM_prix_robot"
 
     id = Column(Integer, ForeignKey("dbo.FPM_robots.id"), primary_key=True)
+    reference = Column(String(255), nullable=False)
     prix_robot = Column(Numeric(10, 2), nullable=False)
     prix_transport = Column(Numeric(10, 2), nullable=False)
     commentaire = Column(String(255))

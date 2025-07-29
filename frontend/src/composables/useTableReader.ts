@@ -81,16 +81,13 @@ export function useTableReader(
   const enrichDataWithForeignKeys = (data: any) => {
     const t = props.tableName
     if (t === 'produits') mapNomToId(data, fournisseurs.value, 'fournisseur')
-    if (['robots', 'fpacks', 'projets'].includes(t)) mapNomToId(data, clients.value, 'client')
+    if (['robots', 'fpacks', 'projets'].includes(t)) mapNomToId(data, clients.value, 'client', 'client')
     if (t === 'prix') {
       mapNomToId(data, produits.value, 'produit')
       mapNomToId(data, clients.value, 'client', 'client_id')
     }
     if (t === 'projets') mapNomToId(data, fpacks.value, 'fpack')
-    if (t === 'prix_robot') {
-      mapNomToId(data, robots.value, 'robot', 'id')
-    }
-
+    if (t === 'prix_robot') {mapNomToId(data, robots.value, 'robot', 'id')}
   }
 
   async function ExportRow(row: any) {
@@ -157,9 +154,7 @@ export function useTableReader(
           return
         }
       }
-
       const dataToSend = { ...newRow.value }
-      console.log("validateAdd", dataToSend)
 
       enrichDataWithForeignKeys(dataToSend)
       if (props.tableName != 'prix_robot') {
@@ -177,7 +172,6 @@ export function useTableReader(
         dataToSend.client = dataToSend.client_id
         delete dataToSend.client_id
       }
-      console.log(`${baseUrl}/${props.tableName}`, dataToSend)
       await axios.post(`${baseUrl}/${props.tableName}`, dataToSend)
       
       await fetchData()
@@ -194,7 +188,6 @@ export function useTableReader(
   }
 
   function startEdit(rowId: number) {
-    console.log("startEdit", rowId)
     const row = rows.value.find(r => r.id === rowId)
     if (!row) return
 
@@ -241,7 +234,6 @@ export function useTableReader(
     try {
       const dataToSend = { ...editRow.value }
       enrichDataWithForeignKeys(dataToSend)
-
       let url = ''
 
       if (props.tableName === "prix") {

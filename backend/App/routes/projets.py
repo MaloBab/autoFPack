@@ -150,6 +150,10 @@ def get_projet_facture(id: int, db: Session = Depends(get_db)):
         .filter(models.Prix.client_id == client_id, models.Prix.produit_id.in_(all_produit_ids))\
         .all()
     prix_map = { (p.produit_id, p.client_id): p for p in prix_rows }
+    
+    prix_robot_rows = (db.query(models.PrixRobot).join(models.Robots, models.Robots.id == models.PrixRobot.id).filter(models.Robots.client == client_id,models.PrixRobot.id.in_(robot_counts.keys())).all()
+)
+    prix_robot_map = { (p.id, p.robot.client): p for p in prix_robot_rows }
 
     # 7. Charger noms produits
     produits_rows = db.query(models.Produit).filter(models.Produit.id.in_(all_produit_ids)).all()
@@ -180,23 +184,30 @@ def get_projet_facture(id: int, db: Session = Depends(get_db)):
             "commentaire": commentaire,
             "total_ligne": total_ligne
         })
-    """
     # 9. Ajouter les robots
-    robot_rows = db.query(models.Robot).filter(models.Robot.id.in_(robot_counts.keys())).all()
+    robot_rows = db.query(models.Robots).filter(models.Robots.id.in_(robot_counts.keys())).all()
     robot_nom_map = {r.id: r.nom for r in robot_rows}
 
     for rid in sorted(robot_counts.keys()):
         qte = robot_counts[rid]
+        pr = prix_robot_map.get((rid, client_id))
+        prix_rob = float(pr.prix_robot) if pr else 0.0
+        prix_tr = float(pr.prix_transport) if pr else 0.0
+        commentaire = pr.commentaire if pr else None
+
+        total_ligne = qte * (prix_rob + prix_tr)
+        total_produit += qte * prix_rob
+        total_transport += qte * prix_tr
+
         lines.append({
             "produit_id": rid,
             "nom": robot_nom_map.get(rid, f"Robot {rid}"),
             "qte": qte,
-            "prix_produit": 0.0,
-            "prix_transport": 0.0,
-            "commentaire": "Robot (non facturé -- temporaire)",
-            "total_ligne": 0.0
+            "prix_produit": prix_rob,
+            "prix_transport": prix_tr,
+            "commentaire": commentaire,
+            "total_ligne": total_ligne
         })
-    """
 
     return {
         "projet_id": id,

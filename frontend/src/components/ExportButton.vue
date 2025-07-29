@@ -49,6 +49,7 @@ function exportFile() {
 <style scoped>
 .ExportButton {
   margin-left: 2%;
+  margin-top: 0.5%;
   position: relative;
   overflow: hidden;
   background: linear-gradient(45deg, #28a745, #2ecc71);
