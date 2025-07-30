@@ -3,6 +3,7 @@ import { onMounted, ref } from 'vue'
 import axios from 'axios'
 import { useRoute, useRouter } from 'vue-router'
 import { useLoading } from '../composables/useLoading'
+import Draggable from 'vuedraggable'
 
 const { startLoading, stopLoading } = useLoading()
 
@@ -39,6 +40,20 @@ function formatTypeLabel(type: string) {
   if (type === 'equipement') return 'Équipement'
   if (type === 'group') return 'Groupe'
   return type
+}
+
+async function configView() {
+    await axios.delete(`http://localhost:8000/fpack_config_columns/clear/${fpackId}`)
+    for (let i = 0; i < columns.value.length; i++) {
+      const col = columns.value[i]
+      await axios.post(`http://localhost:8000/fpack_config_columns`, {
+        fpack_id: fpackId,
+        ordre: i,
+        type: col.type,
+        ref_id: col.ref_id
+    })
+  }
+  router.push({ name: 'ConfigureFPack', params: { id: fpackId }, query: { name: fpackName } })
 }
 
 onMounted(async () => {
@@ -94,7 +109,7 @@ onMounted(async () => {
       <h2>🧾 Liste du F-Pack : <span class="fpack-name">{{ fpackName }}</span></h2>
       <div class="header-actions">
         <button class="btn-secondary" @click="toggleAll"> {{ allExpanded ? 'Tout replier' : 'Tout déplier' }} </button>
-        <button class="btn-retour" @click="router.push({ name: 'ConfigureFPack', params: { tableName: 'fpacks', id: fpackId } })">
+        <button class="btn-retour" @click="configView">
            🛠️ Vue Configuration
         </button>
         </div>
@@ -102,56 +117,60 @@ onMounted(async () => {
 
     <div class="scroll-container">
       <ul class="liste-ul">
-        <li
-          v-for="(col, index) in columns"
-          :key="index"
-          class="liste-item"
-          :class="'type-' + col.type"
-        >
-          <div class="header-row" @click="toggleExpanded(index)">
-            <div class="icon">
-              <span v-if="col.type === 'produit'">📦</span>
-              <span v-else-if="col.type === 'equipement'">🔧</span>
-              <span v-else>👥</span>
-            </div>
+        <Draggable v-model="columns" item-key="ordre" handle=".drag-handle" animation="200">
+          <template #item="{ element: col, index }">
+            <li
+              class="liste-item"
+              :class="'type-' + col.type"
+            >
+              <div class="header-row" @click="toggleExpanded(index)">
+                <div class="icon drag-handle" style="cursor: grab;">
+                  <span v-if="col.type === 'produit'">📦</span>
+                  <span v-else-if="col.type === 'equipement'">🔧</span>
+                  <span v-else>👥</span>
+                </div>
 
-            <div class="content">
-              <div class="main-line">
-                <strong class="label">#{{ col.ordre +1 }} - {{ col.display_name }}</strong>
-                <span class="badge":class="'badge-' + col.type">{{ formatTypeLabel(col.type) }}</span>
+                <div class="content">
+                  <div class="main-line">
+                    <strong class="label">#{{ index + 1 }} - {{ col.display_name }}</strong>
+                    <span class="badge" :class="'badge-' + col.type">{{ formatTypeLabel(col.type) }}</span>
+                  </div>
+                  <div class="sub-text">
+                    Cliquez pour {{ expandedIndexes.has(index) ? 'replier' : 'déplier' }}
+                  </div>
+                </div>
               </div>
-              <div class="sub-text">
-                Cliquez pour {{ expandedIndexes.has(index) ? 'replier' : 'déplier' }}
-              </div>
-            </div>
-          </div>
 
-          <transition name="slide-fade">
-            <div v-show="expandedIndexes.has(index)" class="details">
-              <template v-if="col.type === 'produit'">
-                <p><strong>Fournisseur :</strong> {{ col.fournisseur_nom || 'Inconnu' }}</p>
-                <p><strong>Description :</strong> {{ col.description || '—' }}</p>
-                <p><strong>Type :</strong> {{ col.type_detail || '—' }}</p>
-              </template>
+              <transition name="slide-fade">
+                <div v-show="expandedIndexes.has(index)" class="details">
+                  <template v-if="col.type === 'produit'">
+                    <p><strong>Fournisseur :</strong> {{ col.fournisseur_nom || 'Inconnu' }}</p>
+                    <p><strong>Description :</strong> {{ col.description || '—' }}</p>
+                    <p><strong>Type :</strong> {{ col.type_detail || '—' }}</p>
+                  </template>
 
-              <template v-else-if="col.type === 'equipement'">
-                <p><strong>Nombre de produits liés :</strong> {{ col.produits_count }}</p>
-                <ul class="sub-list" v-if="col.produits && col.produits.length">
-                  <li v-for="p in col.produits" :key="p.id">• {{ p.nom }} <strong> x{{ col.content.find((prod: any) => prod.produit_id === p.id)?.quantite}}</strong></li>
-                </ul>
-              </template>
+                  <template v-else-if="col.type === 'equipement'">
+                    <p><strong>Nombre de produits liés :</strong> {{ col.produits_count }}</p>
+                    <ul class="sub-list" v-if="col.produits && col.produits.length">
+                      <li v-for="p in col.produits" :key="p.id">
+                        • {{ p.nom }} <strong>x{{ col.content.find((prod: any) => prod.produit_id === p.id)?.quantite }}</strong>
+                      </li>
+                    </ul>
+                  </template>
 
-              <template v-else-if="col.type === 'group'">
-                <p><strong>Contenu du groupe :</strong></p>
-                <ul class="sub-list">
-                  <li v-for="item in col.group_items" :key="item.ref_id">
-                    {{ item.label }} ({{ formatTypeLabel(item.type) }})
-                  </li>
-                </ul>
-              </template>
-            </div>
-          </transition>
-        </li>
+                  <template v-else-if="col.type === 'group'">
+                    <p><strong>Contenu du groupe :</strong></p>
+                    <ul class="sub-list">
+                      <li v-for="item in col.group_items" :key="item.ref_id">
+                        {{ item.label }} ({{ formatTypeLabel(item.type) }})
+                      </li>
+                    </ul>
+                  </template>
+                </div>
+              </transition>
+            </li>
+          </template>
+        </Draggable>
       </ul>
     </div>
   </div>
