@@ -136,7 +136,7 @@ class EquipementProduitBase(BaseModel):
 class EquipementProduitCreate(BaseModel):
     equipement_id: int
     produit_id: int
-    quantite: int = 1  # par défaut à 1 si non fourni
+    quantite: int = 1 
 
 class FPackBase(BaseModel):
     nom: str

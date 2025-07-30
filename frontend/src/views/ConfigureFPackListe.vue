@@ -53,7 +53,7 @@ async function configView() {
         ref_id: col.ref_id
     })
   }
-  router.push({ name: 'ConfigureFPack', params: { id: fpackId }, query: { name: fpackName } })
+  router.push({ name: 'ConfigureFPack', params: { tableName: 'fpacks', id: fpackId }, query: { name: fpackName } })
 }
 
 onMounted(async () => {
@@ -110,7 +110,7 @@ onMounted(async () => {
       <div class="header-actions">
         <button class="btn-secondary" @click="toggleAll"> {{ allExpanded ? 'Tout replier' : 'Tout déplier' }} </button>
         <button class="btn-retour" @click="configView">
-           🛠️ Vue Configuration
+           🛠️ Vue Configuration / Sauvegarder
         </button>
         </div>
     </div>

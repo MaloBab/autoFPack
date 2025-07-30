@@ -49,7 +49,6 @@ def update_projet(id: int, projet: schemas.ProjetCreate, db: Session = Depends(g
     if not db_projet:
         raise HTTPException(status_code=404, detail="Projet non trouvé")
 
-    # Met à jour les champs de base
     db_projet.nom = projet.nom
     db_projet.client = projet.client
     db_projet.fpack_id = projet.fpack_id
@@ -78,7 +77,7 @@ def save_projet_selections(
             projet_id=id,
             groupe_id=sel.get("groupe_id"),
             ref_id=sel.get("ref_id"),
-            type_item=sel.get("type_item", "produit")  # ou "equipement" ou "groupe" selon le contexte
+            type_item=sel.get("type_item", "produit")
         )
         db.add(selection)
     db.commit()
@@ -138,10 +137,10 @@ def get_projet_facture(id: int, db: Session = Depends(get_db)):
             if gi.type == "produit":
                 produit_counts[gi.ref_id] += 1
             elif gi.type == "equipement":
-                for pid, qte in eq_map.get(gi.ref_id, []):  # correction ici
+                for pid, qte in eq_map.get(gi.ref_id, []):
                     produit_counts[pid] += qte
             elif gi.type == "robot":
-                robot_counts[gi.ref_id] += 1  # à prix 0
+                robot_counts[gi.ref_id] += 1
 
     all_produit_ids = list(produit_counts.keys())
 

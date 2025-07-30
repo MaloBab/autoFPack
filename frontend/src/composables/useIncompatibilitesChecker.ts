@@ -164,7 +164,7 @@ function getProduitsFromEquipement(eqId: number): number[] {
 
     const level = GroupIncompatibilityLevel(col.group_items)
 
-    return level === col.group_items.length // PEUT ETRE A MODIFIER APRES TESTS
+    return level === col.group_items.length
   })
   }
 

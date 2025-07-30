@@ -16,7 +16,6 @@ const props = defineProps<{
 const emit = defineEmits(['add', 'close'])
 const search = ref('')
 
-// Calcul du nombre total de produits par équipement
 const enrichedEquipements = computed(() =>
   props.equipements.map(e => ({
     ...e,
@@ -24,7 +23,6 @@ const enrichedEquipements = computed(() =>
   }))
 )
 
-// Filtrage
 const equipementsFiltres = computed(() =>
   enrichedEquipements.value.filter(e =>
     e.nom.toLowerCase().includes(search.value.trim().toLowerCase()) ||

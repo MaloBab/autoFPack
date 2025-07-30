@@ -1,4 +1,3 @@
-// src/composables/useToast.ts
 import { ref } from 'vue'
 
 const visible = ref(false)
