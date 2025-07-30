@@ -6,6 +6,8 @@ import { useRouter } from 'vue-router'
 import { useIncompatibilitesChecker } from '../composables/useIncompatibilitesChecker'
 import { showToast } from '../composables/useToast'
 import { useLoading } from '../composables/useLoading'
+import AddProduitModal from '../components/AddProduitModal.vue'
+import AddEquipementModal from '../components/AddEquipementModal.vue';
 
 const { startLoading, stopLoading } = useLoading()
 
@@ -21,7 +23,8 @@ const {
 const router = useRouter()
 const conflictingColumnIndexes = computed(() => getConflictingColumns())
 const fullyConflictingGroupIndexes = computed(() => getFullyConflictingGroups(columns.value))
-
+const showAddProduitModal = ref(false)
+const showAddEquipementModal = ref(false);
 
 const props = defineProps<{
   fpackId: number
@@ -50,9 +53,16 @@ type ConfigColumn = {
   group_items?: GroupItem[]
 }
 
+interface Equipement {
+  id: number
+  reference: string
+  nom: string
+  equipement_produit: { equipement_id: number; produit_id: number; quantite: number }[]
+}
+
 const columns = ref<ConfigColumn[]>([])
 const produits = ref<any[]>([])
-const fournisseurs = ref<any[]>([])
+const fournisseurs = ref<Equipement[]>([])
 const equipements = ref<any[]>([])
 const robots = ref<any[]>([])
 const showAddGroupModal = ref(false)
@@ -169,6 +179,58 @@ function handleWheel(e: WheelEvent) {
   }
 }
 
+
+function handleAddProduit(item: { id: number; nom: string; type: string; fournisseur: string; description?: string }) {
+  if (isProduitIncompatible(item.id)) {
+    showToast("Ce produit est incompatible avec un élément déjà présent.", "#ef4444")
+    return
+  }
+  if (fullyConflictingGroupIndexes.value.length > 0) {
+    const groupeNames = fullyConflictingGroupIndexes.value
+      .map(i => columns.value[i]?.display_name)
+      .filter(Boolean)
+      .join(', ')
+    showToast(`Ce produit rend ce(s) groupe(s) inutilisable(s) : ${groupeNames}.`, "#f97316")
+    return
+  }
+  const fournisseur = fournisseurs.value.find(f => f.nom === item.fournisseur)
+  const col: ConfigColumn = {
+    type: 'produit',
+    ref_id: item.id,
+    ordre: columns.value.length,
+    display_name: item.nom,
+    type_detail: item.type,
+    description: item.description ?? '',       
+    fournisseur_nom: fournisseur?.nom ?? ''
+  }
+  columns.value.push(col)
+}
+
+function handleAddEquipement(item: Equipement) {
+  
+  if (isEquipementIncompatible(item.id)) {
+    showToast("Cet equipement est incompatible avec un élément déjà présent.", "#ef4444")
+    return
+  }
+  if (fullyConflictingGroupIndexes.value.length > 0) {
+    const groupeNames = fullyConflictingGroupIndexes.value
+      .map(i => columns.value[i]?.display_name)
+      .filter(Boolean)
+      .join(', ')
+    showToast(`Cet equipement rend ce(s) groupe(s) inutilisable(s) : ${groupeNames}.`, "#f97316")
+    return
+  }
+  const col: ConfigColumn = {
+    type: 'equipement',
+    ref_id: item.id,
+    ordre: columns.value.length,
+    display_name: item.nom,
+    produits_count: item.equipement_produit.reduce((sum, ep) => sum + (ep.quantite || 0), 0)
+  };
+  columns.value.push(col);
+}
+
+
 function moveLeft(index: number) {
   if (index === 0) return
   const tmp = columns.value[index]
@@ -183,12 +245,6 @@ function moveRight(index: number) {
   columns.value[index + 1] = tmp
 }
 
-function startAdd(type: 'produit' | 'equipement') {
-  modeAjout.value = type
-  selectedRefId.value = null
-  editingIndex.value = null
-}
-
 function startEdit(index: number) {
   const col = columns.value[index]
   if (col.type === 'produit' || col.type === 'equipement') {
@@ -199,62 +255,6 @@ function startEdit(index: number) {
     editingGroupIndex.value = index
     showAddGroupModal.value = true
   }
-}
-
-function validerAjoutOuModif() {
-  const list = modeAjout.value === 'produit' ? produits.value : equipements.value
-  const item = list.find(e => e.id === selectedRefId.value)
-  if (!item) return
-
-  const col: ConfigColumn = {
-    type: modeAjout.value!,
-    ref_id: item.id,
-    display_name: item.nom,
-    ordre: editingIndex.value ?? columns.value.length
-  }
-
-  if (modeAjout.value === 'produit') {
-
-    if (isProduitIncompatible(item.id)) {
-      showToast("Ce produit est incompatible avec un élément déjà présent.", "#ef4444")
-      return
-    }
-  if (fullyConflictingGroupIndexes.value.length > 0) {
-    const groupNames = fullyConflictingGroupIndexes.value
-      .map(i => columns.value[i]?.display_name)
-      .filter(Boolean)
-      .join(', ')
-    showToast(`Ce produit rend ce(s) groupe(s) inutilisable(s) : ${groupNames}.`, "#f97316")
-    return
-  }
-     // Enrichissement
-    col.type_detail = item.type
-    col.description = item.description
-    const fournisseur = fournisseurs.value.find(f => f.id === item.fournisseur_id)
-    col.fournisseur_nom = fournisseur?.nom ?? ''
-  }
-
-  if (modeAjout.value === 'equipement') {
-
-    if (isEquipementIncompatible(item.id)) {
-      showToast("Cet équipement est incompatible avec un élément déjà présent.", "#ef4444")
-      return
-    }
-
-    // Enrichissement
-    col.produits_count = item.equipement_produit?.reduce((sum: number, ep: any) => sum + (ep.quantite || 0), 0) ?? 0
-  }
-
-  if (editingIndex.value !== null) {
-    columns.value[editingIndex.value] = col
-  } else {
-    columns.value.push(col)
-  }
-
-  // Reset des états
-  modeAjout.value = null
-  selectedRefId.value = null
-  editingIndex.value = null
 }
 
 async function handleGroupUpdate(group: { type: 'group'; ref_id: null; display_name: string; group_items: (GroupItem & { statut?: 'standard' | 'optionnel' })[]; }) {
@@ -352,6 +352,12 @@ async function listeView() {
   router.push({ name: 'ConfigureFPackListe', params: { id: props.fpackId }, query: { name: props.fpackName } })
 }
 
+function onCloseModal() {
+  showAddProduitModal.value = false
+  showAddEquipementModal.value = false;
+
+}
+
 
 onMounted(async () => {
   startLoading()
@@ -382,8 +388,13 @@ onUnmounted(() => {
     </button>
 
     <div class="toolbar">
-      <button @click="startAdd('produit')" class="addProduit">🧩 Ajouter Produit</button>
-      <button @click="startAdd('equipement')" class="addEquipement">🔧 Ajouter Équipement</button>
+      <button @click="showAddProduitModal = true" class="addProduit">🧩 Ajouter Produit</button>
+      <AddProduitModal v-if="showAddProduitModal" :produits="produits" :fournisseurs="fournisseurs" @add="handleAddProduit" @close="onCloseModal"/>
+
+      <button @click="showAddEquipementModal = true" class="addEquipement">🔧 Ajouter Équipement</button>
+      <AddEquipementModal v-if="showAddEquipementModal" :equipements="equipements" @add="handleAddEquipement" @close="onCloseModal"/>
+
+
       <button @click="showAddGroupModal = true" class="addGroupe">👥 Ajouter Groupe</button>
     </div>
 
@@ -441,20 +452,7 @@ onUnmounted(() => {
       </div>
     </div>
 
-    <div v-if="modeAjout" class="add-select-inline">
-      <select v-model="selectedRefId">
-        <option :value="null" disabled>Choisir un {{ modeAjout }}</option>
-        <option
-          v-for="item in modeAjout === 'produit' ? produits : equipements"
-          :key="item.id"
-          :value="item.id"
-        >
-          {{ item.nom }}<span v-if="modeAjout === 'produit'"> - </span>{{ item.description?.length > 6 ? item.description.slice(0, 10) + '…' : item.description }}
-        </option>
-      </select>
-      <button @click="validerAjoutOuModif">✅</button>
-      <button @click="modeAjout = null">❌</button>
-    </div>
+
 
     <AddGroupModal
       v-if="showAddGroupModal"
