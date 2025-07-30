@@ -82,7 +82,6 @@ function onInput(e: Event) {
   const val = (e.target as HTMLInputElement).value
   isUserTyping.value = true
 
-  // 👉 Si Backspace, ne complète pas
   if (lastKey.value === 'Backspace' || lastKey.value === 'Delete') {
     inputValue.value = val
     emit('update:modelValue', val)

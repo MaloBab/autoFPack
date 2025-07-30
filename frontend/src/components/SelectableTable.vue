@@ -92,7 +92,6 @@ watch(
   { deep: true }
 )
 
-// Valeurs distinctes par colonne
 const columnValues = computed(() => {
   const map: Record<string, Set<any>> = {}
   for (const row of rows.value) {

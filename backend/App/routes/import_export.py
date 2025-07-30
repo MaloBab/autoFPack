@@ -70,12 +70,14 @@ def validate_and_parse_excel(file: UploadFile, table_name: str, db, required_fie
 
     data_rows = []
     for row_num, row in enumerate(ws.iter_rows(min_row=2, values_only=True), start=2):
+        if not row or all(cell is None or str(cell).strip() == "" for cell in row):
+            break 
+
         row = list(row)
         if idx_id is not None:
             row.pop(idx_id)
         entry = dict(zip(header, row))
 
-        # Vérification des champs obligatoires non vides
         for field in required_fields:
             if entry.get(field) in [None, ""]:
                 raise HTTPException(
@@ -302,8 +304,8 @@ def export_projet_facture_pdf(id: int, db: Session = Depends(get_db)):
 
     table = Table(data, hAlign='LEFT')
     table.setStyle(TableStyle([
-        ('BACKGROUND', (0, 0), (-1, 0), colors.yellow),
-        ('TEXTCOLOR', (0, 0), (-1, 0), colors.red),
+        ('BACKGROUND', (0, 0), (-1, 0), colors.lightgrey),
+        ('TEXTCOLOR', (0, 0), (-1, 0), colors.black),
         ('FONTNAME', (0, 0), (-1, 0), 'Helvetica-Bold'),
         ('ALIGN', (0, 0), (-1, -1), 'CENTER'),
         ('GRID', (0, 0), (-1, -1), 0.25, colors.grey),

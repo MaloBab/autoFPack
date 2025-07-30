@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { ref, onMounted, nextTick} from 'vue'
 import axios from 'axios'
+import Multiselect from 'vue-multiselect'
 
 interface Produit {
   id: number
@@ -31,10 +32,10 @@ const robotsMap = ref<Record<number, Robot>>({})
 const incompProduits = ref<ProduitIncompatibilite[]>([])
 const incompRobotProduits = ref<RobotProduitIncompatibilite[]>([])
 
-const newProd1 = ref<number | null>(null)
-const newProd2 = ref<number | null>(null)
-const newRobot = ref<number | null>(null)
-const newProdForRobot = ref<number | null>(null)
+const newProd1 = ref<Produit | null>(null)
+const newProd2 = ref<Produit | null>(null)
+const newRobot = ref<Robot | null>(null)
+const newProdForRobot = ref<Produit | null>(null)
 
 const animAdded = ref<number | null>(null)
 const animRobotAdded = ref<number | null>(null)
@@ -69,16 +70,18 @@ async function fetchData() {
 
 async function addProduitIncompatibilite() {
   if (!newProd1.value || !newProd2.value || newProd1.value === newProd2.value) return
+
+  const id1 = newProd1.value.id
+  const id2 = newProd2.value.id
+
   const exists = incompProduits.value.some(
-    i =>
-      (i.produit_id_1 === newProd1.value && i.produit_id_2 === newProd2.value) ||
-      (i.produit_id_2 === newProd1.value && i.produit_id_1 === newProd2.value)
+    i => (i.produit_id_1 === id1 && i.produit_id_2 === id2) || (i.produit_id_1 === id2 && i.produit_id_2 === id1)
   )
   if (exists) return
 
   await axios.post('http://localhost:8000/produit-incompatibilites', {
-    produit_id_1: newProd1.value,
-    produit_id_2: newProd2.value
+    produit_id_1: id1,
+    produit_id_2: id2
   })
   await fetchData()
   animAdded.value = incompProduits.value.length - 1
@@ -89,14 +92,18 @@ async function addProduitIncompatibilite() {
 
 async function addRobotProduitIncompatibilite() {
   if (!newRobot.value || !newProdForRobot.value) return
+
+  const robotId = newRobot.value.id
+  const produitId = newProdForRobot.value.id
+
   const exists = incompRobotProduits.value.some(
-    i => i.robot_id === newRobot.value && i.produit_id === newProdForRobot.value
+    i => i.robot_id === robotId && i.produit_id === produitId
   )
   if (exists) return
 
   await axios.post('http://localhost:8000/robot-produit-incompatibilites', {
-    robot_id: newRobot.value,
-    produit_id: newProdForRobot.value
+    robot_id: robotId,
+    produit_id: produitId
   })
   await fetchData()
   animRobotAdded.value = incompRobotProduits.value.length - 1
@@ -104,6 +111,7 @@ async function addRobotProduitIncompatibilite() {
   newRobot.value = null
   newProdForRobot.value = null
 }
+
 
 async function deleteProduitIncomp(inc: ProduitIncompatibilite) {
   await axios.delete('http://localhost:8000/produit-incompatibilites', { data: inc })
@@ -127,18 +135,20 @@ onMounted(fetchData)
     <section class="incompat-section">
       <h2>Produits incompatibles</h2>
       <div class="add-form">
-        <select v-model="newProd1">
-          <option disabled :value="null">Produit</option>
-          <option v-for="p in produits" :key="p.id" :value="p.id">
-            {{ formatProduit(p.id) }}
-          </option>
-        </select>
-        <select v-model="newProd2">
-          <option disabled :value="null">Produit</option>
-          <option v-for="p in produits" :key="p.id" :value="p.id">
-            {{ formatProduit(p.id) }}
-          </option>
-        </select>
+        <Multiselect
+        v-model="newProd1"
+        :options="produits"
+        :custom-label="p => formatProduit(p.id)"
+        :track-by="'id'"
+        placeholder="Sélectionner un produit"
+        />
+        <Multiselect
+          v-model="newProd2"
+          :options="produits"
+          :custom-label="p => formatProduit(p.id)"
+          :track-by="'id'"
+          placeholder="Sélectionner un produit"
+        />
         <button class="add-btn" @click="addProduitIncompatibilite">➕</button>
       </div>
       <div class="table-wrapper" :class="{ scroll: incompProduits.length > 3 }">
@@ -164,18 +174,20 @@ onMounted(fetchData)
     <section class="incompat-section">
       <h2>Robot - Produit incompatibles</h2>
       <div class="add-form">
-        <select v-model="newRobot">
-          <option disabled :value="null">Robot</option>
-          <option v-for="r in robots" :key="r.id" :value="r.id">
-            {{ formatRobot(r.id) }}
-          </option>
-        </select>
-        <select v-model="newProdForRobot">
-          <option disabled :value="null">Produit</option>
-          <option v-for="p in produits" :key="p.id" :value="p.id">
-            {{ formatProduit(p.id) }}
-          </option>
-        </select>
+        <Multiselect
+          v-model="newRobot"
+          :options="robots"
+          :custom-label="r => formatRobot(r.id)"
+          :track-by="'id'"
+          placeholder="Sélectionner un robot"
+        />
+        <Multiselect
+          v-model="newProdForRobot"
+          :options="produits"
+          :custom-label="p => formatProduit(p.id)"
+          :track-by="'id'"
+          placeholder="Sélectionner un produit"
+        />
         <button class="add-btn" @click="addRobotProduitIncompatibilite">➕</button>
       </div>
       <div class="table-wrapper">
