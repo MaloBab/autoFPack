@@ -4,6 +4,7 @@ import { useTableReader } from '../composables/useTableReader'
 import Filters from './Filters.vue'
 import { useRouter } from 'vue-router'
 import AutoComplete from '../components/AutoCompleteInput.vue'
+import SearchSelect from '../components/SearchSelect.vue'
 
 const scrollContainer = ref<HTMLElement | null>(null)
 
@@ -172,15 +173,15 @@ function remplirProjet(row: any) {
           <tr v-if="ajouter">
             <td v-for="col in orderedColumns" :key="col">
               <template v-if="col === 'client' && (props.tableName === 'fpacks' || props.tableName === 'projets')">
-                <select v-model="newRow.client_nom">
+                <SearchSelect v-model="newRow.client_nom">
                   <option v-for="c in clients" :key="c.id" :value="c.nom">{{ c.nom }}</option>
-                </select>
+                </SearchSelect>
               </template>
 
               <template v-else-if="col === 'fpack_id' && props.tableName === 'projets'">
-                <select v-model="newRow.fpack_nom">
+                <SearchSelect v-model="newRow.fpack_nom">
                   <option v-for="f in fpacks" :key="f.id" :value="f.nom">{{ f.nom }}</option>
-                </select>
+                </SearchSelect>
               </template>
 
                 <template v-else-if="col !== 'id'">
@@ -197,15 +198,15 @@ function remplirProjet(row: any) {
             <td v-for="col in orderedColumns" :key="col">
 
               <template v-if="editingId === row.id && col === 'client' && (props.tableName === 'fpacks' || props.tableName === 'projets')">
-                <select v-model="editRow.client_nom" @keyup.enter="validateEdit(row.id)">
+                <SearchSelect v-model="editRow.client_nom" @keyup.enter="validateEdit(row.id)">
                   <option v-for="c in clients" :key="c.id" :value="c.nom">{{ c.nom }}</option>
-                </select>
+                </SearchSelect>
               </template>
 
               <template v-else-if="editingId === row.id && col === 'fpack_id' && props.tableName === 'projets'">
-                <select v-model="editRow.fpack_nom" @keyup.enter="validateEdit(row.id)">
+                <SearchSelect v-model="editRow.fpack_nom" @keyup.enter="validateEdit(row.id)">
                   <option v-for="f in fpacks" :key="f.id" :value="f.nom">{{ f.nom }}</option>
-                </select>
+                </SearchSelect>
               </template>
 
               <template v-else-if="editingId === row.id && col !== 'id'">

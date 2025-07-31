@@ -4,6 +4,7 @@ import { useTableReader } from '../composables/useTableReader'
 import Filters from './Filters.vue'
 import { ref, watch } from 'vue'
 import AutoComplete from '../components/AutoCompleteInput.vue'
+import SearchSelect from './SearchSelect.vue'
 
 const scrollContainer = ref<HTMLElement | null>(null)
 
@@ -191,39 +192,39 @@ watch(() => editRow.value.robot_reference, (ref) => {
             <td v-for="col in orderedColumns " :key="col">
 
               <template v-if="col === 'fournisseur_id' && props.tableName === 'produits'">
-                <select v-model="newRow.fournisseur_nom">
+                <SearchSelect v-model="newRow.fournisseur_nom">
                   <option v-for="f in fournisseurs" :key="f.id" :value="f.nom">{{ f.nom }}</option>
-                </select>
+                </SearchSelect>
               </template>
 
               <template v-else-if="col === 'client' && props.tableName === 'robots'">
-                <select v-model="newRow.client_nom">
+                <SearchSelect v-model="newRow.client_nom">
                   <option v-for="c in clients" :key="c.id" :value="c.nom">{{ c.nom }}</option>
-                </select>
+                </SearchSelect>
               </template>
 
               <template v-else-if="col === 'produit_id' && props.tableName === 'prix'">
-                <select v-model="newRow.produit_nom">
+                <SearchSelect v-model="newRow.produit_nom">
                   <option v-for="p in produits" :key="p.id" :value="p.nom">{{ p.nom }}</option>
-                </select>
+                </SearchSelect>
               </template>
 
               <template v-else-if="col === 'client_id' && props.tableName === 'prix'">
-                <select v-model="newRow.client_nom">
+                <SearchSelect v-model="newRow.client_nom">
                   <option v-for="c in clients" :key="c.id" :value="c.nom">{{ c.nom }}</option>
-                </select>
+                </SearchSelect>
               </template>
 
               <template v-else-if="col === 'reference' && props.tableName === 'prix_robot'">
-                <select v-model="newRow.robot_reference">
+                <SearchSelect v-model="newRow.robot_reference">
                   <option v-for="r in robots" :key="r.id" :value="r.reference">{{ r.reference }}</option>
-                </select>
+                </SearchSelect>
               </template>
 
               <template v-else-if="col === 'id' && props.tableName === 'prix_robot'">
-                <select v-model="newRow.robot_nom">
+                <SearchSelect v-model="newRow.robot_nom">
                   <option v-for="r in robots" :key="r.id" :value="r.nom">{{r.nom}}</option>
-                </select>
+                </SearchSelect>
               </template>
 
               <template v-else-if="col !== 'id'">
@@ -238,38 +239,38 @@ watch(() => editRow.value.robot_reference, (ref) => {
           <tr v-for="row in filteredAndSortedRows" :key="row.id">
             <td v-for="col in orderedColumns " :key="col">
               <template v-if="editingId === row.id && col === 'fournisseur_id' && props.tableName === 'produits'">
-                <select v-model="editRow.fournisseur_nom" @keyup.enter="validateEdit(row.id)">
+                <SearchSelect v-model="editRow.fournisseur_nom" @keyup.enter="validateEdit(row.id)">
                   <option v-for="f in fournisseurs" :key="f.id" :value="f.nom">{{ f.nom }}</option>
-                </select>
+                </SearchSelect>
               </template>
               <template v-else-if="editingId === row.id && col === 'client' && props.tableName === 'robots'">
-                <select v-model="editRow.client_nom" @keyup.enter="validateEdit(row.id)">
+                <SearchSelect v-model="editRow.client_nom" @keyup.enter="validateEdit(row.id)">
                   <option v-for="c in clients" :key="c.id" :value="c.nom">{{ c.nom }}</option>
-                </select>
+                </SearchSelect>
               </template>
               
               <template v-else-if="editingId === row.id && col === 'reference' && props.tableName === 'prix_robot'">
-                <select v-model="editRow.robot_reference">
+                <SearchSelect v-model="editRow.robot_reference">
                   <option v-for="r in robots" :key="r.id" :value="r.reference">{{ r.reference }}</option>
-                </select>
+                </SearchSelect>
               </template>
 
               <template v-else-if="editingId === row.id && col === 'id' && props.tableName === 'prix_robot'">
-                <select v-model="editRow.robot_nom" @keyup.enter="validateEdit(row.id)">
+                <SearchSelect v-model="editRow.robot_nom" @keyup.enter="validateEdit(row.id)">
                   <option v-for="r in robots" :key="r.id" :value="r.nom">{{ r.nom }}</option>
-                </select>
+                </SearchSelect>
               </template>
 
               <template v-else-if="editingId === Number(`${row.produit_id}${row.client_id}`) && col === 'client_id' && props.tableName === 'prix'">
-                <select v-model="editRow.client_nom" @keyup.enter="validateEdit({ produit_id: row.produit_id, client_id: row.client_id })">
+                <SearchSelect v-model="editRow.client_nom" @keyup.enter="validateEdit({ produit_id: row.produit_id, client_id: row.client_id })">
                   <option v-for="c in clients" :key="c.id" :value="c.nom">{{ c.nom }}</option>
-                </select>
+                </SearchSelect>
               </template>
 
               <template v-else-if="editingId === Number(`${row.produit_id}${row.client_id}`) && col === 'produit_id' && props.tableName === 'prix'">
-                <select v-model="editRow.produit_nom" @keyup.enter="validateEdit({ produit_id: row.produit_id, client_id: row.client_id })">
+                <SearchSelect v-model="editRow.produit_nom" @keyup.enter="validateEdit({ produit_id: row.produit_id, client_id: row.client_id })">
                   <option v-for="p in produits" :key="p.id" :value="p.nom">{{ p.nom }}</option>
-                </select>
+                </SearchSelect>
               </template>
 
 

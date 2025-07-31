@@ -165,7 +165,6 @@ export function useTableReader(
         }
       }
       const dataToSend = { ...newRow.value }
-      console.log("Data to send:", dataToSend)
 
       enrichDataWithForeignKeys(dataToSend)
       console.log("Enriched data:", dataToSend)
@@ -180,10 +179,6 @@ export function useTableReader(
         console.error("Champs manquants :", missing)
         showToast("Tous les champs de la ligne n'ont pas été remplis.", "#ef9144")
         return
-      }
-      if (['fpacks', 'projets', 'robots'].includes(props.tableName)) {
-        dataToSend.client = dataToSend.client_id
-        delete dataToSend.client_id
       }
       await axios.post(`${baseUrl}/${props.tableName}`, dataToSend)
       

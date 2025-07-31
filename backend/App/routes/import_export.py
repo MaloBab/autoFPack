@@ -250,6 +250,7 @@ async def import_robots_add(file: UploadFile = File(...), db: Session = Depends(
             continue
 
         robot = models.Robots(
+            reference = row.get('reference', ''),
             nom=row.get('nom'),
             generation=row.get('generation', ''),
             client=client.id,
