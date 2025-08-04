@@ -65,6 +65,7 @@ const produits = ref<any[]>([])
 const fournisseurs = ref<Equipement[]>([])
 const equipements = ref<any[]>([])
 const robots = ref<any[]>([])
+const clientID = ref<number>(-1)
 const showAddGroupModal = ref(false)
 const modeAjout = ref<'produit' | 'equipement' | null>(null)
 const selectedRefId = ref<number | null>(null)
@@ -141,16 +142,18 @@ async function fetchConfiguration() {
 }
 
 async function fetchProduitsEtEquipements() {
-  const [prod, eq, rob, four] = await Promise.all([
+  const [prod, eq, rob, four,currFpack] = await Promise.all([
     axios.get('http://localhost:8000/produits'),
     axios.get('http://localhost:8000/equipements'),
     axios.get('http://localhost:8000/robots'),
-    axios.get('http://localhost:8000/fournisseurs')
+    axios.get('http://localhost:8000/fournisseurs'),
+    axios.get(`http://localhost:8000/fpacks/${props.fpackId}`)
   ])
   produits.value = prod.data
   equipements.value = eq.data
   robots.value = rob.data
   fournisseurs.value = four.data
+  clientID.value = currFpack.data.client
 }
 
 function handleWheel(e: WheelEvent) {
@@ -457,6 +460,7 @@ onUnmounted(() => {
     <AddGroupModal
       v-if="showAddGroupModal"
       :initialGroup="editingGroupIndex !== null ? { display_name: columns[editingGroupIndex].display_name, group_items: columns[editingGroupIndex].group_items || [] } : undefined"
+      :fpackClient="clientID"
       @close="handleGroupModalClose"
       @created="handleGroupUpdate"
     />

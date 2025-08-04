@@ -143,6 +143,100 @@ function remplirFPack(row: any) {
 function remplirProjet(row: any) {
   router.push(`/complete/${props.tableName}/${row.id}`)
 }
+
+
+const filteredFpacks = computed(() => {
+  if (newRow.value.client_nom) {
+    const client = clients.value.find(c => c.nom === newRow.value.client_nom)
+    if (client) {
+      return fpacks.value.filter(f => f.client === client.id)
+    }
+  }
+  return fpacks.value
+})
+
+watch(() => newRow.value.client_nom, (clientNom) => {
+  if (!clientNom) {
+    newRow.value.fpack_nom = ''
+  } else {
+    const client = clients.value.find(c => c.nom === clientNom)
+    const fpack = fpacks.value.find(f => f.nom === newRow.value.fpack_nom)
+    if (fpack && client && fpack.client !== client.id) {
+      newRow.value.fpack_nom = ''
+    }
+  }
+})
+
+watch(() => newRow.value.fpack_nom, (fpackNom) => {
+  if (!fpackNom) {
+    return
+  }
+  const fpack = fpacks.value.find(f => f.nom === fpackNom)
+  if (fpack) {
+    const client = clients.value.find(c => c.id === fpack.client)
+    if (client && newRow.value.client_nom !== client.nom) {
+      newRow.value.client_nom = client.nom
+    }
+  }
+})
+
+
+watch(() => props.ajouter, (val) => {
+  if (val) {
+    if (!newRow.value.client_nom || !clients.value.some(c => c.nom === newRow.value.client_nom)) {
+      if (clients.value.length > 0) {
+        newRow.value.client_nom = clients.value[0].nom
+      }
+    }
+
+    const fpacksForClient = fpacks.value.filter(f => {
+      const client = clients.value.find(c => c.id === f.client)
+      return client && client.nom === newRow.value.client_nom
+    })
+    if (!newRow.value.fpack_nom || !fpacksForClient.some(f => f.nom === newRow.value.fpack_nom)) {
+      if (fpacksForClient.length > 0) {
+        newRow.value.fpack_nom = fpacksForClient[0].nom
+      } else {
+        newRow.value.fpack_nom = ''
+      }
+    }
+  }
+})
+
+
+const filteredFpacksEdit = computed(() => {
+  if (editRow.value.client_nom) {
+    const client = clients.value.find(c => c.nom === editRow.value.client_nom)
+    if (client) {
+      return fpacks.value.filter(f => f.client === client.id)
+    }
+  }
+  return fpacks.value
+})
+
+watch(() => editRow.value.client_nom, (clientNom) => {
+  if (!clientNom) {
+    editRow.value.fpack_nom = ''
+  } else {
+    const client = clients.value.find(c => c.nom === clientNom)
+    const fpack = fpacks.value.find(f => f.nom === editRow.value.fpack_nom)
+    if (fpack && client && fpack.client !== client.id) {
+      editRow.value.fpack_nom = ''
+    }
+  }
+})
+
+watch(() => editRow.value.fpack_nom, (fpackNom) => {
+  if (!fpackNom) return
+  const fpack = fpacks.value.find(f => f.nom === fpackNom)
+  if (fpack) {
+    const client = clients.value.find(c => c.id === fpack.client)
+    if (client && editRow.value.client_nom !== client.nom) {
+      editRow.value.client_nom = client.nom
+    }
+  }
+})
+
 </script>
 
 <template>
@@ -152,7 +246,10 @@ function remplirProjet(row: any) {
         <tr>
           <th v-for="col in orderedColumns" :key="col">
             <div style="display: flex; align-items: center; gap: 0.3rem;">
-              <span>{{ col }}</span>
+              <span>
+                <template v-if="props.tableName === 'projets' && col === 'fpack_id'">fpack</template>
+                <template v-else>{{ col }}</template> 
+              </span>
               <Filters
                 :column="col"
                 :values="[...columnValues[col] || []]"
@@ -173,14 +270,15 @@ function remplirProjet(row: any) {
           <tr v-if="ajouter">
             <td v-for="col in orderedColumns" :key="col">
               <template v-if="col === 'client' && (props.tableName === 'fpacks' || props.tableName === 'projets')">
-                <SearchSelect v-model="newRow.client_nom">
-                  <option v-for="c in clients" :key="c.id" :value="c.nom">{{ c.nom }}</option>
-                </SearchSelect>
+              <SearchSelect v-model="newRow.client_nom" :disabled="!!newRow.fpack_nom">
+                <option v-for="c in clients" :key="c.id" :value="c.nom">{{ c.nom }}</option>
+              </SearchSelect>
+
               </template>
 
               <template v-else-if="col === 'fpack_id' && props.tableName === 'projets'">
-                <SearchSelect v-model="newRow.fpack_nom">
-                  <option v-for="f in fpacks" :key="f.id" :value="f.nom">{{ f.nom }}</option>
+                <SearchSelect v-model="newRow.fpack_nom" :disabled="!!newRow.client_nom && !newRow.fpack_nom" :key="newRow.client_nom">
+                  <option v-for="f in filteredFpacks" :key="f.id" :value="f.nom">{{ f.nom }}</option>
                 </SearchSelect>
               </template>
 
@@ -205,7 +303,7 @@ function remplirProjet(row: any) {
 
               <template v-else-if="editingId === row.id && col === 'fpack_id' && props.tableName === 'projets'">
                 <SearchSelect v-model="editRow.fpack_nom" @keyup.enter="validateEdit(row.id)">
-                  <option v-for="f in fpacks" :key="f.id" :value="f.nom">{{ f.nom }}</option>
+                  <option v-for="f in filteredFpacksEdit" :key="f.id" :value="f.nom">{{ f.nom }}</option>
                 </SearchSelect>
               </template>
 
@@ -218,6 +316,10 @@ function remplirProjet(row: any) {
 
               <template v-else-if="col === 'fpack_id' && props.tableName === 'projets'">
                 {{ fpacks.find(f => f.id === row.fpack_id)?.nom || row.fpack_id }}
+              </template>
+
+              <template v-else-if="col === 'nom' && props.tableName === 'projets'">
+                <span>{{ row.complet ? '✔️' : '⏳' }}</span> | {{ row.nom }}
               </template>
 
               <template v-else>

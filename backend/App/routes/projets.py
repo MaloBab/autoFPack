@@ -2,6 +2,7 @@ from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session 
 from App.database import SessionLocal
 from App import models, schemas
+from fastapi import Body
 
 router = APIRouter()
 
@@ -22,9 +23,37 @@ def create_projet(projet: schemas.ProjetCreate, db: Session = Depends(get_db)):
     db.refresh(db_projet)
     return db_projet
 
-@router.get("/projets", response_model=list[schemas.ProjetRead])
+@router.get("/projets", response_model=list[schemas.ProjetReadExtended])  # Nouveau schéma avec "complet"
 def list_projets(db: Session = Depends(get_db)):
-    return db.query(models.Projet).all()
+    projets = db.query(models.Projet).all()
+    result = []
+
+    for projet in projets:
+        fpack_id = projet.fpack_id
+
+        # Récupérer les groupes attendus pour ce fpack
+        groupes_attendus = db.query(models.FPackConfigColumn)\
+            .filter_by(fpack_id=fpack_id, type='group')\
+            .all()
+        groupes_ids = [g.ref_id for g in groupes_attendus]
+
+        # Récupérer les sélections de ce projet
+        selections = db.query(models.ProjetSelection)\
+            .filter_by(projet_id=projet.id)\
+            .all()
+        selection_ids = [s.groupe_id for s in selections]
+
+        complet = all(gid in selection_ids for gid in groupes_ids)
+
+        result.append({
+            "id": projet.id,
+            "nom": projet.nom,
+            "client": projet.client,
+            "fpack_id": projet.fpack_id,
+            "complet": complet
+        })
+
+    return result
 
 @router.get("/projets/{id}", response_model=schemas.ProjetRead)
 def get_projet(id: int, db: Session = Depends(get_db)):
@@ -62,7 +91,6 @@ def update_projet(id: int, projet: schemas.ProjetCreate, db: Session = Depends(g
 def get_projet_selections(id: int, db: Session = Depends(get_db)):
     return db.query(models.ProjetSelection).filter(models.ProjetSelection.projet_id == id).all()
 
-from fastapi import Body
 
 @router.put("/projets/{id}/selections", response_model=dict)
 def save_projet_selections(
@@ -72,7 +100,11 @@ def save_projet_selections(
 ):
     db.query(models.ProjetSelection).filter(models.ProjetSelection.projet_id == id).delete()
     db.commit()
+
     for sel in data.get("selections", []):
+        if sel.get("ref_id") is None or sel.get("type_item") is None:
+            continue  
+
         selection = models.ProjetSelection(
             projet_id=id,
             groupe_id=sel.get("groupe_id"),
@@ -80,9 +112,9 @@ def save_projet_selections(
             type_item=sel.get("type_item", "produit")
         )
         db.add(selection)
+
     db.commit()
     return {"message": "Sélections enregistrées"}
-
 ### FACTURE
 
 @router.get("/projets/{id}/facture")

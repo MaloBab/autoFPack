@@ -26,7 +26,7 @@ export function useTableReader(
   const fournisseurs = ref<{ id: number, nom: string }[]>([])
   const clients = ref<{ id: number, nom: string }[]>([])
   const produits = ref<{ id: number, nom: string }[]>([])
-  const fpacks = ref<{ id: number, nom: string }[]>([])
+  const fpacks = ref<{ id: number, nom: string, client:number }[]>([])
   const robots = ref<{ id: number, nom: string, reference: string }[]>([])
 
   const isAdding = ref(false)
@@ -121,6 +121,7 @@ export function useTableReader(
 
   function startAddRow() {
     newRow.value = {}
+    
     columns.value.forEach(col => {
       if (props.tableName === 'prix_robot') {
         newRow.value.robot_nom = robots.value[0]?.nom || ''

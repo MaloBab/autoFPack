@@ -247,3 +247,6 @@ class ProjetRead(ProjetBase):
 
     class Config:
         from_attributes = True
+        
+class ProjetReadExtended(ProjetRead):
+    complet: bool

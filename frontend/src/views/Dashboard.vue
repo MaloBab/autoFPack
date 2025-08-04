@@ -25,7 +25,8 @@ function getLabel(key: string): string {
     robots: '🤖 Robots',
     clients: '👥 Clients',
     fournisseurs: '🏭 Fournisseurs',
-    fpacks: '📦 F-Packs'
+    fpacks: '📦 F-Packs',
+    projets: '📈 Projets'
   }
   return labels[key] || key
 }

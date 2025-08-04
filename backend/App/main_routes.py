@@ -64,7 +64,8 @@ def dashboard_stats(db: Session = Depends(get_db)):
         "robots": db.query(models.Robots).count(),
         "clients": db.query(models.Client).count(),
         "fournisseurs": db.query(models.Fournisseur).count(),
-        "fpacks": db.query(models.FPack).count()
+        "fpacks": db.query(models.FPack).count(),
+        "projets": db.query(models.Projet).count()
     }
 
 

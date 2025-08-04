@@ -13,6 +13,7 @@ const props = defineProps<{
       statut?: 'standard' | 'optionnel'
     }[]
   }
+  fpackClient: number
 }>()
 
 const emit = defineEmits<{
@@ -149,7 +150,7 @@ function valider() {
 
       <select :value="''" @change="onRobotChange">
         <option value="">➕ Robot</option>
-        <option v-for="r in robots" :key="r.id" :value="r.id"> {{ r.nom}} - {{r.generation ? r.generation.length > 6 ? r.generation.slice(0,6) + '...': r.generation: ''}} </option>
+        <option v-for="r in robots.filter(r => r.client === props.fpackClient)" :key="r.id" :value="r.id"> {{ r.nom}} - {{r.generation ? r.generation.length > 6 ? r.generation.slice(0,6) + '...': r.generation: ''}} </option>
       </select>
       </div>
 
