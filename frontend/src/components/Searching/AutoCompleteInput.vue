@@ -115,12 +115,13 @@ input {
   border-radius: 4px;
   padding: 0.3rem 0.5rem;
   font-size: 1rem;
+  margin-top: 1%;
   font-family: inherit;
   background: #f9fafb;
   color: #222;
   outline: none;
   transition: border 0.2s;
-  width: 100%;
+  width: 90%;
   min-width: 60px;
   max-width: 200px;
 }

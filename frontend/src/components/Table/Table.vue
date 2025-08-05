@@ -251,7 +251,7 @@ input, select {
   color: #222;
   outline: none;
   transition: border 0.2s;
-  width: 100%;
+  width: 80%;
   min-width: 60px;
   max-width: 200px;
 }
