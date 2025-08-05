@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { ref } from 'vue'
 import PageHeader from '../components/Interaction/PageHeader.vue'
-import SQLTable from '../components/Table/SQLTable.vue'
+import SQLTable from '../components/Table/Table.vue'
 import TextSearch from '../components/Searching/TextSearch.vue'
 import ExportButton from '../components/Interaction/ExportButton.vue'
 import ImportButton from '../components/Interaction/ImportButton.vue'

@@ -4,7 +4,7 @@ import PageHeader from '../components/Interaction/PageHeader.vue'
 import { showToast } from '../composables/useToast'
 import TextSearch from '../components/Searching/TextSearch.vue'
 import axios from 'axios'
-import SQLTable from '../components/Table/SQLTable.vue'
+import SQLTable from '../components/Table/Table.vue'
 
 const projets = ref<any[]>([])
 const loading = ref(false)

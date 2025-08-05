@@ -1,6 +1,6 @@
-import { ref, onMounted, watch, type Ref } from 'vue'
+import { ref, onMounted, watch, computed, type Ref } from 'vue'
 import axios from 'axios'
-import { showToast } from '../composables/useToast'
+import { showToast } from '../useToast'
 
 function handleError(err: any, action = "l'action") {
   let message = `Erreur lors de ${action}`
@@ -34,6 +34,55 @@ export function useTableReader(
   const isDuplicating = ref(false)
 
   const baseUrl = props.apiUrl || 'http://localhost:8000'
+
+  // Ajout de valueLabels computed
+  const valueLabels = computed(() => {
+    const labels: Record<string, Record<any, string>> = {}
+    
+    // Mapping pour les fournisseurs
+    if (fournisseurs.value.length > 0) {
+      labels.fournisseur_id = {}
+      fournisseurs.value.forEach(f => {
+        labels.fournisseur_id[f.id] = f.nom
+      })
+    }
+
+    // Mapping pour les clients
+    if (clients.value.length > 0) {
+      labels.client_id = {}
+      labels.client = {}
+      clients.value.forEach(c => {
+        labels.client_id[c.id] = c.nom
+        labels.client[c.id] = c.nom
+      })
+    }
+
+    // Mapping pour les produits
+    if (produits.value.length > 0) {
+      labels.produit_id = {}
+      produits.value.forEach(p => {
+        labels.produit_id[p.id] = p.nom
+      })
+    }
+
+    // Mapping pour les fpacks
+    if (fpacks.value.length > 0) {
+      labels.fpack_id = {}
+      fpacks.value.forEach(f => {
+        labels.fpack_id[f.id] = f.nom
+      })
+    }
+
+    // Mapping pour les robots (cas spécial pour prix_robot)
+    if (robots.value.length > 0 && props.tableName === 'prix_robot') {
+      labels.id = {}
+      robots.value.forEach(r => {
+        labels.id[r.id] = r.nom
+      })
+    }
+
+    return labels
+  })
 
   const fetchDataList = async (endpoint: string, target: Ref<any[]>) => {
     const res = await axios.get(`${baseUrl}/${endpoint}`)
@@ -312,6 +361,7 @@ export function useTableReader(
   return {
     columns, rows, newRow, editingId, editRow,
     fournisseurs, clients, produits, fpacks, robots,
+    valueLabels, // Ajout de valueLabels dans le return
     validateAdd, cancelAdd,
     startEdit, validateEdit, cancelEdit,
     deleteRow, startEditPrix, duplicateRow,
