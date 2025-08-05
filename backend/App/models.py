@@ -141,7 +141,21 @@ class RobotProduitIncompatibilite(Base):
     __table_args__ = {'schema': 'dbo'}
     robot_id = Column(Integer, ForeignKey("dbo.FPM_robots.id", ondelete="CASCADE"), primary_key=True)
     produit_id = Column(Integer, ForeignKey("dbo.FPM_produits.id", ondelete="CASCADE"), primary_key=True)
-    
+
+#PROJET GLOBAL
+
+class ProjetGlobal(Base):
+    __tablename__ = "FPM_projets_global"
+    __table_args__ = {'schema': 'dbo'}
+
+    id = Column(Integer, primary_key=True, autoincrement=True)
+    projet = Column(String(255))
+    sous_projet = Column(String(255))
+    client = Column(Integer, ForeignKey("dbo.FPM_clients.id", ondelete="CASCADE"), nullable=False)
+
+    projets = relationship("Projet", back_populates="global_rel", cascade="all, delete-orphan")
+    client_rel = relationship("Client", passive_deletes=True)
+
 #PROJET
 
 class Projet(Base):
@@ -150,9 +164,10 @@ class Projet(Base):
 
     id = Column(Integer, primary_key=True, autoincrement=True)
     nom = Column(String, nullable=False)
-    client = Column(Integer, ForeignKey("dbo.FPM_clients.id", ondelete="CASCADE"), nullable=False)
     fpack_id = Column(Integer, ForeignKey("dbo.FPM_fpacks.id", ondelete="CASCADE"), nullable=False)
+    id_global = Column(Integer, ForeignKey("dbo.FPM_projets_global.id", ondelete="SET NULL"))
 
+    global_rel = relationship("ProjetGlobal", back_populates="projets", passive_deletes=True)
     selections = relationship("ProjetSelection", back_populates="projet", cascade="all, delete-orphan")
 
 

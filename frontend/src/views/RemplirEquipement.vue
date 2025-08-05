@@ -2,9 +2,9 @@
 import { ref, onMounted } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import axios from 'axios'
-import TextSearch from '../components/TextSearch.vue'
-import SelectableTable from '../components/SelectableTable.vue'
-import SelectionFilter from '../components/SelectionFilterMode.vue'
+import TextSearch from '../components/Searching/TextSearch.vue'
+import SelectableTable from '../components/Table/SelectableTable.vue'
+import SelectionFilter from '../components/Searching/SelectionFilterMode.vue'
 
 const filterMode = ref<'all' | 'selected' | 'unselected'>('all')
 const route = useRoute()

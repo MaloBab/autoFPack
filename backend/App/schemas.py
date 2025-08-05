@@ -236,8 +236,8 @@ class ProjetSelectionRead(ProjetSelectionBase):
 
 class ProjetBase(BaseModel):
     nom: str
-    client: int
     fpack_id: int
+    id_global:int
 
 class ProjetCreate(ProjetBase):
     pass
@@ -250,3 +250,17 @@ class ProjetRead(ProjetBase):
         
 class ProjetReadExtended(ProjetRead):
     complet: bool
+    
+class ProjetGlobalBase(BaseModel):
+    projet: Optional[str] = None
+    sous_projet: Optional[str] = None
+    client: int
+
+class ProjetGlobalCreate(ProjetGlobalBase):
+    pass
+
+class ProjetGlobalRead(ProjetGlobalBase):
+    id: int
+
+    class Config:
+        from_attributes = True

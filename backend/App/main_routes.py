@@ -35,6 +35,7 @@ def get_table_columns(table_name: str, db: Session = Depends(get_db)):
             "prix": "FPM_prix",
             "prix_robot": "FPM_prix_robot",
             "projets": "FPM_projets",
+            "projets_global": "FPM_projets_global",
         }
 
         actual_name = table_mapping.get(table_name)
@@ -65,7 +66,7 @@ def dashboard_stats(db: Session = Depends(get_db)):
         "clients": db.query(models.Client).count(),
         "fournisseurs": db.query(models.Fournisseur).count(),
         "fpacks": db.query(models.FPack).count(),
-        "projets": db.query(models.Projet).count()
+        "projets": db.query(models.Projet).count(),
     }
 
 

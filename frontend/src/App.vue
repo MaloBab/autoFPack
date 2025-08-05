@@ -1,7 +1,7 @@
 <script setup>
-import Layout from './components/Layout.vue'
-import Toast from './components/Toast.vue'
-import LoadingSpinner from './components/LoadingSpinner.vue'
+import Layout from './components/Interaction/Layout.vue'
+import Toast from './components/Interaction/Toast.vue'
+import LoadingSpinner from './components/Interaction/LoadingSpinner.vue'
 </script>
 
 <template>

@@ -1,8 +1,8 @@
 <script setup lang="ts">
 import { ref } from 'vue'
-import PageHeader from '../components/PageHeader.vue'
-import TableReader from '../components/TableReader.vue'
-import TextSearch from '../components/TextSearch.vue'
+import PageHeader from '../components/Interaction/PageHeader.vue'
+import TextSearch from '../components/Searching/TextSearch.vue'
+import SQLTable from '../components/Table/SQLTable.vue'
 
 const ajouter = ref(false)
 const searchTerm = ref('')
@@ -15,7 +15,7 @@ function resetAjouter() {
 <template>
   <div>
     <PageHeader titre="Prix Produit" @ajouter="ajouter = true" />
-    <TableReader
+    <SQLTable
       tableName="prix"
       :ajouter="ajouter"
       :search="searchTerm"

@@ -1,9 +1,9 @@
 <script setup lang="ts">
 import { ref } from 'vue'
-import PageHeader from '../components/PageHeader.vue'
-import TextSearch from '../components/TextSearch.vue'
-import TopLevelTable from '../components/TopLevelTable.vue'
-import ExportButton from '../components/ExportButton.vue'
+import PageHeader from '../components/Interaction/PageHeader.vue'
+import TextSearch from '../components/Searching/TextSearch.vue'
+import ExportButton from '../components/Interaction/ExportButton.vue'
+import SQLTable from '../components/Table/SQLTable.vue'
 
 const ajouter = ref(false)
 const searchTerm = ref('')
@@ -18,7 +18,7 @@ function resetAjouter() {
   <div>
     <PageHeader titre="FPacks" @ajouter="ajouter = true" />
     <ExportButton exportUrl="http://localhost:8000/export-fpacks/all" label="Tout exporter"/>
-    <TopLevelTable
+    <SQLTable
       tableName="fpacks"
       :ajouter="ajouter"
       :search="searchTerm"

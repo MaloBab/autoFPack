@@ -1,10 +1,10 @@
 <script setup lang="ts">
 import { ref } from 'vue'
-import PageHeader from '../components/PageHeader.vue'
-import TableReader from '../components/TableReader.vue'
-import TextSearch from '../components/TextSearch.vue'
-import ExportButton from '../components/ExportButton.vue'
-import ImportButton from '../components/ImportButton.vue'
+import PageHeader from '../components/Interaction/PageHeader.vue'
+import SQLTable from '../components/Table/SQLTable.vue'
+import TextSearch from '../components/Searching/TextSearch.vue'
+import ExportButton from '../components/Interaction/ExportButton.vue'
+import ImportButton from '../components/Interaction/ImportButton.vue'
 
 const ajouter = ref(false)
 const searchTerm = ref('')
@@ -33,7 +33,7 @@ function resetAjouter() {
       <button class="btn-prix">💵 Gerer Prix</button>
     </router-link>
     
-    <TableReader
+    <SQLTable
       :key="tableKey"
       tableName="produits"
       :ajouter="ajouter"

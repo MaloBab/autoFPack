@@ -1,13 +1,13 @@
 <script setup lang="ts">
 import { ref, onMounted, onUnmounted, computed } from 'vue'
 import axios from 'axios'
-import AddGroupModal from '../components/AddGroupModal.vue'
+import AddGroupModal from '../components/Modal/AddGroupModal.vue'
 import { useRouter } from 'vue-router'
 import { useIncompatibilitesChecker } from '../composables/useIncompatibilitesChecker'
 import { showToast } from '../composables/useToast'
 import { useLoading } from '../composables/useLoading'
-import AddProduitModal from '../components/AddProduitModal.vue'
-import AddEquipementModal from '../components/AddEquipementModal.vue';
+import AddProduitModal from '../components/Modal/AddProduitModal.vue'
+import AddEquipementModal from '../components/Modal/AddEquipementModal.vue';
 
 const { startLoading, stopLoading } = useLoading()
 
