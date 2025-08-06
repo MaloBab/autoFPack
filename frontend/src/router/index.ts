@@ -1,3 +1,4 @@
+// router/index.ts - Routes mises à jour
 import { createRouter, createWebHashHistory } from 'vue-router'
 import Dashboard from '../views/Dashboard.vue'
 import Produits from '../views/Produits.vue'
@@ -13,6 +14,7 @@ import Incompatibilites from '../views/Incompatibilites.vue'
 import FpackList from '../views/ConfigureFPackListe.vue'
 import Prix from '../views/Prix.vue'
 import Projet_global from '../views/Projet_global.vue'
+import ProjetDetails from '../views/ProjetDetails.vue'
 import CompProjet from '../views/CompleteProjet.vue'
 import FactureProjet from '../views/FactureProjet.vue'
 import PrixRobot from '../views/PrixRobot.vue'
@@ -29,10 +31,13 @@ const routes = [
   { path: '/remplir/:tableName/:id', name: 'RemplirEquipement', component: RemplirEquipement },
   { path: '/configure/:tableName/:id', name: 'ConfigureFPack', component: ConfigureFPack},
   { path: '/incompatibilites', name: 'Incompatibilites', component: Incompatibilites },
-  {path: '/fpacks/:id/config/liste', name: 'ConfigureFPackListe',component: FpackList},
-  {path: '/prix', name: 'Prix',component: Prix},
-  {path: '/prix_robot', name: 'Prix-Robot',component: PrixRobot},
-  {path: '/projet_global', name: 'Projet_global',component: Projet_global},
+  { path: '/fpacks/:id/config/liste', name: 'ConfigureFPackListe', component: FpackList},
+  { path: '/prix', name: 'Prix', component: Prix},
+  { path: '/prix_robot', name: 'Prix-Robot', component: PrixRobot},
+  
+  // Routes des projets - structure hiérarchique
+  { path: '/projet_global', name: 'Projet_global', component: Projet_global},
+  { path: '/projets/:id/details', name: 'ProjetDetails', component: ProjetDetails},
   { path: '/complete/:tableName/:id', name: 'CompleteProjet', component: CompProjet},
   { path: '/facture/:id', name: 'FactureProjet', component: FactureProjet },
 ]

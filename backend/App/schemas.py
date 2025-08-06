@@ -264,3 +264,27 @@ class ProjetGlobalRead(ProjetGlobalBase):
 
     class Config:
         from_attributes = True
+        
+class ProjetReadWithDetails(ProjetRead):
+    """Schema pour afficher un projet avec ses détails complets"""
+    fpack_nom: Optional[str] = None
+    client_nom: Optional[str] = None
+    projet_global_nom: Optional[str] = None
+    sous_projet_nom: Optional[str] = None
+    complet: bool = False
+    nb_selections: int = 0
+    nb_groupes_attendus: int = 0
+
+class ProjetGlobalReadWithProjets(ProjetGlobalRead):
+    """Schema pour afficher un projet global avec ses projets"""
+    projets: List[ProjetReadWithDetails] = []
+    client_nom: Optional[str] = None
+
+class ProjetSelectionReadWithDetails(ProjetSelectionRead):
+    """Schema pour afficher une sélection avec ses détails"""
+    groupe_nom: Optional[str] = None
+    item_nom: Optional[str] = None
+    
+class ProjetTree(BaseModel):
+    """Schema pour l'arbre complet des projets"""
+    projets_global: List[ProjetGlobalReadWithProjets] = []

@@ -165,10 +165,12 @@ class Projet(Base):
     id = Column(Integer, primary_key=True, autoincrement=True)
     nom = Column(String, nullable=False)
     fpack_id = Column(Integer, ForeignKey("dbo.FPM_fpacks.id", ondelete="CASCADE"), nullable=False)
-    id_global = Column(Integer, ForeignKey("dbo.FPM_projets_global.id", ondelete="SET NULL"))
+    id_global = Column(Integer, ForeignKey("dbo.FPM_projets_global.id", ondelete="CASCADE"), nullable=False)  
 
     global_rel = relationship("ProjetGlobal", back_populates="projets", passive_deletes=True)
+    fpack_rel = relationship("FPack", passive_deletes=True)  
     selections = relationship("ProjetSelection", back_populates="projet", cascade="all, delete-orphan")
+
 
 
 class ProjetSelection(Base):

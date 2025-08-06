@@ -28,7 +28,7 @@ const titreSingulier = computed(() =>
 h1 {
   font-size: 2.5rem;          
   font-weight: 700; 
-  margin-bottom: 3%;
+  margin-bottom: 1%;
   margin-left: 2%;
 }
 
@@ -40,6 +40,7 @@ button {
   padding: 0.75rem 1.5rem;
   margin-left: 2%;
   border-radius: 0.375rem;
+  width: max-content;
   cursor: pointer;
   border: none;
 }

@@ -1,45 +1,934 @@
 <script setup lang="ts">
-import { ref } from 'vue'
+import { ref, onMounted, computed, watch } from 'vue'
+import { useRouter } from 'vue-router'
+import { useProjets } from '../composables/useProjets'
 import PageHeader from '../components/Interaction/PageHeader.vue'
-import { showToast } from '../composables/useToast'
+import ProjetGlobalCard from '../components/Projets/ProjetGlobalCard.vue'
 import TextSearch from '../components/Searching/TextSearch.vue'
+import { showToast } from '../composables/useToast'
+import { useLoading } from '../composables/useLoading'
 import axios from 'axios'
-import SQLTable from '../components/Table/Table.vue'
 
-const projets = ref<any[]>([])
-const loading = ref(false)
-const ajouter = ref(false)
+const { startLoading, stopLoading } = useLoading()
+const router = useRouter()
+
+// Utilisation du composable optimisé
+const {
+  projetsGlobaux,
+  loading,
+  globalStats,
+  fetchProjetsGlobaux,
+  createProjetGlobal,
+  createProjet,
+  deleteProjetGlobal,
+  deleteProjet,
+  searchProjetsGlobaux
+} = useProjets()
+
+// État local pour les modales et formulaires
 const searchTerm = ref('')
+const showAddGlobalModal = ref(false)
+const showAddProjetModal = ref(false)
+const showDeleteConfirmModal = ref(false)
+const selectedGlobalId = ref<number | null>(null)
+const itemToDelete = ref<{ type: 'global' | 'projet', id: number, nom: string } | null>(null)
+const allCardsExpanded = ref(true)
 
-function resetAjouter() {
-  ajouter.value = false
+const newGlobal = ref({
+  projet: '',
+  sous_projet: '',
+  client: null as number | null
+})
+
+const newProjet = ref({
+  nom: '',
+  fpack_id: null as number | null,
+  id_global: null as number | null
+})
+
+const globalErrors = ref<Record<string, string>>({})
+const projetErrors = ref<Record<string, string>>({})
+
+const clients = ref<Array<{ id: number, nom: string }>>([])
+const fpacks = ref<Array<{ id: number, nom: string, client: number }>>([])
+
+const filteredProjetsTree = computed(() => {
+  return searchProjetsGlobaux(searchTerm.value)
+})
+
+const fpacksForProjet = computed(() => {
+  if (!selectedGlobalId.value) return []
+  const pg = projetsGlobaux.value.find(pg => pg.id === selectedGlobalId.value)
+  return pg ? fpacks.value.filter(f => f.client === pg.client) : []
+})
+
+const validateGlobalForm = (): boolean => {
+  globalErrors.value = {}
+  
+  if (!newGlobal.value.projet.trim()) {
+    globalErrors.value.projet = 'Le nom du projet est requis'
+  }
+  
+  if (!newGlobal.value.client) {
+    globalErrors.value.client = 'Le client est requis'
+  }
+  
+  return Object.keys(globalErrors.value).length === 0
 }
 
-async function fetchProjets() {
-  loading.value = true
+const validateProjetForm = (): boolean => {
+  projetErrors.value = {}
+  
+  if (!newProjet.value.nom.trim()) {
+    projetErrors.value.nom = 'Le nom du F-Pack est requis'
+  }
+  
+  if (!newProjet.value.fpack_id) {
+    projetErrors.value.fpack_id = 'Le FPack est requis'
+  }
+  
+  return Object.keys(projetErrors.value).length === 0
+}
+
+// Actions principales
+async function fetchData() {
+  startLoading()
   try {
-    const response = await axios.get('http://localhost:8000/projets')
-    projets.value = response.data
-  } catch (e) {
-    console.error(e)
-    showToast('Erreur lors du chargement des projets', 'error')
-  } finally {
-    loading.value = false
+    const [clientsRes, fpacksRes] = await Promise.all([
+      axios.get('http://localhost:8000/clients'),
+      axios.get('http://localhost:8000/fpacks')
+    ])
+    
+    clients.value = clientsRes.data
+    fpacks.value = fpacksRes.data
+    
+    await fetchProjetsGlobaux()
+  } catch (error) {
+    console.error('Erreur lors du chargement:', error)
+    showToast('Erreur lors du chargement des données', '#e71717ff')
+  }
+  finally {
+    stopLoading()
   }
 }
-fetchProjets()
+
+async function handleCreateProjetGlobal() {
+  if (!validateGlobalForm()) return
+  
+  try {
+    await createProjetGlobal(newGlobal.value)
+    closeGlobalModal()
+  } catch (error: any) {
+    const message = error.response?.data?.detail || 'Erreur lors de la création'
+    showToast(message, '#e71717ff')
+  }
+}
+
+async function handleCreateProjet() {
+  if (!validateProjetForm()) return
+  
+  try {
+    await createProjet(newProjet.value)
+    closeProjetModal()
+  } catch (error: any) {
+    const message = error.response?.data?.detail || 'Erreur lors de la création'
+    showToast(message, '#e71717ff')
+  }
+}
+
+function onDeleteItem(type: 'global' | 'projet', id: number, nom: string) {
+  itemToDelete.value = { type, id, nom }
+  confirmDelete()
+}
+
+async function confirmDelete() {
+  if (!itemToDelete.value) return
+  
+  try {
+    if (itemToDelete.value.type === 'global') {
+      await deleteProjetGlobal(itemToDelete.value.id)
+    } else {
+      await deleteProjet(itemToDelete.value.id)
+    }
+    showDeleteConfirmModal.value = false
+    itemToDelete.value = null
+  } catch (error: any) {
+    const message = error.response?.data?.detail || 'Erreur lors de la suppression'
+    showToast(message, '#e71717ff')
+  }
+}
+
+function toggleAllCards() {
+  allCardsExpanded.value = !allCardsExpanded.value
+}
+
+// Gestion des modales
+function openAddGlobalModal() {
+  resetGlobalForm()
+  showAddGlobalModal.value = true
+}
+
+function openAddProjetModal(globalId: number) {
+  selectedGlobalId.value = globalId
+  resetProjetForm()
+  newProjet.value.id_global = globalId
+  
+  // Pré-sélectionner le premier FPack disponible
+  const availableFpacks = fpacksForProjet.value
+  if (availableFpacks.length > 0) {
+    newProjet.value.fpack_id = availableFpacks[0].id
+  }
+  
+  showAddProjetModal.value = true
+}
+
+function closeGlobalModal() {
+  showAddGlobalModal.value = false
+  resetGlobalForm()
+}
+
+function closeProjetModal() {
+  showAddProjetModal.value = false
+  resetProjetForm()
+  selectedGlobalId.value = null
+}
+
+function resetGlobalForm() {
+  newGlobal.value = { projet: '', sous_projet: '', client: null }
+  globalErrors.value = {}
+}
+
+function resetProjetForm() {
+  newProjet.value = { nom: '', fpack_id: null, id_global: null }
+  projetErrors.value = {}
+}
+
+// Navigation
+function navigateToComplete(projetId: number) {
+  router.push(`/complete/projets/${projetId}`)
+}
+
+watch(
+  () => router.currentRoute.value.path,
+  async () => {
+    if (router.currentRoute.value.path === '/projet_global') {
+      await fetchData()
+    }
+  }
+)
+
+function navigateToFacture(projetId: number) {
+  router.push(`/facture/${projetId}`)
+}
+
+function navigateToDetails(projetId: number) {
+  router.push(`/projets/${projetId}/details`)
+}
+
+function navigateToEdit(globalId: number) {
+  router.push(`/projets-global/${globalId}/edit`)
+}
+
+watch(
+  () => router.currentRoute.value.path,
+  async (newPath, oldPath) => {
+    if (newPath === '/projet_global') {
+      if (oldPath && oldPath.includes('/complete/projets/')) {
+        await fetchData()
+      } else if (oldPath !== newPath) {
+        await fetchData()
+      }
+    }
+  },
+  { immediate: false }
+)
+
+// Watchers pour réinitialiser les erreurs
+watch(() => newGlobal.value.projet, () => {
+  if (globalErrors.value.projet) delete globalErrors.value.projet
+})
+
+watch(() => newGlobal.value.client, () => {
+  if (globalErrors.value.client) delete globalErrors.value.client
+})
+
+watch(() => newProjet.value.nom, () => {
+  if (projetErrors.value.nom) delete projetErrors.value.nom
+})
+
+watch(() => newProjet.value.fpack_id, () => {
+  if (projetErrors.value.fpack_id) delete projetErrors.value.fpack_id
+})
+
+onMounted(() => {
+  fetchData()
+})
 </script>
 
 <template>
-    <PageHeader titre="Projets" @ajouter="ajouter = true" />
-    <SQLTable
-      tableName="projets_global"
-      :ajouter="ajouter"
-      :search="searchTerm"
-      @added="resetAjouter"
-      @cancelled="resetAjouter"
-    />
-    <TextSearch v-model="searchTerm" />
+  <div class="main-header">
+    <PageHeader titre="Projets" @ajouter="openAddGlobalModal" />
+    <button class="toggle-all" @click="toggleAllCards">
+      {{ allCardsExpanded ? 'Replier' : 'Déplier' }}
+    </button>
+  </div>
+  
+  <div class="projets-page">
+    <!-- En-tête avec statistiques -->
+    <div class="page-header-enhanced">
+      
+      
+      <!-- Dashboard des statistiques -->
+      <div class="stats-dashboard" v-if="globalStats">
+        <div class="stat-card">
+          <div class="stat-icon">📊</div>
+          <div class="stat-content">
+            <div class="stat-number">{{ globalStats.nb_projets_globaux }}</div>
+            <div class="stat-label">Projets</div>
+          </div>
+        </div>
+        
+        <div class="stat-card fpack">
+          <div class="stat-icon">🎯</div>
+          <div class="stat-content">
+            <div class="stat-number">{{ globalStats.nb_projets_total }}</div>
+            <div class="stat-label">F-packs</div>
+          </div>
+        </div>
+        
+        <div class="stat-card success">
+          <div class="stat-icon">✅</div>
+          <div class="stat-content">
+            <div class="stat-number">{{ globalStats.nb_projets_complets }}</div>
+            <div class="stat-label">F-Packs Complets</div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Contenu principal avec transitions -->
+    <div class="projets-container">
+      <Transition name="fade" appear>
+        <div v-if="loading" class="loading-state">
+          <div class="loading-spinner"></div>
+          <p>Chargement des projets...</p>
+        </div>
+      </Transition>
+
+      <TransitionGroup name="list" tag="div" class="projets-grid" v-if="!loading">
+        <ProjetGlobalCard
+          v-for="projetGlobal in filteredProjetsTree"
+          :key="projetGlobal.id"
+          :projet-global="projetGlobal"
+          :force-expanded="allCardsExpanded"
+          @add-projet="openAddProjetModal"
+          @edit-global="navigateToEdit"
+          @delete-global="(id, nom) => onDeleteItem('global', id, nom)"
+          @delete-projet="(id, nom) => onDeleteItem('projet', id, nom)"
+          @complete-projet="navigateToComplete"
+          @view-facture="navigateToFacture"
+          @view-details="navigateToDetails"
+          class="projet-card-item"
+        />
+      </TransitionGroup>
+      
+      <div v-if="!loading && filteredProjetsTree.length === 0" class="empty-state">
+        <div class="empty-icon">📋</div>
+        <h3>{{ searchTerm ? 'Aucun résultat' : 'Aucun projet créé' }}</h3>
+        <p>{{ searchTerm ? 'Essayez avec d\'autres termes de recherche' : 'Créer votre premier projet' }}</p>
+        <button v-if="!searchTerm" @click="openAddGlobalModal" class="cta-button">
+          ➕ Créer un projet
+        </button>
+      </div>
+    </div>
+
+    <!-- Modal Nouveau Projet -->
+    <Teleport to="body">
+      <Transition name="modal">
+        <div v-if="showAddGlobalModal" class="modal-overlay" @click="closeGlobalModal">
+          <div class="modal enhanced-modal" @click.stop>
+            <div class="modal-header">
+              <h3>✨ Nouveau Projet Global</h3>
+              <button @click="closeGlobalModal" class="close-button">&times;</button>
+            </div>
+            
+            <form @submit.prevent="handleCreateProjetGlobal" class="enhanced-form">
+              <div class="form-group">
+                <label>Nom du Projet</label>
+                <input 
+                  v-model="newGlobal.projet" 
+                  :class="{ 'error': globalErrors.projet }"
+                />
+                <span v-if="globalErrors.projet" class="error-message">{{ globalErrors.projet }}</span>
+              </div>
+              
+              <div class="form-group">
+                <label>Sous-projet</label>
+                <input 
+                  v-model="newGlobal.sous_projet"
+                />
+              </div>
+              
+              <div class="form-group">
+                <label>Client</label>
+                <select 
+                  v-model="newGlobal.client" 
+                  :class="{ 'error': globalErrors.client }"
+                >
+                  <option value="">Sélectionner un client</option>
+                  <option v-for="client in clients" :key="client.id" :value="client.id">
+                    {{ client.nom }}
+                  </option>
+                </select>
+                <span v-if="globalErrors.client" class="error-message">{{ globalErrors.client }}</span>
+              </div>
+              
+              <div class="modal-actions">
+                <button type="button" @click="closeGlobalModal" class="btn-cancel">
+                  Annuler
+                </button>
+                <button type="submit" class="btn-primary">
+                  ✨ Créer le projet
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      </Transition>
+    </Teleport>
+
+    <!-- Modal Nouveau F-Pack  -->
+    <Teleport to="body">
+      <Transition name="modal">
+        <div v-if="showAddProjetModal" class="modal-overlay" @click="closeProjetModal">
+          <div class="modal enhanced-modal" @click.stop>
+            <div class="modal-header">
+              <h3>🎯 Nouveau F-Pack</h3>
+              <button @click="closeProjetModal" class="close-button">&times;</button>
+            </div>
+            
+            <form @submit.prevent="handleCreateProjet" class="enhanced-form">
+              <div class="form-group">
+                <label>Nom du F-Pack</label>
+                <input 
+                  v-model="newProjet.nom" 
+                  :class="{ 'error': projetErrors.nom }"
+                />
+                <span v-if="projetErrors.nom" class="error-message">{{ projetErrors.nom }}</span>
+              </div>
+              
+              <div class="form-group">
+                <label>Template FPack</label>
+                <select 
+                  v-model="newProjet.fpack_id" 
+                  :class="{ 'error': projetErrors.fpack_id }"
+                >
+                  <option value="">Sélectionner un FPack</option>
+                  <option 
+                    v-for="fpack in fpacksForProjet" 
+                    :key="fpack.id" 
+                    :value="fpack.id"
+                  >
+                    {{ fpack.nom }}
+                  </option>
+                </select>
+                <span v-if="projetErrors.fpack_id" class="error-message">{{ projetErrors.fpack_id }}</span>
+                <div v-if="fpacksForProjet.length === 0" class="info-message">
+                  Aucun FPack disponible pour ce client
+                </div>
+              </div>
+              
+              <div class="modal-actions">
+                <button type="button" @click="closeProjetModal" class="btn-cancel">
+                  Annuler
+                </button>
+                <button 
+                  type="submit" 
+                  class="btn-primary"
+                  :disabled="fpacksForProjet.length === 0"
+                >
+                  🎯 Créer le projet
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      </Transition>
+    </Teleport>
+  </div>
+      <!-- Barre de recherche améliorée -->
+    <div class="search-section">
+      <TextSearch 
+        v-model="searchTerm" 
+        placeholder="Rechercher par nom de projet, client, FPack..." 
+        class="enhanced-search"
+      />
+      <div v-if="searchTerm" class="search-results-info">
+        {{ filteredProjetsTree.length }} résultat(s) trouvé(s)
+      </div>
+    </div>
 </template>
 
+<style scoped>
+.projets-page {
+  margin-left: 1%;
+  max-width: 98%;
+}
 
+.toggle-all {
+  background-color: #9b9b9c;
+  margin-top: 72px;
+  color: white;
+  font-weight: 500;    
+  font-size: 1.5rem;
+  padding: 0.75rem 1.5rem;
+  border-radius: 0.375rem;
+  cursor: pointer;
+  border: none;
+  height: 50px ;
+  align-self: center;
+  transition: all 0.2s ease;
+}
+
+.toggle-all:hover {
+  background-color: #6b6b6b;
+}
+
+.main-header {
+  display: flex;
+  align-items: center; 
+  gap: 2rem;          
+  margin-bottom: 0.75rem; 
+  margin-left: 1%;
+}
+
+.page-header-enhanced {
+  margin-bottom: 2rem;
+}
+
+.stats-dashboard {
+  display: flex;
+  justify-content: space-between;
+  gap: 1.5rem;
+  margin-top: 2rem;
+  flex-wrap: nowrap;  /* Empêche le retour à la ligne */
+  width: 100%;
+}
+
+.stat-card {
+  flex: 1 1 0;  /* Répartition égale de l'espace */
+  min-width: 180px;  /* Taille minimum */
+  background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);
+  color: white;
+  padding: 1.5rem;
+  border-radius: 12px;
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  box-shadow: 0 4px 15px rgba(0, 0, 0, 0.1);
+  transition: transform 0.2s ease, box-shadow 0.2s ease;
+}
+
+.stat-card:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 6px 25px rgba(0, 0, 0, 0.15);
+}
+
+.stat-card.success {
+  background: linear-gradient(135deg, #11998e 0%, #38ef7d 100%);
+}
+
+.stat-card.fpack {
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+}
+
+.stat-icon {
+  font-size: 2rem;
+  opacity: 0.9;
+}
+
+.stat-number {
+  font-size: 2rem;
+  font-weight: 700;
+  line-height: 1;
+}
+
+.stat-label {
+  font-size: 0.9rem;
+  opacity: 0.9;
+  font-weight: 500;
+}
+
+.search-section {
+  display: flex;
+  gap: 1rem;
+
+}
+
+.search-results-info {
+  margin-top: 25px;
+  color: #6b7280;
+  font-size: 0.9rem;
+  text-align: center;
+}
+
+.projets-container {
+  overflow-y: auto;
+  position: relative;
+  min-height: 200px;
+  max-height: calc(100vh - 505px);
+  
+  padding-right: 1rem;
+}
+
+.projets-container::-webkit-scrollbar {
+  width: 8px;
+}
+
+.projets-container::-webkit-scrollbar-track {
+  background: #f1f5f9;
+  border-radius: 4px;
+}
+
+.projets-container::-webkit-scrollbar-thumb {
+  background: #94a3b8;
+  border-radius: 4px;
+  transition: background 0.2s;
+}
+
+.projets-container::-webkit-scrollbar-thumb:hover {
+  background: #64748b;
+}
+
+.loading-state {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 4rem;
+  color: #6b7280;
+}
+
+.loading-spinner {
+  width: 40px;
+  height: 40px;
+  border: 3px solid #e5e7eb;
+  border-top: 3px solid #3b82f6;
+  border-radius: 50%;
+  animation: spin 1s linear infinite;
+  margin-bottom: 1rem;
+}
+
+@keyframes spin {
+  0% { transform: rotate(0deg); }
+  100% { transform: rotate(360deg); }
+}
+
+.projets-grid {
+  display: grid;
+  gap: 1.5rem;
+  grid-template-columns: repeat(auto-fit, minmax(400px, 1fr));
+}
+
+.projet-card-item {
+  transition: all 0.3s ease;
+}
+
+.empty-state {
+  text-align: center;
+  padding: 4rem 2rem;
+  color: #6b7280;
+}
+
+.empty-icon {
+  font-size: 4rem;
+  margin-bottom: 1rem;
+  opacity: 0.5;
+}
+
+.empty-state h3 {
+  margin: 0 0 1rem 0;
+  color: #374151;
+}
+
+.cta-button {
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  color: white;
+  border: none;
+  padding: 1rem 2rem;
+  border-radius: 8px;
+  font-size: 1.1rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: transform 0.2s ease;
+  margin-top: 1rem;
+}
+
+.cta-button:hover {
+  transform: translateY(-2px);
+}
+
+/* Modales améliorées */
+.modal-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(0, 0, 0, 0.6);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 1000;
+  backdrop-filter: blur(2px);
+}
+
+.enhanced-modal {
+  background: white;
+  border-radius: 16px;
+  box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04);
+  width: 90%;
+  max-width: 500px;
+  max-height: 90vh;
+  overflow: hidden;
+}
+
+.danger-modal {
+  background: white;
+  border-radius: 16px;
+  box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1);
+  width: 90%;
+  max-width: 400px;
+}
+
+.modal-header {
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  color: white;
+  padding: 1.5rem;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.modal-header.danger {
+  background: linear-gradient(135deg, #ef4444 0%, #dc2626 100%);
+}
+
+.modal-header h3 {
+  margin: 0;
+  font-size: 1.25rem;
+  font-weight: 600;
+}
+
+.close-button {
+  background: none;
+  border: none;
+  color: white;
+  font-size: 1.5rem;
+  cursor: pointer;
+  opacity: 0.8;
+  transition: opacity 0.2s;
+  width: 30px;
+  height: 30px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.close-button:hover {
+  opacity: 1;
+}
+
+.enhanced-form {
+  padding: 2rem;
+}
+
+.modal-body {
+  padding: 2rem;
+}
+
+.form-group {
+  margin-bottom: 1.5rem;
+  margin-right: 1.5rem;
+}
+
+.form-group label {
+  display: block;
+  margin-bottom: 0.5rem;
+  font-weight: 600;
+  color: #374151;
+}
+
+.form-group input,
+.form-group select {
+  width: 100%;
+  padding: 0.875rem;
+  border: 2px solid #e5e7eb;
+  border-radius: 8px;
+  font-size: 1rem;
+  transition: border-color 0.2s, box-shadow 0.2s;
+}
+
+.form-group input:focus,
+.form-group select:focus {
+  outline: none;
+  border-color: #3b82f6;
+  box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
+}
+
+.form-group input.error,
+.form-group select.error {
+  border-color: #ef4444;
+  box-shadow: 0 0 0 3px rgba(239, 68, 68, 0.1);
+}
+
+.error-message {
+  color: #ef4444;
+  font-size: 0.875rem;
+  margin-top: 0.25rem;
+  display: block;
+}
+
+.info-message {
+  color: #6b7280;
+  font-size: 0.875rem;
+  margin-top: 0.25rem;
+  font-style: italic;
+}
+
+.item-to-delete {
+  background: #fef2f2;
+  border: 1px solid #fecaca;
+  padding: 1rem;
+  border-radius: 8px;
+  margin: 1rem 0;
+  text-align: center;
+}
+
+.warning-text {
+  color: #ef4444;
+  font-size: 0.9rem;
+  font-weight: 500;
+}
+
+.modal-actions {
+  display: flex;
+  gap: 1rem;
+  justify-content: flex-end;
+  margin-top: 2rem;
+}
+
+.btn-cancel {
+  padding: 0.875rem 1.5rem;
+  border: 2px solid #e5e7eb;
+  background: white;
+  color: #6b7280;
+  border-radius: 8px;
+  font-size: 1rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.btn-cancel:hover {
+  border-color: #d1d5db;
+  background: #f9fafb;
+}
+
+.btn-primary {
+  padding: 0.875rem 1.5rem;
+  border: none;
+  background: linear-gradient(135deg, #3b82f6 0%, #1d4ed8 100%);
+  color: white;
+  border-radius: 8px;
+  font-size: 1rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: transform 0.2s, box-shadow 0.2s;
+}
+
+.btn-primary:hover:not(:disabled) {
+  transform: translateY(-1px);
+  box-shadow: 0 4px 12px rgba(59, 130, 246, 0.4);
+}
+
+.btn-primary:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+  transform: none;
+}
+
+.btn-danger {
+  padding: 0.875rem 1.5rem;
+  border: none;
+  background: linear-gradient(135deg, #ef4444 0%, #dc2626 100%);
+  color: white;
+  border-radius: 8px;
+  font-size: 1rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: transform 0.2s, box-shadow 0.2s;
+}
+
+.btn-danger:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 4px 12px rgba(239, 68, 68, 0.4);
+}
+
+/* Transitions */
+.fade-enter-active, .fade-leave-active {
+  transition: opacity 0.3s ease;
+}
+
+.fade-enter-from, .fade-leave-to {
+  opacity: 0;
+}
+
+.list-enter-active,
+.list-leave-active {
+  transition: all 0.3s ease;
+}
+
+.list-enter-from,
+.list-leave-to {
+  opacity: 0;
+  transform: translateY(20px);
+}
+
+.list-move {
+  transition: transform 0.3s ease;
+}
+
+.modal-enter-active {
+  transition: all 0.3s ease;
+}
+
+.modal-leave-active {
+  transition: all 0.2s ease;
+}
+
+.modal-enter-from,
+.modal-leave-to {
+  opacity: 0;
+  transform: scale(0.9);
+}
+
+@media (max-width: 768px) {
+  .projets-page {
+    padding: 1rem;
+  }
+  
+  .stats-dashboard {
+    grid-template-columns: 1fr;
+    gap: 1rem;
+  }
+  
+  .projets-grid {
+    grid-template-columns: 1fr;
+  }
+  
+  .modal-actions {
+    flex-direction: column;
+  }
+}
+</style>
