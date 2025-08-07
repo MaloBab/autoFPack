@@ -3,6 +3,7 @@ import {computed, reactive } from 'vue'
 import axios from 'axios'
 import { showToast } from './useToast'
 
+
 // Types étendus avec nouvelles propriétés
 export interface ProjetGlobal {
   id: number
@@ -181,7 +182,7 @@ export function useProjets() {
   async function updateProjetGlobal(id: number, data: {
     projet: string
     sous_projet?: string
-    client: number
+    client: number | null
   }) {
     return updateLoadingState(async () => {
       const response = await axios.put(`${baseUrl}/projets-global/${id}`, data)
@@ -345,4 +346,5 @@ export function useProjets() {
     resetState
   }
 }
+
 

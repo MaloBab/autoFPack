@@ -22,7 +22,8 @@ const {
   createProjet,
   deleteProjetGlobal,
   deleteProjet,
-  searchProjetsGlobaux
+  searchProjetsGlobaux,
+  updateProjetGlobal
 } = useProjets()
 
 // État local pour les modales et formulaires
@@ -102,7 +103,7 @@ async function fetchData() {
     clients.value = clientsRes.data
     fpacks.value = fpacksRes.data
     
-    await fetchProjetsGlobaux()
+    await fetchProjetsGlobaux(true)
   } catch (error) {
     console.error('Erreur lors du chargement:', error)
     showToast('Erreur lors du chargement des données', '#e71717ff')
@@ -225,8 +226,49 @@ function navigateToDetails(projetId: number) {
   router.push(`/projets/${projetId}/details`)
 }
 
-function navigateToEdit(globalId: number) {
-  router.push(`/projets-global/${globalId}/edit`)
+const showEditGlobalModal = ref(false)
+const editingGlobal = ref({
+  id: null as number | null,
+  projet: '',
+  sous_projet: '',
+  client: null as number | null
+})
+
+// 2. Remplacez la fonction navigateToEdit
+function openEditGlobalModal(globalId: number) {
+  const projetGlobal = projetsGlobaux.value.find(pg => pg.id === globalId)
+  if (projetGlobal) {
+    editingGlobal.value = {
+      id: projetGlobal.id,
+      projet: projetGlobal.projet,
+      sous_projet: projetGlobal.sous_projet || '',
+      client: projetGlobal.client
+    }
+    showEditGlobalModal.value = true
+  }
+}
+
+function closeEditModal() {
+  showEditGlobalModal.value = false
+  editingGlobal.value = { id: null, projet: '', sous_projet: '', client: null }
+}
+
+// 3. Ajoutez une fonction de sauvegarde
+async function handleUpdateProjetGlobal() {
+  if (!editingGlobal.value.id) return
+  
+  try {
+    await updateProjetGlobal(editingGlobal.value.id, {
+      projet: editingGlobal.value.projet,
+      sous_projet: editingGlobal.value.sous_projet,
+      client: editingGlobal.value.client
+    })
+    closeEditModal()
+    showToast('Projet modifié avec succès', '#10b981')
+  } catch (error: any) {
+    const message = error.response?.data?.detail || 'Erreur lors de la modification'
+    showToast(message, '#e71717ff')
+  }
 }
 
 watch(
@@ -322,7 +364,7 @@ onMounted(() => {
           :projet-global="projetGlobal"
           :force-expanded="allCardsExpanded"
           @add-projet="openAddProjetModal"
-          @edit-global="navigateToEdit"
+          @edit-global="openEditGlobalModal(projetGlobal.id)"
           @delete-global="(id, nom) => onDeleteItem('global', id, nom)"
           @delete-projet="(id, nom) => onDeleteItem('projet', id, nom)"
           @complete-projet="navigateToComplete"
@@ -389,6 +431,59 @@ onMounted(() => {
                 </button>
                 <button type="submit" class="btn-primary">
                   ✨ Créer le projet
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      </Transition>
+    </Teleport>
+
+    <!-- Modal Édition Projet Global -->
+    <Teleport to="body">
+      <Transition name="modal">
+        <div v-if="showEditGlobalModal" class="modal-overlay" @click="closeEditModal">
+          <div class="modal enhanced-modal" @click.stop>
+            <div class="modal-header">
+              <h3>✏️ Modifier le Projet Global</h3>
+              <button @click="closeEditModal" class="close-button">&times;</button>
+            </div>
+            
+            <form @submit.prevent="handleUpdateProjetGlobal" class="enhanced-form">
+              <div class="form-group">
+                <label>Nom du Projet</label>
+                <input 
+                  v-model="editingGlobal.projet" 
+                  required
+                />
+              </div>
+              
+              <div class="form-group">
+                <label>Sous-projet</label>
+                <input 
+                  v-model="editingGlobal.sous_projet"
+                />
+              </div>
+              
+              <div class="form-group">
+                <label>Client</label>
+                <select 
+                  v-model="editingGlobal.client" 
+                  required
+                >
+                  <option value="">Sélectionner un client</option>
+                  <option v-for="client in clients" :key="client.id" :value="client.id">
+                    {{ client.nom }}
+                  </option>
+                </select>
+              </div>
+              
+              <div class="modal-actions">
+                <button type="button" @click="closeEditModal" class="btn-cancel">
+                  Annuler
+                </button>
+                <button type="submit" class="btn-primary">
+                  💾 Sauvegarder
                 </button>
               </div>
             </form>

@@ -200,7 +200,6 @@ def get_projet_global_stats(id: int, db: Session = Depends(get_db)):
     
     return ProjetService.calculate_global_stats(projets_details)
 
-# Extension du service avec méthodes statiques
 @staticmethod
 def calculate_global_stats(projets_details: List[Dict]) -> Dict:
     """Calcule les statistiques globales"""

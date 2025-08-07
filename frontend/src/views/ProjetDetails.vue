@@ -148,7 +148,7 @@ onMounted(fetchDetails)
       <div class="breadcrumb">
         <button @click="goBack" class="breadcrumb-item clickable">
           <span class="breadcrumb-icon">🏠</span>
-          Projets Globaux
+          Projets
         </button>
         <span class="breadcrumb-separator">›</span>
         <span class="breadcrumb-item current">

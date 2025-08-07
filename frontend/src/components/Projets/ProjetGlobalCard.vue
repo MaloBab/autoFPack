@@ -71,7 +71,7 @@ function updateStats() {
     return
   }
 
-const totalGroupes = projets.reduce((sum, p) => {
+  const totalGroupes = projets.reduce((sum, p) => {
     const groupes = Number(p.nb_groupes_attendus) || 0
     return sum + groupes
   }, 0)
@@ -86,14 +86,17 @@ const totalGroupes = projets.reduce((sum, p) => {
 
   const progression = totalGroupes > 0 ? Math.round((totalSelections / totalGroupes) * 100) : 0
 
-  Object.assign(stats.value, {
+  const newStats = {
     nb_projets: projets.length,
     nb_projets_complets: complets.length,
     nb_projets_en_cours: enCours.length,
-    progression_globale: Math.min(100, Math.max(0, progression)), // Limiter entre 0 et 100
+    progression_globale: Math.min(100, Math.max(0, progression)),
     total_groupes: totalGroupes,
     total_selections: totalSelections
-  })
+  }
+  
+  // Forcer la réactivité en recréant l'objet
+  stats.value = { ...newStats }
 }
 
 
@@ -103,7 +106,7 @@ const progressionColor = computed(() => {
   if (progress >= 75) return '#3b82f6'  
   if (progress >= 50) return '#f59e0b'  
   if (progress >= 25) return '#ef4444'  
-  return '#6b7280' // Gris
+  return '#6b7280' 
 })
 
 function getProjetProgress(projet: ProjetItem): number {
@@ -182,7 +185,13 @@ onMounted(() => {
 })
 
 watch(
-  () => [props.projetGlobal, props.projetGlobal.projets],
+  () => [
+    props.projetGlobal,
+    props.projetGlobal.projets,
+    ...props.projetGlobal.projets.map(p => p.nb_selections),
+    ...props.projetGlobal.projets.map(p => p.nb_groupes_attendus),
+    ...props.projetGlobal.projets.map(p => p.complet)
+  ],
   () => {
     nextTick(() => {
       updateStats()
@@ -191,7 +200,7 @@ watch(
   { 
     deep: true, 
     immediate: true,
-    flush: 'post'
+    flush: 'sync' // Changement important : exécuter immédiatement
   }
 )
 

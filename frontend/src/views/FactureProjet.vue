@@ -68,6 +68,7 @@ async function fetchFacture() {
     const id = route.params.id
     const res = await axios.get(`http://localhost:8000/projets/${id}/facture`)
     facture.value = res.data
+    console.log("Facture lignes", facture.value)
   } catch (err) {
     console.error(err)
     showToast("Erreur lors du chargement de la facture", "#EE1111")
@@ -105,13 +106,13 @@ onMounted(fetchFacture)
           </tr>
         </thead>
         <tbody class="scrollable-tbody">
-          <tr v-for="l in facture.lines" :key="l.produit_id" :class="l.prix_produit === 0 ? 'warning-row' : ''">
+          <tr v-for="l in facture.lines" :key="l.produit_id" :class="l.prix_unitaire === 0 ? 'warning-row' : ''">
             <td>{{ l.nom }}</td>
             <td>{{ l.qte }}</td>
-            <td>{{ l.prix_produit.toFixed(2) }}</td>
-            <td>{{ l.prix_transport.toFixed(2) }}</td>
-            <td><strong>{{ l.total_ligne.toFixed(2) }}</strong></td>
-            <td>{{ l.commentaire || (l.prix_produit === 0 ? '⚠️ Aucun prix disponible' : '-') }}</td>
+            <td>{{ l.prix_unitaire.toFixed(2) ?? '0.00'}}</td>
+            <td>{{ l.prix_transport.toFixed(2) ?? '0.00' }}</td>
+            <td><strong>{{ l.total_ligne?.toFixed(2) ?? '0.00' }}</strong></td>
+            <td>{{ l.commentaire || (l.prix_unitaire === 0 ? '⚠️ Aucun prix disponible' : '-') }}</td>
           </tr>
         </tbody>
         <tfoot>

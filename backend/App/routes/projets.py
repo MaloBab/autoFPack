@@ -495,8 +495,8 @@ def get_projet_facture(id: int, db: Session = Depends(get_db)):
 
     # Construction des lignes de facture
     lines = []
-    total_produit = 0
-    total_transport = 0
+    total_produit = 0.00
+    total_transport = 0.00
 
     # Lignes produits
     for pid in sorted(all_produit_ids):
