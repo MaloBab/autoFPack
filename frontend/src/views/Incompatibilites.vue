@@ -43,9 +43,55 @@ const selectedRobotDetail = ref<Robot | null>(null)
 
 // Form states
 const selectedRobotForCompatibility = ref<Robot | null>(null)
-const selectedProductForCompatibility = ref<Produit | null>(null)
-const selectedProduct1 = ref<Produit | null>(null)
-const selectedProduct2 = ref<Produit | null>(null)
+const selectedProductsForCompatibility = ref<Produit[]>([])
+const selectedProductsForIncompatibility = ref<Produit[]>([])
+
+// Search states for modals
+const robotSearchTerm = ref('')
+const productSearchTerm = ref('')
+const incompatibilityProductSearchTerm = ref('')
+const selectedProductForIncompatibility = ref<Produit | null>(null)
+const selectedIncompatibleProducts = ref<Produit[]>([])
+const incompatibilitySearchTerm = ref('')
+const incompatibilityTargetSearchTerm = ref('')
+
+const filteredProductsForSource = computed(() => {
+  const term = incompatibilitySearchTerm.value.toLowerCase().trim()
+  return availableProductsForIncompatibility.value.filter(product =>
+    product.nom.toLowerCase().includes(term) ||
+    product.reference.toLowerCase().includes(term) ||
+    product.description?.toLowerCase().includes(term)
+  )
+})
+
+const filteredProductsForTarget = computed(() => {
+  const term = incompatibilityTargetSearchTerm.value.toLowerCase().trim()
+  return availableProductsForIncompatibility.value.filter(product =>
+    product.id !== selectedProductForIncompatibility.value?.id &&
+    (
+      product.nom.toLowerCase().includes(term) ||
+      product.reference.toLowerCase().includes(term) ||
+      product.description?.toLowerCase().includes(term)
+    )
+  )
+})
+
+function selectProductForIncompatibility(product:any) {
+  selectedProductForIncompatibility.value = product
+  incompatibilitySearchTerm.value = ''
+  selectedIncompatibleProducts.value = []
+}
+
+function toggleIncompatibleProduct(product:any) {
+  const index = selectedIncompatibleProducts.value.findIndex(p => p.id === product.id)
+  if (index === -1) {
+    selectedIncompatibleProducts.value.push(product)
+  } else {
+    selectedIncompatibleProducts.value.splice(index, 1)
+  }
+}
+
+
 
 // Animation
 const animatedIncompatibility = ref<number | null>(null)
@@ -71,6 +117,64 @@ const fetchData = async () => {
     loading.value = false
   }
 }
+
+// Computed properties for modal filtering
+const filteredRobotsForModal = computed(() => {
+  return robots.value.filter(robot => 
+    robot.nom.toLowerCase().includes(robotSearchTerm.value.toLowerCase()) ||
+    robot.generation.toLowerCase().includes(robotSearchTerm.value.toLowerCase()) ||
+    robot.reference.toLowerCase().includes(robotSearchTerm.value.toLowerCase())
+  )
+})
+
+const filteredProductsForModal = computed(() => {
+  const term = productSearchTerm.value.trim().toLowerCase()
+  return produits.value.filter(product =>
+    product.nom.toLowerCase().includes(term) ||
+    product.description?.toLowerCase().includes(term) ||
+    product.reference.toLowerCase().includes(term)
+  )
+})
+
+const filteredProductsForIncompatibilityModal = computed(() => {
+  return produits.value.filter(product => 
+    product.nom.toLowerCase().includes(incompatibilityProductSearchTerm.value.toLowerCase()) ||
+    (product.description?.toLowerCase().includes(incompatibilityProductSearchTerm.value.toLowerCase())) ||
+    product.reference.toLowerCase().includes(incompatibilityProductSearchTerm.value.toLowerCase())
+  )
+})
+
+const availableProductsForCompatibility = computed(() => {
+  if (!selectedRobotForCompatibility.value) return filteredProductsForModal.value
+  
+  const existingCompatibilities = compatibilitesRobotProduit.value
+    .filter(comp => comp.robot_id === selectedRobotForCompatibility.value!.id)
+    .map(comp => comp.produit_id)
+  
+  return filteredProductsForModal.value.filter(product => 
+    !existingCompatibilities.includes(product.id)
+  )
+})
+
+const availableProductsForIncompatibility = computed(() => {
+  const selectedIds = selectedProductsForIncompatibility.value.map(p => p.id)
+  const existingIncompatibilities = new Set<number>()
+  
+  // Pour chaque produit sélectionné, ajouter tous ses produits incompatibles
+  selectedProductsForIncompatibility.value.forEach(selected => {
+    incompatibilitesProduits.value.forEach(incomp => {
+      if (incomp.produit_id_1 === selected.id) {
+        existingIncompatibilities.add(incomp.produit_id_2)
+      } else if (incomp.produit_id_2 === selected.id) {
+        existingIncompatibilities.add(incomp.produit_id_1)
+      }
+    })
+  })
+  
+  return filteredProductsForIncompatibilityModal.value.filter(product => 
+    !selectedIds.includes(product.id) && !existingIncompatibilities.has(product.id)
+  )
+})
 
 // Computed properties
 const filteredRobots = computed(() => {
@@ -117,26 +221,27 @@ const selectRobot = (robot: Robot) => {
   selectedRobotDetail.value = robot
 }
 
+const toggleProductSelectionForCompatibility = (product: Produit) => {
+  const index = selectedProductsForCompatibility.value.findIndex(p => p.id === product.id)
+  if (index > -1) {
+    selectedProductsForCompatibility.value.splice(index, 1)
+  } else {
+    selectedProductsForCompatibility.value.push(product)
+  }
+}
+
+
 const addCompatibility = async () => {
-  if (!selectedRobotForCompatibility.value || !selectedProductForCompatibility.value) return
-
-  const exists = compatibilitesRobotProduit.value.some(comp =>
-    comp.robot_id === selectedRobotForCompatibility.value!.id &&
-    comp.produit_id === selectedProductForCompatibility.value!.id
-  )
-
-  if (exists) return
+  if (!selectedRobotForCompatibility.value || selectedProductsForCompatibility.value.length === 0) return
 
   try {
-    await axios.post('http://localhost:8000/robot-produit-compatibilites', {
-      robot_id: selectedRobotForCompatibility.value.id,
-      produit_id: selectedProductForCompatibility.value.id
-    })
+    const productIds = selectedProductsForCompatibility.value.map(p => p.id)
+    await axios.post(`http://localhost:8000/robots/${selectedRobotForCompatibility.value.id}/batch-compatibilites`, productIds)
     
     await fetchData()
     closeCompatibilityModal()
   } catch (error) {
-    console.error('Erreur lors de l\'ajout de la compatibilité:', error)
+    console.error('Erreur lors de l\'ajout des compatibilités:', error)
   }
 }
 
@@ -152,36 +257,46 @@ const removeCompatibility = async (robotId: number, produitId: number) => {
   }
 }
 
-const addIncompatibility = async () => {
-  if (!selectedProduct1.value || !selectedProduct2.value || selectedProduct1.value === selectedProduct2.value) return
-
-  const exists = incompatibilitesProduits.value.some(incomp =>
-    (incomp.produit_id_1 === selectedProduct1.value!.id && incomp.produit_id_2 === selectedProduct2.value!.id) ||
-    (incomp.produit_id_1 === selectedProduct2.value!.id && incomp.produit_id_2 === selectedProduct1.value!.id)
-  )
-
-  if (exists) return
+const addIncompatibilities = async () => {
+  if (!selectedProductForIncompatibility.value || selectedIncompatibleProducts.value.length === 0) return
 
   try {
-    await axios.post('http://localhost:8000/produit-incompatibilites', {
-      produit_id_1: selectedProduct1.value.id,
-      produit_id_2: selectedProduct2.value.id
-    })
-    
-    await fetchData()
-    
+    const source = selectedProductForIncompatibility.value
+    const targets = selectedIncompatibleProducts.value
+    const incompatibilities = []
 
-    const newIndex = incompatibilitesProduits.value.length - 1
+    for (const target of targets) {
+      const exists = incompatibilitesProduits.value.some(incomp =>
+        (incomp.produit_id_1 === source.id && incomp.produit_id_2 === target.id) ||
+        (incomp.produit_id_1 === target.id && incomp.produit_id_2 === source.id)
+      )
+
+      if (!exists) {
+        incompatibilities.push({
+          produit_id_1: source.id,
+          produit_id_2: target.id
+        })
+      }
+    }
+
+    for (const incomp of incompatibilities) {
+      await axios.post('http://localhost:8000/produit-incompatibilites', incomp)
+    }
+
+    await fetchData()
+
+    const newIndex = incompatibilitesProduits.value.length - incompatibilities.length
     animatedIncompatibility.value = newIndex
     setTimeout(() => {
       animatedIncompatibility.value = null
     }, 2000)
-    
+
     closeIncompatibilityModal()
   } catch (error) {
-    console.error('Erreur lors de l\'ajout de l\'incompatibilité:', error)
+    console.error("Erreur lors de l'ajout des incompatibilités :", error)
   }
 }
+
 
 const deleteIncompatibility = async (incomp: ProduitIncompatibilite) => {
   try {
@@ -197,15 +312,18 @@ const deleteIncompatibility = async (incomp: ProduitIncompatibilite) => {
 const closeCompatibilityModal = () => {
   showCompatibilityModal.value = false
   selectedRobotForCompatibility.value = null
-  selectedProductForCompatibility.value = null
+  selectedProductsForCompatibility.value = []
+  robotSearchTerm.value = ''
+  productSearchTerm.value = ''
 }
 
 const closeIncompatibilityModal = () => {
   showIncompatibilityModal.value = false
-  selectedProduct1.value = null
-  selectedProduct2.value = null
+  selectedProductForIncompatibility.value = null
+  selectedIncompatibleProducts.value = []
+  incompatibilitySearchTerm.value = ''
+  incompatibilityTargetSearchTerm.value = ''
 }
-
 
 onMounted(fetchData)
 </script>
@@ -217,7 +335,7 @@ onMounted(fetchData)
       <div class="header-glass">
         <div class="header-content">
           <div class="logo-section">
-            <div class="logo-icon">⛔</div>
+            <div class="logo-icon">⚡</div>
             <div>
               <h1 class="main-title">Gestionnaire de Compatibilités</h1>
             </div>
@@ -273,7 +391,7 @@ onMounted(fetchData)
         <h2>Compatibilités Robot-Produit</h2>
         <button @click="showCompatibilityModal = true" class="add-btn primary">
           <span class="btn-icon">➕</span>
-          <span class="btn-text">Ajouter une compatibilité</span>
+          <span class="btn-text">Ajouter des compatibilités</span>
         </button>
       </div>
 
@@ -332,7 +450,7 @@ onMounted(fetchData)
         <h2>Incompatibilités Produit-Produit</h2>
         <button @click="showIncompatibilityModal = true" class="add-btn danger">
           <span class="btn-icon">⚠️</span>
-          <span class="btn-text">Ajouter une incompatibilité</span>
+          <span class="btn-text">Ajouter des incompatibilités</span>
         </button>
       </div>
 
@@ -355,12 +473,7 @@ onMounted(fetchData)
               <span class="product-name">{{ formatProduit(incomp.produit_id_2) }}</span>
             </div>
           </div>
-          <button 
-            @click="deleteIncompatibility(incomp)"
-            class="delete-btn"
-          >
-            🗑️
-          </button>
+          <button @click="deleteIncompatibility(incomp)" class="delete-btn"> 🗑️ </button>
         </div>
       </div>
     </div>
@@ -369,32 +482,94 @@ onMounted(fetchData)
     <div v-if="showCompatibilityModal" class="modal-overlay" @click="closeCompatibilityModal">
       <div class="modal-content" @click.stop>
         <div class="modal-header">
-          <h3>Ajouter une compatibilité</h3>
+          <h3>Ajouter des compatibilités</h3>
           <button @click="closeCompatibilityModal" class="close-btn">✕</button>
         </div>
         <div class="modal-body">
+          <!-- Robot Selection -->
           <div class="form-group">
             <label>Robot</label>
-            <select v-model="selectedRobotForCompatibility" class="custom-select">
-              <option value="">Sélectionner un robot</option>
-              <option v-for="robot in robots" :key="robot.id" :value="robot">
-                {{ robot.nom }} {{ robot.generation }}
-              </option>
-            </select>
+            <div class="search-select-container">
+              <input 
+                v-model="robotSearchTerm" 
+                type="text" 
+                placeholder="🔍 Rechercher un robot..."
+                class="search-input-modal"
+                :disabled="selectedRobotForCompatibility !== null"
+              >
+              <div class="select-dropdown" v-if="robotSearchTerm || !selectedRobotForCompatibility">
+                <div 
+                  v-for="robot in filteredRobotsForModal" 
+                  :key="robot.id"
+                  class="select-option"
+                  @click="selectedRobotForCompatibility = robot; robotSearchTerm = ''"
+                >
+                  <span class="option-main">{{ robot.nom }} {{ robot.generation }}</span>
+                  <span class="option-sub">{{ robot.reference }}</span>
+                </div>
+              </div>
+              <div v-if="selectedRobotForCompatibility && !robotSearchTerm" class="selected-item">
+                <span>{{ selectedRobotForCompatibility.nom }} {{ selectedRobotForCompatibility.generation }}</span>
+                <button @click="selectedRobotForCompatibility = null" class="remove-selected">✕</button>
+              </div>
+            </div>
           </div>
-          <div class="form-group">
-            <label>Produit</label>
-            <select v-model="selectedProductForCompatibility" class="custom-select">
-              <option value="">Sélectionner un produit</option>
-              <option v-for="produit in produits" :key="produit.id" :value="produit">
-                {{ produit.nom }} - {{ produit.description || '' }}
-              </option>
-            </select>
+
+          <!-- Products Selection -->
+          <div class="form-group" v-if="selectedRobotForCompatibility">
+            <label>Produits compatibles ({{ selectedProductsForCompatibility.length }} sélectionnés)</label>
+            
+            <!-- Selected products display -->
+            <div v-if="selectedProductsForCompatibility.length > 0" class="selected-products">
+              <div 
+                v-for="product in selectedProductsForCompatibility" 
+                :key="product.id"
+                class="selected-product-chip"
+              >
+                <span>{{ product.nom }}</span>
+                <button @click="toggleProductSelectionForCompatibility(product)" class="remove-chip">✕</button>
+              </div>
+            </div>
+
+            <!-- Product search and selection -->
+            <div class="search-select-container">
+              <input 
+                v-model="productSearchTerm" 
+                type="text" 
+                placeholder="🔍 Rechercher des produits..."
+                class="search-input-modal"
+              >
+              <div class="select-dropdown multi-select">
+                <div 
+                  v-for="product in availableProductsForCompatibility" 
+                  :key="product.id"
+                  class="select-option"
+                  :class="{ 'selected': selectedProductsForCompatibility.some(p => p.id === product.id) }"
+                  @click="toggleProductSelectionForCompatibility(product)"
+                >
+                  <div class="checkbox-container">
+                    <div class="custom-checkbox" :class="{ 'checked': selectedProductsForCompatibility.some(p => p.id === product.id) }">
+                      ✓
+                    </div>
+                  </div>
+                  <div class="option-content">
+                    <span class="option-main">{{ product.nom }}</span>
+                    <span class="option-sub">{{ product.reference }} - {{ product.description }}</span>
+                  </div>
+                </div>
+              </div>
+            </div>
           </div>
         </div>
         <div class="modal-footer">
           <button @click="closeCompatibilityModal" class="btn secondary">Annuler</button>
-          <button @click="addCompatibility" class="btn primary">Ajouter</button>
+          <button 
+            @click="addCompatibility" 
+            class="btn primary"
+            :disabled="!selectedRobotForCompatibility || selectedProductsForCompatibility.length === 0"
+          >
+            Ajouter ({{ selectedProductsForCompatibility.length }})
+          </button>
         </div>
       </div>
     </div>
@@ -403,32 +578,90 @@ onMounted(fetchData)
     <div v-if="showIncompatibilityModal" class="modal-overlay" @click="closeIncompatibilityModal">
       <div class="modal-content" @click.stop>
         <div class="modal-header">
-          <h3>Ajouter une incompatibilité</h3>
+          <h3>Ajouter des incompatibilités</h3>
           <button @click="closeIncompatibilityModal" class="close-btn">✕</button>
         </div>
         <div class="modal-body">
+          <!-- Produit source -->
           <div class="form-group">
-            <label>Premier produit</label>
-            <select v-model="selectedProduct1" class="custom-select">
-              <option value="">Sélectionner un produit</option>
-              <option v-for="produit in produits" :key="produit.id" :value="produit">
-                {{ produit.nom }} - {{ produit.description || '' }}
-              </option>
-            </select>
+            <label>Produit source</label>
+            <div class="search-select-container">
+              <input 
+                v-model="incompatibilitySearchTerm" 
+                type="text" 
+                placeholder="🔍 Rechercher un produit..."
+                class="search-input-modal"
+                :disabled="selectedProductForIncompatibility!==null"
+              />
+              <div class="select-dropdown" v-if="incompatibilitySearchTerm || !selectedProductForIncompatibility">
+                <div 
+                  v-for="product in filteredProductsForSource" 
+                  :key="product.id"
+                  class="select-option"
+                  @click="selectProductForIncompatibility(product)"
+                >
+                  <span class="option-main">{{ product.nom }}</span>
+                  <span class="option-sub">{{ product.reference }} - {{ product.description }}</span>
+                </div>
+              </div>
+              <div v-if="selectedProductForIncompatibility && !incompatibilitySearchTerm" class="selected-item">
+                <span>{{ selectedProductForIncompatibility.nom }}</span>
+                <button @click="selectedProductForIncompatibility = null" class="remove-selected">✕</button>
+              </div>
+            </div>
           </div>
-          <div class="form-group">
-            <label>Deuxième produit</label>
-            <select v-model="selectedProduct2" class="custom-select">
-              <option value="">Sélectionner un produit</option>
-              <option v-for="produit in produits" :key="produit.id" :value="produit">
-                {{ produit.nom }} - {{ produit.description || '' }}
-              </option>
-            </select>
+
+          <!-- Produits incompatibles -->
+          <div class="form-group" v-if="selectedProductForIncompatibility">
+            <label>Produits incompatibles ({{ selectedIncompatibleProducts.length }} sélectionnés)</label>
+            
+            <div v-if="selectedIncompatibleProducts.length > 0" class="selected-products">
+              <div 
+                v-for="product in selectedIncompatibleProducts" 
+                :key="product.id"
+                class="selected-product-chip"
+              >
+                <span>{{ product.nom }}</span>
+                <button @click="toggleIncompatibleProduct(product)" class="remove-chip">✕</button>
+              </div>
+            </div>
+
+            <div class="search-select-container">
+              <input 
+                v-model="incompatibilityTargetSearchTerm" 
+                type="text" 
+                placeholder="🔍 Rechercher des produits incompatibles..."
+                class="search-input-modal"
+              >
+              <div class="select-dropdown multi-select">
+                <div 
+                  v-for="product in filteredProductsForTarget" 
+                  :key="product.id"
+                  class="select-option"
+                  :class="{ 'selected': selectedIncompatibleProducts.some(p => p.id === product.id) }"
+                  @click="toggleIncompatibleProduct(product)"
+                >
+                  <div class="checkbox-container">
+                    <div class="custom-checkbox" :class="{ 'checked': selectedIncompatibleProducts.some(p => p.id === product.id) }">✓</div>
+                  </div>
+                  <div class="option-content">
+                    <span class="option-main">{{ product.nom }}</span>
+                    <span class="option-sub">{{ product.reference }} - {{ product.description }}</span>
+                  </div>
+                </div>
+              </div>
+            </div>
           </div>
         </div>
         <div class="modal-footer">
           <button @click="closeIncompatibilityModal" class="btn secondary">Annuler</button>
-          <button @click="addIncompatibility" class="btn danger">Ajouter</button>
+            <button 
+              @click="addIncompatibilities" 
+              class="btn danger"
+              :disabled="!selectedProductForIncompatibility || selectedIncompatibleProducts.length === 0"
+            >
+              Ajouter ({{ selectedIncompatibleProducts.length }})
+            </button>
         </div>
       </div>
     </div>
@@ -513,7 +746,7 @@ onMounted(fetchData)
 .logo-icon {
   width: 60px;
   height: 60px;
-  background: linear-gradient(135deg, #dcdcdc, #6f6f6f);
+  background: linear-gradient(135deg, #070707, #781212);
   border-radius: 15px;
   display: flex;
   align-items: center;
@@ -633,6 +866,13 @@ onMounted(fetchData)
   box-shadow: 0 20px 40px rgba(0, 0, 0, 0.15);
 }
 
+.search-input-modal:disabled {
+  background-color: #e0e0e0; /* gris clair */
+  color: #888;               /* texte plus clair */
+  cursor: not-allowed;       /* curseur désactivé */
+  border: 1px solid #ccc;
+}
+
 /* Content Section */
 .content-section {
   flex: 1;
@@ -679,7 +919,7 @@ onMounted(fetchData)
 }
 
 .add-btn.primary {
-  background: linear-gradient(135deg, #10b981, #059669);
+  background: linear-gradient(135deg, #2a2929, #04f610);
   color: white;
 }
 
@@ -897,31 +1137,29 @@ onMounted(fetchData)
 /* Modals */
 .modal-overlay {
   position: fixed;
-  top: 0;
-  left: 0;
-  right: 0;
-  bottom: 0;
+  inset: 0; 
   background: rgba(0, 0, 0, 0.5);
   display: flex;
   align-items: center;
   justify-content: center;
   z-index: 1000;
   backdrop-filter: blur(5px);
+  padding: 1rem;
+  box-sizing: border-box;
 }
 
 .modal-content {
   background: white;
   border-radius: 20px;
-  max-width: 500px;
-  width: 90%;
-  max-height: 80vh;
-  overflow-y: auto;
+  width: 100%;
+  max-width: 600px;
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
   box-shadow: 0 25px 50px rgba(0, 0, 0, 0.25);
 }
 
-.modal-content.large {
-  max-width: 700px;
-}
 
 .modal-header {
   padding: 20px 25px;
@@ -960,8 +1198,10 @@ onMounted(fetchData)
 }
 
 .modal-body {
+  display: flex;
+  flex-direction: column;
   padding: 25px;
-  flex: 1;
+  height: 80%;
   overflow-y: auto;
 }
 
@@ -986,26 +1226,193 @@ onMounted(fetchData)
   font-size: 0.9rem;
 }
 
-.custom-select {
+.form-help {
+  color: #64748b;
+  font-size: 0.8rem;
+  margin: 5px 0 10px 0;
+  font-style: italic;
+}
+
+.search-select-container {
+  position: relative;
+}
+
+.search-input-modal {
   width: 100%;
   padding: 12px 16px;
   border: 2px solid #e2e8f0;
   border-radius: 10px;
   font-size: 14px;
   background: white;
-  cursor: pointer;
+  outline: none;
   transition: all 0.3s ease;
-  appearance: none;
-  background-position: right 12px center;
-  background-repeat: no-repeat;
-  background-size: 16px;
-  padding-right: 45px;
+  box-sizing: border-box;
 }
 
-.custom-select:focus {
+.search-input-modal:focus {
   border-color: #667eea;
-  outline: none;
   box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
+}
+
+.select-dropdown {
+  position: absolute;
+  top: 100%;
+  left: 0;
+  right: 0;
+  border: 1px solid #e2e8f0;
+  border-radius: 30px;
+  flex: 1 1 auto ;
+  overflow-y: auto;
+  z-index: 10;
+  margin-top: 5px;
+  box-shadow: 0 10px 25px rgba(0, 0, 0, 0.15);
+}
+
+.select-option {
+  padding: 12px 16px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  border-bottom: 1px solid #f8fafc;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.select-option:hover {
+  background: #f8fafc;
+}
+
+.select-option:last-child {
+  border-bottom: none;
+}
+
+.select-option.selected {
+  background: #eff6ff;
+  border-color: #dbeafe;
+}
+
+.checkbox-container {
+  flex-shrink: 0;
+}
+
+.custom-checkbox {
+  width: 18px;
+  height: 18px;
+  border: 2px solid #d1d5db;
+  border-radius: 4px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 12px;
+  color: white;
+  transition: all 0.2s ease;
+}
+
+.custom-checkbox.checked {
+  background: #667eea;
+  border-color: #667eea;
+}
+
+.option-content {
+  flex: 1;
+  min-width: 0;
+}
+
+.option-main {
+  display: block;
+  font-weight: 600;
+  color: #333;
+  font-size: 0.9rem;
+}
+
+.option-sub {
+  display: block;
+  color: #64748b;
+  font-size: 0.8rem;
+  margin-top: 2px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.selected-item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 10px 16px;
+  background: #eff6ff;
+  border: 2px solid #3b82f6;
+  border-radius: 10px;
+  font-size: 14px;
+  color: #1e40af;
+  font-weight: 600;
+}
+
+.remove-selected {
+  background: #ef4444;
+  color: white;
+  border: none;
+  width: 20px;
+  height: 20px;
+  border-radius: 50%;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 12px;
+  transition: all 0.3s ease;
+  flex-shrink: 0;
+}
+
+.remove-selected:hover {
+  background: #dc2626;
+  transform: scale(1.1);
+}
+
+.selected-products {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-bottom: 15px;
+  padding: 10px;
+  background: #f8fafc;
+  border-radius: 10px;
+  border: 1px solid #e2e8f0;
+  min-height: 45px;
+  align-items: center;
+}
+
+.selected-product-chip {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  background: #667eea;
+  color: white;
+  padding: 6px 10px;
+  border-radius: 15px;
+  font-size: 0.8rem;
+  font-weight: 500;
+}
+
+.remove-chip {
+  background: rgba(255, 255, 255, 0.2);
+  color: white;
+  border: none;
+  width: 16px;
+  height: 16px;
+  border-radius: 50%;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 10px;
+  transition: all 0.3s ease;
+  flex-shrink: 0;
+}
+
+.remove-chip:hover {
+  background: rgba(255, 255, 255, 0.3);
+  transform: scale(1.1);
 }
 
 .btn {
@@ -1040,6 +1447,12 @@ onMounted(fetchData)
   box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
 }
 
+.btn:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+  transform: none;
+}
+
 /* Robot Details */
 .robot-details h4 {
   font-size: 1.1rem;
@@ -1051,7 +1464,7 @@ onMounted(fetchData)
 .products-list {
   display: grid;
   gap: 12px;
-  max-height: 300px;
+  height: 100%;
   overflow-y: auto;
 }
 
@@ -1127,6 +1540,4 @@ onMounted(fetchData)
   from { transform: rotate(0deg); }
   to { transform: rotate(360deg); }
 }
-
-
 </style>

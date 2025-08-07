@@ -24,7 +24,7 @@ const groupesRefs = ref<Record<number, HTMLElement | null>>({})
 
 const equipementProduitsMap = ref<Record<number, number[]>>({})
 const produitIncompatibilites = ref<{produit_id_1: number, produit_id_2: number}[]>([])
-const robotProduitIncompatibilites = ref<{robot_id: number, produit_id: number}[]>([])
+const robotProduitCompatibilites = ref<{robot_id: number, produit_id: number}[]>([])
 
 
 
@@ -44,8 +44,8 @@ function areProduitsIncompatible(id1: number, id2: number): boolean {
   )
 }
 
-function isRobotIncompatibleWithProduit(robotId: number, produitId: number): boolean {
-  return robotProduitIncompatibilites.value.some(
+function isRobotcompatibleWithProduit(robotId: number, produitId: number): boolean {
+  return robotProduitCompatibilites.value.some(
     inc => inc.robot_id === robotId && inc.produit_id === produitId
   )
 }
@@ -80,11 +80,11 @@ function isItemIncompatible(groupe: any, item: any): boolean {
     }
     // Cas robot-produit
     if (item.type === 'robot' && sel.type === 'produit') {
-      if (isRobotIncompatibleWithProduit(item.ref_id, sel.ref_id)) return true
+      if (!isRobotcompatibleWithProduit(item.ref_id, sel.ref_id)) return true
     }
     // Cas produit-robot (inverse)
     if (item.type === 'produit' && sel.type === 'robot') {
-      if (isRobotIncompatibleWithProduit(sel.ref_id, item.ref_id)) return true
+      if (!isRobotcompatibleWithProduit(sel.ref_id, item.ref_id)) return true
     }
   }
   return false
@@ -215,8 +215,8 @@ onMounted(async () => {
   startLoading()
   const resProdInc = await axios.get('http://localhost:8000/produit-incompatibilites')
   produitIncompatibilites.value = resProdInc.data
-  const resRobotInc = await axios.get('http://localhost:8000/robot-produit-incompatibilites')
-  robotProduitIncompatibilites.value = resRobotInc.data
+  const resRobotInc = await axios.get('http://localhost:8000/robot-produit-compatibilites')
+  robotProduitCompatibilites.value = resRobotInc.data
   fetchData()
 })
 

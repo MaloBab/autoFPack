@@ -30,7 +30,7 @@ class Produit(Base):
     type = Column(String(255))
     fournisseur = relationship("Fournisseur", back_populates="produits", passive_deletes=True)
     equipement_produit = relationship("Equipement_Produit", back_populates="produits", cascade="all, delete-orphan", passive_deletes=True)
-
+    
 class Prix(Base):
     __tablename__ = "FPM_prix"
     __table_args__ = {'schema': 'dbo'}
@@ -56,7 +56,7 @@ class Robots(Base):
     range = Column(Integer, nullable=False)
     client_rel = relationship("Client", back_populates="robots", passive_deletes=True)
     prix = relationship("PrixRobot", uselist=False, back_populates="robot")
-    
+        
 class PrixRobot(Base):
     __table_args__ = {'schema': 'dbo'}
     __tablename__ = "FPM_prix_robot"
@@ -99,6 +99,8 @@ class FPack(Base):
     nom = Column(String)
     client = Column(Integer, ForeignKey("dbo.FPM_clients.id", ondelete="CASCADE"), nullable=False)
     fpack_abbr = Column(String, unique=True)
+    FPack_number = Column(Integer, nullable=True, unique=False)
+    Robot_Location_Code = Column(String, nullable=True)
     client_relfpack = relationship("Client", back_populates="fpacks", passive_deletes=True)
     
 class Groupes(Base):
@@ -131,16 +133,18 @@ class FPackConfigColumn(Base):
     ref_id = Column(Integer, nullable=True)
     
 class ProduitIncompatibilite(Base):
-    __tablename__ = "FPM_produit_incompatibilites"
     __table_args__ = {'schema': 'dbo'}
+    __tablename__ = "FPM_produit_incompatibilites"
     produit_id_1 = Column(Integer, ForeignKey("dbo.FPM_produits.id", ondelete="CASCADE"), primary_key=True)
     produit_id_2 = Column(Integer, ForeignKey("dbo.FPM_produits.id", ondelete="CASCADE"), primary_key=True)
 
 class RobotProduitCompatibilite(Base):
+    __table_args__ = {'schema': 'dbo'}
     __tablename__ = "FPM_robot_produit_compatibilite"
     
-    robot_id = Column(Integer, ForeignKey("FPM_robots.id", ondelete="CASCADE"), primary_key=True)
-    produit_id = Column(Integer, ForeignKey("FPM_produits.id", ondelete="CASCADE"), primary_key=True)
+    robot_id = Column(Integer, ForeignKey("dbo.FPM_robots.id", ondelete="CASCADE"), primary_key=True)
+    produit_id = Column(Integer, ForeignKey("dbo.FPM_produits.id", ondelete="CASCADE"), primary_key=True)
+    
 
 #PROJET GLOBAL
 

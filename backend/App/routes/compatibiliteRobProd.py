@@ -74,7 +74,6 @@ def get_robot_compatible_produits(robot_id: int, db: Session = Depends(get_db)):
     ).filter(
         models.RobotProduitCompatibilite.robot_id == robot_id
     ).all()
-    
     return compatible_produits
 
 @router.get("/produits/{produit_id}/robots-compatibles", response_model=list[schemas.RobotRead])
@@ -154,3 +153,25 @@ def delete_all_robot_compatibilites(robot_id: int, db: Session = Depends(get_db)
     
     db.commit()
     return {"deleted": deleted_count}
+
+
+# PRODUIT-INCOMPATIBILITÉS
+@router.get("/produit-incompatibilites", response_model=list[schemas.ProduitIncompatibiliteRead])
+def list_incompatibilites(db: Session = Depends(get_db)):
+    return db.query(models.ProduitIncompatibilite).all()
+
+@router.post("/produit-incompatibilites", response_model=schemas.ProduitIncompatibiliteRead)
+def create_incompatibilite(incomp: schemas.ProduitIncompatibiliteCreate, db: Session = Depends(get_db)):
+    db_incomp = models.ProduitIncompatibilite(**incomp.dict())
+    db.add(db_incomp)
+    db.commit()
+    return db_incomp
+
+@router.delete("/produit-incompatibilites")
+def delete_produit_incompatibilite(inc: schemas.ProduitIncompatibiliteCreate, db: Session = Depends(get_db)):
+    db.query(models.ProduitIncompatibilite).filter(
+        models.ProduitIncompatibilite.produit_id_1 == inc.produit_id_1,
+        models.ProduitIncompatibilite.produit_id_2 == inc.produit_id_2
+    ).delete()
+    db.commit()
+    return {"ok": True}

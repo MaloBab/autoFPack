@@ -142,6 +142,8 @@ class FPackBase(BaseModel):
     nom: str
     client: int
     fpack_abbr: str
+    FPack_number: Optional[int] = None
+    Robot_Location_Code: Optional[str] = None
 
 class FPackCreate(FPackBase):
     pass
@@ -216,7 +218,7 @@ class RobotProduitCompatibiliteCreate(RobotProduitCompatibiliteBase):
 
 class RobotProduitCompatibiliteRead(RobotProduitCompatibiliteBase):
     class Config:
-        orm_mode = True
+        from_attributes = True
 
 
 #PROJET

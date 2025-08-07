@@ -22,7 +22,6 @@ const {
 
 const router = useRouter()
 const conflictingColumnIndexes = computed(() => getConflictingColumns())
-const fullyConflictingGroupIndexes = computed(() => getFullyConflictingGroups(columns.value))
 const showAddProduitModal = ref(false)
 const showAddEquipementModal = ref(false);
 
@@ -188,14 +187,7 @@ function handleAddProduit(item: { id: number; nom: string; type: string; fournis
     showToast("Ce produit est incompatible avec un élément déjà présent.", "#ef4444")
     return
   }
-  if (fullyConflictingGroupIndexes.value.length > 0) {
-    const groupeNames = fullyConflictingGroupIndexes.value
-      .map(i => columns.value[i]?.display_name)
-      .filter(Boolean)
-      .join(', ')
-    showToast(`Ce produit rend ce(s) groupe(s) inutilisable(s) : ${groupeNames}.`, "#f97316")
-    return
-  }
+
   const fournisseur = fournisseurs.value.find(f => f.nom === item.fournisseur)
   const col: ConfigColumn = {
     type: 'produit',
@@ -206,30 +198,46 @@ function handleAddProduit(item: { id: number; nom: string; type: string; fournis
     description: item.description ?? '',       
     fournisseur_nom: fournisseur?.nom ?? ''
   }
+
+  const fullyConflictingGroupIndexes = getFullyConflictingGroups(columns.value, col)
+
+  if (fullyConflictingGroupIndexes.length > 0) {
+    const groupeNames = fullyConflictingGroupIndexes
+      .map(i => columns.value[i]?.display_name)
+      .filter(Boolean)
+      .join(', ')
+    showToast(`Ce produit rend ce(s) groupe(s) inutilisable(s) : ${groupeNames}.`, "#f97316")
+    return
+  }
+  
   columns.value.push(col)
 }
 
 function handleAddEquipement(item: Equipement) {
-  
-  if (isEquipementIncompatible(item.id)) {
-    showToast("Cet equipement est incompatible avec un élément déjà présent.", "#ef4444")
-    return
-  }
-  if (fullyConflictingGroupIndexes.value.length > 0) {
-    const groupeNames = fullyConflictingGroupIndexes.value
-      .map(i => columns.value[i]?.display_name)
-      .filter(Boolean)
-      .join(', ')
-    showToast(`Cet equipement rend ce(s) groupe(s) inutilisable(s) : ${groupeNames}.`, "#f97316")
-    return
-  }
-  const col: ConfigColumn = {
+
+    const col: ConfigColumn = {
     type: 'equipement',
     ref_id: item.id,
     ordre: columns.value.length,
     display_name: item.nom,
     produits_count: item.equipement_produit.reduce((sum, ep) => sum + (ep.quantite || 0), 0)
   };
+  
+  if (isEquipementIncompatible(item.id)) {
+    showToast("Cet equipement est incompatible avec un élément déjà présent.", "#ef4444")
+    return
+  }
+  const fullyConflictingGroupIndexes = getFullyConflictingGroups(columns.value,col)
+
+  if (fullyConflictingGroupIndexes.length > 0) {
+    const groupeNames = fullyConflictingGroupIndexes
+      .map(i => columns.value[i]?.display_name)
+      .filter(Boolean)
+      .join(', ')
+    showToast(`Cet equipement rend ce(s) groupe(s) inutilisable(s) : ${groupeNames}.`, "#f97316")
+    return
+  }
+
   columns.value.push(col);
 }
 
@@ -302,6 +310,18 @@ async function handleGroupUpdate(group: { type: 'group'; ref_id: null; display_n
     ordre: editingGroupIndex.value ?? columns.value.length,
     group_items: enrichedGroupItems,
     group_summary: summarizeGroupItems(enrichedGroupItems)
+  }
+
+
+  const fullyConflictingGroupIndexes = getFullyConflictingGroups(columns.value,configCol)
+
+  if (fullyConflictingGroupIndexes.length > 0) {
+    const groupeNames = fullyConflictingGroupIndexes
+      .map(i => columns.value[i]?.display_name)
+      .filter(Boolean)
+      .join(', ')
+    showToast(`Ce groupe rend ce(s) groupe(s) inutilisable(s) : ${groupeNames}.`, "#f97316")
+    return
   }
 
   if (editingGroupIndex.value !== null) {
