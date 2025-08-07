@@ -136,11 +136,11 @@ class ProduitIncompatibilite(Base):
     produit_id_1 = Column(Integer, ForeignKey("dbo.FPM_produits.id", ondelete="CASCADE"), primary_key=True)
     produit_id_2 = Column(Integer, ForeignKey("dbo.FPM_produits.id", ondelete="CASCADE"), primary_key=True)
 
-class RobotProduitIncompatibilite(Base):
-    __tablename__ = "FPM_robot_produit_incompatibilites"
-    __table_args__ = {'schema': 'dbo'}
-    robot_id = Column(Integer, ForeignKey("dbo.FPM_robots.id", ondelete="CASCADE"), primary_key=True)
-    produit_id = Column(Integer, ForeignKey("dbo.FPM_produits.id", ondelete="CASCADE"), primary_key=True)
+class RobotProduitCompatibilite(Base):
+    __tablename__ = "FPM_robot_produit_compatibilite"
+    
+    robot_id = Column(Integer, ForeignKey("FPM_robots.id", ondelete="CASCADE"), primary_key=True)
+    produit_id = Column(Integer, ForeignKey("FPM_produits.id", ondelete="CASCADE"), primary_key=True)
 
 #PROJET GLOBAL
 

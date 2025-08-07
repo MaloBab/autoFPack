@@ -40,23 +40,29 @@ function areGroupItemsEqual(a: GroupItem[], b: GroupItem[]): boolean {
 
 export function useIncompatibilitesChecker(columns: () => ConfigColumn[]) {
   const produitIncompatibilites = ref<{ produit_id_1: number; produit_id_2: number }[]>([])
-  const robotProduitIncompatibilites = ref<{ robot_id: number; produit_id: number }[]>([])
+  const robotProduitCompatibilites = ref<{ robot_id: number; produit_id: number }[]>([])
   const equipementsWithProduits = ref<Record<number, { produit_id: number }[]>>({})
 
   async function loadIncompatibilites() {
-    const [eqwithprod, prodIncomp, robotIncomp] = await Promise.all([
+    const [eqwithprod, prodIncomp, robotCompat] = await Promise.all([
       axios.get('http://localhost:8000/equipementproduits'),
       axios.get('http://localhost:8000/produit-incompatibilites'),
-      axios.get('http://localhost:8000/robot-produit-incompatibilites')
+      axios.get('http://localhost:8000/robot-produit-compatibilites') 
     ])
     produitIncompatibilites.value = prodIncomp.data
-    robotProduitIncompatibilites.value = robotIncomp.data
+    robotProduitCompatibilites.value = robotCompat.data 
     equipementsWithProduits.value = eqwithprod.data
   }
 
-function getProduitsFromEquipement(eqId: number): number[] {
-  return equipementsWithProduits.value[eqId]?.map(ep => ep.produit_id) ?? []
-}
+  function getProduitsFromEquipement(eqId: number): number[] {
+    return equipementsWithProduits.value[eqId]?.map(ep => ep.produit_id) ?? []
+  }
+
+  function isRobotCompatibleWithProduit(robotId: number, produitId: number): boolean {
+    return robotProduitCompatibilites.value.some(
+      comp => comp.robot_id === robotId && comp.produit_id === produitId
+    )
+  }
 
   function getAllProduits(cols: ConfigColumn[]): number[] {
     const result: number[] = []
@@ -73,7 +79,7 @@ function getProduitsFromEquipement(eqId: number): number[] {
     return result
   }
 
-    function getAllProduitsWithoutGroup(cols: ConfigColumn[]): number[] {
+  function getAllProduitsWithoutGroup(cols: ConfigColumn[]): number[] {
     const result: number[] = []
     for (const col of cols) {
       if (col.type === 'produit') result.push(col.ref_id)
@@ -83,13 +89,13 @@ function getProduitsFromEquipement(eqId: number): number[] {
   }
 
   function isProduitIncompatible(prodId: number): boolean {
-    console.log('produits:', getAllProduitsWithoutGroup(columns() ))
-  const currentProduits = getAllProduitsWithoutGroup(columns())
-  return produitIncompatibilites.value.some(
-    inc =>
-      (inc.produit_id_1 === prodId && currentProduits.includes(inc.produit_id_2)) ||
-      (inc.produit_id_2 === prodId && currentProduits.includes(inc.produit_id_1))
-  )
+    console.log('produits:', getAllProduitsWithoutGroup(columns()))
+    const currentProduits = getAllProduitsWithoutGroup(columns())
+    return produitIncompatibilites.value.some(
+      inc =>
+        (inc.produit_id_1 === prodId && currentProduits.includes(inc.produit_id_2)) ||
+        (inc.produit_id_2 === prodId && currentProduits.includes(inc.produit_id_1))
+    )
   }
 
   function isEquipementIncompatible(eqId: number): boolean {
@@ -115,10 +121,10 @@ function getProduitsFromEquipement(eqId: number): number[] {
 
   function isRobotIncompatibleWithGroup(robotId: number): boolean {
     const currentProduits = getAllProduits(columns())
-    return robotProduitIncompatibilites.value.some(
-      inc => inc.robot_id === robotId && currentProduits.includes(inc.produit_id))
+    return currentProduits.some(produitId => 
+      !isRobotCompatibleWithProduit(robotId, produitId)
+    )
   }
-
   function GroupIncompatibilityLevel(groupItems: GroupItem[]): number {
     const produitsGroupe: number[] = []
     const robotsGroupe: number[] = []
@@ -132,13 +138,20 @@ function getProduitsFromEquipement(eqId: number): number[] {
         robotsGroupe.push(item.ref_id)
       }
     }
+    
     const autresCols = columns().filter(col => !(col.type === 'group' && col.group_items === groupItems))
     const autresProduits = getAllProduits(autresCols)
-    const incompatibilityLevel = produitsGroupe.filter(pid => isProduitIncompatibleWithGroup(pid)).length + ((robotsGroupe.filter(rid => robotProduitIncompatibilites.value.some(inc => inc.robot_id === rid && autresProduits.includes(inc.produit_id))).length) || 0)
-    return incompatibilityLevel
+    
+    const produitIncompatibilityCount = produitsGroupe.filter(pid => isProduitIncompatibleWithGroup(pid)).length
+    
+    const robotIncompatibilityCount = robotsGroupe.filter(rid => 
+      autresProduits.some(produitId => !isRobotCompatibleWithProduit(rid, produitId))
+    ).length
+    
+    return produitIncompatibilityCount + robotIncompatibilityCount
   }
 
-    function wouldCauseOtherGroupConflicts(newGroupItems: GroupItem[], currentEditingGroupIndex: number | null = null): boolean {
+  function wouldCauseOtherGroupConflicts(newGroupItems: GroupItem[], currentEditingGroupIndex: number | null = null): boolean {
     const simulatedGroup: ConfigColumn = {
       type: 'group',
       ref_id: -1,
@@ -162,134 +175,128 @@ function getProduitsFromEquipement(eqId: number): number[] {
     return simulatedColumns.some((col, _index) => {
       if (col.type !== 'group' || !col.group_items || areGroupItemsEqual(col.group_items, newGroupItems)) return false
 
-    const level = GroupIncompatibilityLevel(col.group_items)
+      const level = GroupIncompatibilityLevel(col.group_items)
 
-    return level === col.group_items.length
-  })
+      return level === col.group_items.length
+    })
   }
 
-function getConflictingColumns(): number[] {
-  const conflictIds = new Set<number>()
-  const cols = columns()
+  function getConflictingColumns(): number[] {
+    const conflictIds = new Set<number>()
+    const cols = columns()
 
-  const getProduitsFromCol = (col: ConfigColumn): number[] => {
-    if (col.type === 'produit') return [col.ref_id]
-    if (col.type === 'equipement') return getProduitsFromEquipement(col.ref_id)
-    if (col.type === 'group')
-      return col.group_items?.flatMap(item =>
+    const getProduitsFromCol = (col: ConfigColumn): number[] => {
+      if (col.type === 'produit') return [col.ref_id]
+      if (col.type === 'equipement') return getProduitsFromEquipement(col.ref_id)
+      if (col.type === 'group')
+        return col.group_items?.flatMap(item =>
+          item.type === 'produit' ? [item.ref_id] :
+          item.type === 'equipement' ? getProduitsFromEquipement(item.ref_id) : []
+        ) ?? []
+      return []
+    }
+
+    const getRobotsFromCol = (col: ConfigColumn): number[] => {
+      if (col.type === 'group')
+        return col.group_items?.filter(i => i.type === 'robot').map(i => i.ref_id) ?? []
+      return []
+    }
+
+    for (let i = 0; i < cols.length; i++) {
+      for (let j = i + 1; j < cols.length; j++) {
+        const colA = cols[i]
+        const colB = cols[j]
+
+        const produitsA = getProduitsFromCol(colA)
+        const produitsB = getProduitsFromCol(colB)
+        const robotsA = getRobotsFromCol(colA)
+        const robotsB = getRobotsFromCol(colB)
+
+        const produitConflict = produitsA.some(pA =>
+          produitsB.some(pB =>
+            produitIncompatibilites.value.some(inc =>
+              (inc.produit_id_1 === pA && inc.produit_id_2 === pB) ||
+              (inc.produit_id_2 === pA && inc.produit_id_1 === pB)
+            )
+          )
+        )
+
+        const robotConflict =
+          robotsA.some(r =>
+            produitsB.some(p => !isRobotCompatibleWithProduit(r, p))
+          ) ||
+          robotsB.some(r =>
+            produitsA.some(p => !isRobotCompatibleWithProduit(r, p))
+          )
+
+        if (produitConflict || robotConflict) {
+          conflictIds.add(i)
+          conflictIds.add(j)
+        }
+      }
+    }
+
+    return Array.from(conflictIds)
+  }
+
+  function getFullyConflictingGroups(columns: ConfigColumn[]): number[] {
+    const conflicts: number[] = []
+
+    const getProduitsAndRobotsFromCol = (col: ConfigColumn): { produits: number[]; robots: number[] } => {
+      const produits: number[] = []
+      const robots: number[] = []
+
+      if (col.type === 'produit') produits.push(col.ref_id)
+      else if (col.type === 'equipement') produits.push(...getProduitsFromEquipement(col.ref_id))
+      else if (col.type === 'group') {
+        for (const item of col.group_items ?? []) {
+          if (item.type === 'produit') produits.push(item.ref_id)
+          else if (item.type === 'equipement') produits.push(...getProduitsFromEquipement(item.ref_id))
+          else if (item.type === 'robot') robots.push(item.ref_id)
+        }
+      }
+
+      return { produits, robots }
+    }
+
+    for (let i = 0; i < columns.length; i++) {
+      const col = columns[i]
+      if (col.type !== 'group' || !col.group_items) continue
+
+      const groupItems = col.group_items
+      const groupProduits = groupItems.flatMap(item =>
         item.type === 'produit' ? [item.ref_id] :
         item.type === 'equipement' ? getProduitsFromEquipement(item.ref_id) : []
-      ) ?? []
-    return []
-  }
+      )
+      const groupRobots = groupItems.filter(i => i.type === 'robot').map(i => i.ref_id)
 
-  const getRobotsFromCol = (col: ConfigColumn): number[] => {
-    if (col.type === 'group')
-      return col.group_items?.filter(i => i.type === 'robot').map(i => i.ref_id) ?? []
-    return []
-  }
+      const otherCols = columns.filter((_, j) => j !== i)
+      const otherProduits = otherCols.flatMap(c => getProduitsAndRobotsFromCol(c).produits)
 
-  for (let i = 0; i < cols.length; i++) {
-    for (let j = i + 1; j < cols.length; j++) {
-      const colA = cols[i]
-      const colB = cols[j]
-
-      const produitsA = getProduitsFromCol(colA)
-      const produitsB = getProduitsFromCol(colB)
-      const robotsA = getRobotsFromCol(colA)
-      const robotsB = getRobotsFromCol(colB)
-
-      const produitConflict = produitsA.some(pA =>
-        produitsB.some(pB =>
-          produitIncompatibilites.value.some(inc =>
-            (inc.produit_id_1 === pA && inc.produit_id_2 === pB) ||
-            (inc.produit_id_2 === pA && inc.produit_id_1 === pB)
+      const produitConflict = groupProduits.length > 0 && groupProduits.every(p =>
+        otherProduits.length > 0 &&
+        otherProduits
+          .filter(op => op !== p) 
+          .every(op =>
+            produitIncompatibilites.value.some(inc =>
+              (inc.produit_id_1 === p && inc.produit_id_2 === op) ||
+              (inc.produit_id_2 === p && inc.produit_id_1 === op)
+            )
           )
-        )
       )
 
-      const robotConflict =
-        robotsA.some(r =>
-          produitsB.some(p =>
-            robotProduitIncompatibilites.value.some(inc => inc.robot_id === r && inc.produit_id === p)
-          )
-        ) ||
-        robotsB.some(r =>
-          produitsA.some(p =>
-            robotProduitIncompatibilites.value.some(inc => inc.robot_id === r && inc.produit_id === p)
-          )
-        )
+      const robotConflict = groupRobots.length > 0 && groupRobots.every(r =>
+        otherProduits.length > 0 &&
+        otherProduits.every(p => !isRobotCompatibleWithProduit(r, p))
+      )
 
-      if (produitConflict || robotConflict) {
-        conflictIds.add(i)
-        conflictIds.add(j)
-      }
-    }
-  }
-
-  return Array.from(conflictIds)
-}
-
-function getFullyConflictingGroups(columns: ConfigColumn[]): number[] {
-  const conflicts: number[] = []
-
-  const getProduitsAndRobotsFromCol = (col: ConfigColumn): { produits: number[]; robots: number[] } => {
-    const produits: number[] = []
-    const robots: number[] = []
-
-    if (col.type === 'produit') produits.push(col.ref_id)
-    else if (col.type === 'equipement') produits.push(...getProduitsFromEquipement(col.ref_id))
-    else if (col.type === 'group') {
-      for (const item of col.group_items ?? []) {
-        if (item.type === 'produit') produits.push(item.ref_id)
-        else if (item.type === 'equipement') produits.push(...getProduitsFromEquipement(item.ref_id))
-        else if (item.type === 'robot') robots.push(item.ref_id)
+      if ((groupProduits.length > 0 && produitConflict) || (groupRobots.length > 0 && robotConflict)) {
+        conflicts.push(i)
       }
     }
 
-    return { produits, robots }
+    return conflicts
   }
-
-  for (let i = 0; i < columns.length; i++) {
-    const col = columns[i]
-    if (col.type !== 'group' || !col.group_items) continue
-
-    const groupItems = col.group_items
-    const groupProduits = groupItems.flatMap(item =>
-      item.type === 'produit' ? [item.ref_id] :
-      item.type === 'equipement' ? getProduitsFromEquipement(item.ref_id) : []
-    )
-    const groupRobots = groupItems.filter(i => i.type === 'robot').map(i => i.ref_id)
-
-    const otherCols = columns.filter((_, j) => j !== i)
-    const otherProduits = otherCols.flatMap(c => getProduitsAndRobotsFromCol(c).produits)
-
-const produitConflict = groupProduits.length > 0 && groupProduits.every(p =>
-  otherProduits.length > 0 &&
-  otherProduits
-    .filter(op => op !== p) 
-    .every(op =>
-      produitIncompatibilites.value.some(inc =>
-        (inc.produit_id_1 === p && inc.produit_id_2 === op) ||
-        (inc.produit_id_2 === p && inc.produit_id_1 === op)
-      )
-    )
-)
-
-    const robotConflict = groupRobots.every(r =>
-      otherProduits.length > 0 &&
-      otherProduits.every(p =>
-        robotProduitIncompatibilites.value.some(inc => inc.robot_id === r && inc.produit_id === p)
-      )
-    )
-
-    if (groupProduits.length > 0 && produitConflict || groupRobots.length > 0 && robotConflict) {
-      conflicts.push(i)
-    }
-  }
-
-  return conflicts
-}
 
   return {
     loadIncompatibilites,
@@ -301,8 +308,7 @@ const produitConflict = groupProduits.length > 0 && groupProduits.every(p =>
     isEquipementIncompatibleWithGroup,
     getFullyConflictingGroups,
     getConflictingColumns,
-    isRobotIncompatibleWithGroup
+    isRobotIncompatibleWithGroup,
+    isRobotCompatibleWithProduit
   }
-
 }
-

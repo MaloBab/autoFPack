@@ -207,16 +207,17 @@ class ProduitIncompatibiliteRead(ProduitIncompatibiliteBase):
     class Config:
         from_attributes = True
 
-class RobotProduitIncompatibiliteBase(BaseModel):
+class RobotProduitCompatibiliteBase(BaseModel):
     robot_id: int
     produit_id: int
 
-class RobotProduitIncompatibiliteCreate(RobotProduitIncompatibiliteBase):
+class RobotProduitCompatibiliteCreate(RobotProduitCompatibiliteBase):
     pass
 
-class RobotProduitIncompatibiliteRead(RobotProduitIncompatibiliteBase):
+class RobotProduitCompatibiliteRead(RobotProduitCompatibiliteBase):
     class Config:
-        from_attributes = True
+        orm_mode = True
+
 
 #PROJET
 

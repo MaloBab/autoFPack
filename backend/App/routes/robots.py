@@ -45,28 +45,6 @@ def delete_robot(id: int, db: Session = Depends(get_db)):
     db.commit()
     return {"ok": True}
 
-# ROBOT-PRODUIT-INCOMPATIBILITÉS
-@router.get("/robot-produit-incompatibilites", response_model=list[schemas.RobotProduitIncompatibiliteRead])
-def list_robot_incompatibilites(db: Session = Depends(get_db)):
-    return db.query(models.RobotProduitIncompatibilite).all()
-
-@router.post("/robot-produit-incompatibilites", response_model=schemas.RobotProduitIncompatibiliteRead)
-def create_robot_incompatibilite(incomp: schemas.RobotProduitIncompatibiliteCreate, db: Session = Depends(get_db)):
-    db_incomp = models.RobotProduitIncompatibilite(**incomp.dict())
-    db.add(db_incomp)
-    db.commit()
-    return db_incomp
-
-
-@router.delete("/robot-produit-incompatibilites")
-def delete_robot_produit_incompatibilite(incomp: schemas.RobotProduitIncompatibiliteCreate, db: Session = Depends(get_db)):
-    db.query(models.RobotProduitIncompatibilite).filter(
-        models.RobotProduitIncompatibilite.robot_id == incomp.robot_id,
-        models.RobotProduitIncompatibilite.produit_id == incomp.produit_id
-    ).delete()
-    db.commit()
-    return {"ok": True}
-
 
 @router.get("/prix_robot", response_model=list[schemas.PrixRobotOut])
 def get_all_prices(db: Session = Depends(get_db)):
