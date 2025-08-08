@@ -51,12 +51,12 @@ const orderedColumns = computed(() => {
 // Fonction pour obtenir le label d'une colonne
 function getColumnLabel(col: string): string {
   const mappings: Record<string, Record<string, string>> = {
-    produits: { fournisseur_id: 'fournisseur' },
-    prix: { client_id: 'client', produit_id: 'produit' },
-    prix_robot: { id: 'robot' },
-    projets: { fpack_id: 'fpack' }
+    produits: { fournisseur_id: 'Fournisseur' },
+    prix: { client_id: 'Client', produit_id: 'Produit' },
+    prix_robot: { id: 'Robot' },
+    projets: { fpack_id: 'Fpack' }
   }
-  return mappings[props.tableName]?.[col] || col
+  return mappings[props.tableName]?.[col] || col.charAt(0).toUpperCase() + col.slice(1)
 }
 
 // Gestion du scroll et duplication
@@ -165,12 +165,14 @@ watch(() => props.ajouter, (val) => {
 
 <style scoped>
 .table-container {
+  display: flex;
+  flex-direction: column;
   width: 100%;
   background: #f7f7f7;
 }
 
 .table-head {
-  width: 90%;
+  width: 95%;
   margin-top: 3%;
   margin-left: 2%;
   min-width: 80%;
@@ -183,10 +185,11 @@ watch(() => props.ajouter, (val) => {
 }
 
 .table-body-scroll {
-  width: 90%;
+  width: 95%;
   margin-left: 2%;
-  max-height: 40vh;
+  max-height: 48vh;
   overflow-y: auto;
+  padding-left: 1%;
   background: white;
   scrollbar-width: thin;
   scrollbar-color: #b3b3b3 #f3f4f6;
@@ -225,6 +228,14 @@ th {
   color: #222;
   background: #eaeaea;
   border-bottom: 1px solid #e5e7eb;
+}
+
+.table-body-scroll ::v-deep tbody tr > * {
+  border-bottom: 1px solid #e9e9e9;
+}
+
+.table-body-scroll ::v-deep tbody tr:last-child > * {
+  border-bottom: none;
 }
 
 tbody tr {

@@ -22,7 +22,7 @@ function isForeignKeyColumn(col: string, tableName: string): boolean {
     robots: ['client'],
     prix: ['produit_id', 'client_id'],
     prix_robot: ['id', 'reference']
-  }
+  } as any
   
   return foreignKeys[tableName]?.includes(col) || false
 }

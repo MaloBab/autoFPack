@@ -263,7 +263,7 @@ const addIncompatibilities = async () => {
   try {
     const source = selectedProductForIncompatibility.value
     const targets = selectedIncompatibleProducts.value
-    const incompatibilities = []
+    const incompatibilities:any[] = []
 
     for (const target of targets) {
       const exists = incompatibilitesProduits.value.some(incomp =>
@@ -773,7 +773,7 @@ onMounted(fetchData)
   display: block;
   font-size: 1.8rem;
   font-weight: 700;
-  color: #667eea;
+  color: #797979;
 }
 
 .stat-label {
@@ -1427,7 +1427,7 @@ onMounted(fetchData)
 }
 
 .btn.primary {
-  background: linear-gradient(135deg, #667eea, #764ba2);
+  background: linear-gradient(135deg, #5f6f5f, #1db62f);
   color: white;
 }
 

@@ -12,37 +12,37 @@ function getDisplayValue(row: any, col: string, tableName: string, tableData: an
   switch (col) {
     case 'fournisseur_id':
       if (tableName === 'produits') {
-        return tableData.fournisseurs.value.find(f => f.id === row.fournisseur_id)?.nom || row.fournisseur_id
+        return tableData.fournisseurs.value.find((f:any) => f.id === row.fournisseur_id)?.nom || row.fournisseur_id
       }
       break
       
     case 'client':
       if (['fpacks', 'projets_global', 'robots'].includes(tableName)) {
-        return tableData.clients.value.find(c => c.id === row.client)?.nom || row.client
+        return tableData.clients.value.find((c:any) => c.id === row.client)?.nom || row.client
       }
       break
       
     case 'fpack_id':
       if (tableName === 'projets') {
-        return tableData.fpacks.value.find(f => f.id === row.fpack_id)?.nom || row.fpack_id
+        return tableData.fpacks.value.find((f:any) => f.id === row.fpack_id)?.nom || row.fpack_id
       }
       break
       
     case 'produit_id':
       if (tableName === 'prix') {
-        return tableData.produits.value.find(p => p.id === row.produit_id)?.nom || row.produit_id
+        return tableData.produits.value.find((p:any) => p.id === row.produit_id)?.nom || row.produit_id
       }
       break
       
     case 'client_id':
       if (tableName === 'prix') {
-        return tableData.clients.value.find(c => c.id === row.client_id)?.nom || row.client_id
+        return tableData.clients.value.find((c:any) => c.id === row.client_id)?.nom || row.client_id
       }
       break
       
     case 'id':
       if (tableName === 'prix_robot') {
-        return tableData.robots.value.find(r => r.id === row.id)?.nom || row.id
+        return tableData.robots.value.find((r:any) => r.id === row.id)?.nom || row.id
       }
       break
       
@@ -58,7 +58,8 @@ function getDisplayValue(row: any, col: string, tableName: string, tableData: an
 </script>
 
 <template>
-  <td v-for="col in columns" :key="col">
-    {{ getDisplayValue(row, col, tableName, tableData) }}
+  <td v-for="col in props.columns" :key="col">
+    {{ getDisplayValue(props.row, col, props.tableName, props.tableData) }}
   </td>
 </template>
+

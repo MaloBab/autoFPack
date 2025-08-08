@@ -1,7 +1,8 @@
 <script setup lang="ts">
-import { ref, onMounted } from 'vue'
+import { ref, onMounted, computed, nextTick, onUnmounted } from 'vue'
 import axios from 'axios'
 import { showToast } from '../../composables/useToast'
+import Draggable from 'vuedraggable'
 
 const props = defineProps<{
   initialGroup?: {
@@ -54,6 +55,24 @@ const equipements = ref<any[]>([])
 const robots = ref<any[]>([])
 const iscreating = ref(false)
 
+// États pour les selects recherchables
+const searchProduit = ref('')
+const searchEquipement = ref('')
+const searchRobot = ref('')
+
+const searchProduitInput = ref<HTMLInputElement | null>(null)
+const searchEquipementInput = ref<HTMLInputElement | null>(null)
+const searchRobotInput = ref<HTMLInputElement | null>(null)
+
+const isOpenProduit = ref(false)
+const isOpenEquipement = ref(false)
+const isOpenRobot = ref(false)
+
+// Références pour les dropdowns
+const produitDropdownRef = ref<HTMLElement>()
+const equipementDropdownRef = ref<HTMLElement>()
+const robotDropdownRef = ref<HTMLElement>()
+const modalContentRef = ref<HTMLElement>()
 
 async function loadData() {
   const [prodRes, eqRes, robRes] = await Promise.all([
@@ -68,7 +87,77 @@ async function loadData() {
 
 onMounted(loadData)
 
-function addItem(type: 'produit' | 'equipement' | 'robot', id: number) {
+// Produits filtrés par recherche
+const filteredProduits = computed(() => {
+  if (!searchProduit.value) return produits.value
+  return produits.value.filter(p => 
+    p.nom.toLowerCase().includes(searchProduit.value.toLowerCase()) ||
+    (p.description && p.description.toLowerCase().includes(searchProduit.value.toLowerCase()))
+  )
+})
+
+const filteredEquipements = computed(() => {
+  if (!searchEquipement.value) return equipements.value
+  return equipements.value.filter(e => 
+    e.nom.toLowerCase().includes(searchEquipement.value.toLowerCase())
+  )
+})
+
+const filteredRobots = computed(() => {
+  const robotsClient = robots.value.filter(r => r.client === props.fpackClient)
+  if (!searchRobot.value) return robotsClient
+  return robotsClient.filter(r => 
+    r.nom.toLowerCase().includes(searchRobot.value.toLowerCase()) ||
+    (r.generation && r.generation.toLowerCase().includes(searchRobot.value.toLowerCase()))
+  )
+})
+
+// Fonction pour ajuster la position du dropdown
+async function adjustDropdownPosition(dropdownType: 'produit' | 'equipement' | 'robot') {
+  await nextTick()
+  
+  const dropdownRef = dropdownType === 'produit' ? produitDropdownRef.value :
+                     dropdownType === 'equipement' ? equipementDropdownRef.value :
+                     robotDropdownRef.value
+  
+  if (!dropdownRef || !modalContentRef.value) return
+  
+  const modalRect = modalContentRef.value.getBoundingClientRect()
+  
+  // Réinitialiser les styles
+  dropdownRef.style.left = ''
+  dropdownRef.style.right = ''
+  dropdownRef.style.transform = ''
+  dropdownRef.style.width = ''
+  
+  // Calculer la position optimale
+  const dropdownWidth = 250 // Largeur souhaitée du dropdown
+  const selectWidth = dropdownRef.parentElement?.offsetWidth || 0
+  
+  // Position par défaut : aligné sur le select parent
+  let leftPosition = 0
+  
+  // Vérifier si le dropdown dépasse à droite
+  const parentRect = dropdownRef.parentElement?.getBoundingClientRect()
+  if (parentRect) {
+    const rightEdge = parentRect.left + dropdownWidth
+    const modalRightEdge = modalRect.right - 20 // Marge de 20px
+    
+    if (rightEdge > modalRightEdge) {
+      // Aligner à droite du select
+      leftPosition = selectWidth - dropdownWidth
+      // Si ça dépasse encore à gauche, ajuster
+      if (parentRect.left + leftPosition < modalRect.left + 20) {
+        leftPosition = -(parentRect.left - modalRect.left - 20)
+      }
+    }
+  }
+  
+  dropdownRef.style.left = `${leftPosition}px`
+  dropdownRef.style.width = `${dropdownWidth}px`
+}
+
+function addItem(type: 'produit' | 'equipement' | 'robot', id: number, event?: Event) {
   const source = type === 'produit' ? produits.value :
                  type === 'equipement' ? equipements.value :
                  robots.value
@@ -86,31 +175,51 @@ function addItem(type: 'produit' | 'equipement' | 'robot', id: number) {
       generation: item.generation      
     })
   }
-}
+  
+  // Fermer le dropdown et vider la recherche
+  if (type === 'produit') {
+    isOpenProduit.value = false
+    searchProduit.value = ''
+    searchProduitInput.value?.blur()
 
-function onProduitChange(event: Event) {
-  const select = event.target as HTMLSelectElement
-  const id = +select.value
-  if (id) addItem('produit', id)
-  select.value = ''
-}
+  } else if (type === 'equipement') {
+    isOpenEquipement.value = false
+    searchEquipement.value = ''
+    searchEquipementInput.value?.blur()
+  } else {
+    isOpenRobot.value = false
+    searchRobot.value = ''
+    searchRobotInput.value?.blur()
+  }
 
-function onEquipementChange(event: Event) {
-  const select = event.target as HTMLSelectElement
-  const id = +select.value
-  if (id) addItem('equipement', id)
-  select.value = ''
-}
+  if (event && event.target instanceof HTMLElement) {
+    event.target.blur()
+  }
 
-function onRobotChange(event: Event) {
-  const select = event.target as HTMLSelectElement
-  const id = +select.value
-  if (id) addItem('robot', id)
-  select.value = ''
 }
 
 function removeItem(index: number) {
   selectedItems.value.splice(index, 1)
+}
+
+async function openDropdown(type: 'produit' | 'equipement' | 'robot') {
+  if (type === 'produit') {
+    isOpenProduit.value = true
+    isOpenEquipement.value = false
+    isOpenRobot.value = false
+  }
+  else if (type === 'equipement') { 
+    isOpenEquipement.value = true
+    isOpenProduit.value = false
+    isOpenRobot.value = false
+  }
+  else {
+    isOpenRobot.value = true
+    isOpenProduit.value = false
+    isOpenEquipement.value = false
+  }
+  
+  await adjustDropdownPosition(type)
 }
 
 function valider() {
@@ -126,60 +235,191 @@ function valider() {
     group_items: [...selectedItems.value]
   })
 }
+
+// Fermer les dropdowns quand on clique ailleurs
+function handleClickOutside(event: Event) {
+  const target = event.target as HTMLElement
+  
+  if (!target.closest('.searchable-select.produit')) {
+    isOpenProduit.value = false
+  }
+  if (!target.closest('.searchable-select.equipement')) {
+    isOpenEquipement.value = false
+  }
+  if (!target.closest('.searchable-select.robot')) {
+    isOpenRobot.value = false
+  }
+}
+
+onMounted(() => {
+  document.addEventListener('click', handleClickOutside)
+})
+
+onUnmounted(() => {
+  document.removeEventListener('click', handleClickOutside)
+})
 </script>
 
 <template>
   <div class="modal">
-    <div class="modal-content">
+    <div ref="modalContentRef" class="modal-content">
       <h3>{{ props.initialGroup ? 'Modifier le groupe' : 'Créer un nouveau groupe' }}</h3>
 
       <label>Nom du groupe :</label>
       <input v-model="nomGroupe" placeholder="Nom du groupe" />
 
       <div class="selectors">
-      <select :value="''" @change="onProduitChange">
-        <option value="">➕ Produit</option>
-        <option v-for="p in produits" :key="p.id" :value="p.id">
-  {{ p.nom }} - {{p.description ? p.description.length > 6 ? p.description.slice(0,6) + '...': p.description: ''}}</option>
-      </select>
+        <!-- Select Produit avec recherche -->
+        <div class="searchable-select produit">
+          <div class="select-header" @click="openDropdown('produit')" @blur="isOpenProduit = false">
+            <span class="select-icon">🧩</span>
+            <input 
+              v-model="searchProduit" 
+              placeholder="Produit" 
+              class="search-input"
+              @click.stop
+              @input="openDropdown('produit')"
+              @focus="openDropdown('produit')"
+              @blur="isOpenProduit = false"
+              ref="searchProduitInput"
+            />
+          </div>
+          <div 
+            v-if="isOpenProduit" 
+            ref="produitDropdownRef"
+            class="dropdown-list"
+            @mousedown.prevent
+          >
+            <div 
+              v-for="p in filteredProduits" 
+              :key="p.id" 
+              class="dropdown-item"
+              @click="addItem('produit', p.id)"
+            >
+              <div class="item-main">{{ p.nom }}</div>
+              <div v-if="p.description" class="item-sub">
+                {{ p.description }}
+              </div>
+            </div>
+            <div v-if="filteredProduits.length === 0" class="no-results">
+              Aucun produit trouvé
+            </div>
+          </div>
+        </div>
 
-      <select :value="''" @change="onEquipementChange">
-        <option value="">➕ Équipement</option>
-        <option v-for="e in equipements" :key="e.id" :value="e.id">{{ e.nom }}</option>
-      </select>
+        <!-- Select Équipement avec recherche -->
+        <div class="searchable-select equipement">
+          <div class="select-header" @click="openDropdown('equipement')" @blur="isOpenEquipement = false">
+            <span class="select-icon">🔧</span>
+            <input 
+              v-model="searchEquipement" 
+              placeholder="Equipement" 
+              class="search-input"
+              @click.stop
+              @input="openDropdown('equipement')"
+              @focus="openDropdown('equipement')"
+              @blur="isOpenEquipement = false"
+              ref="searchEquipementInput"
+            />
+          </div>
+          <div 
+            v-if="isOpenEquipement" 
+            ref="equipementDropdownRef"
+            class="dropdown-list"
+            @mousedown.prevent
+          >
+            <div 
+              v-for="e in filteredEquipements" 
+              :key="e.id" 
+              class="dropdown-item"
+              @click="addItem('equipement', e.id)"
+            >
+              <div class="item-main">{{ e.nom }}</div>
+            </div>
+            <div v-if="filteredEquipements.length === 0" class="no-results">
+              Aucun équipement trouvé
+            </div>
+          </div>
+        </div>
 
-      <select :value="''" @change="onRobotChange">
-        <option value="">➕ Robot</option>
-        <option v-for="r in robots.filter(r => r.client === props.fpackClient)" :key="r.id" :value="r.id"> {{ r.nom}} - {{r.generation ? r.generation.length > 6 ? r.generation.slice(0,6) + '...': r.generation: ''}} </option>
-      </select>
+        <!-- Select Robot avec recherche -->
+        <div class="searchable-select robot">
+          <div class="select-header" @click="openDropdown('robot')" @blur="isOpenRobot = false">
+            <span class="select-icon">🤖</span>
+            <input 
+              v-model="searchRobot" 
+              placeholder="Robot" 
+              class="search-input"
+              @click.stop
+              @input="openDropdown('robot')"
+              @focus="openDropdown('robot')"
+              @blur="isOpenRobot = false"
+              ref="searchRobotInput"
+            />
+          </div>
+          <div 
+            v-if="isOpenRobot" 
+            ref="robotDropdownRef"
+            class="dropdown-list"
+            @mousedown.prevent
+          >
+            <div 
+              v-for="r in filteredRobots" 
+              :key="r.id" 
+              class="dropdown-item"
+              @click="addItem('robot', r.id)"
+            >
+              <div class="item-main">{{ r.nom }}</div>
+              <div v-if="r.generation" class="item-sub">
+                {{ r.generation }}
+              </div>
+            </div>
+            <div v-if="filteredRobots.length === 0" class="no-results">
+              Aucun robot trouvé
+            </div>
+          </div>
+        </div>
       </div>
 
-<div class="preview">
-  <h4>Éléments du groupe :</h4>
-  <ul>
-    <li v-for="(item, i) in selectedItems" :key="i">
-      {{ item.label }}
-      <template v-if="item.type === 'produit' && item.description">
-        - {{ item.description.length > 10 ? item.description.slice(0, 10) + '…' : item.description }}
-      </template>
-      <template v-else-if="item.type === 'robot' && item.generation">{{ item.generation }}</template>
-      ({{ item.type }})
-      <div class="footer-buttons">
-        <label class="statut-label">
-          <input
-            type="checkbox"
-            v-model="selectedItems[i].statut"
-            :true-value="'standard'"
-            :false-value="'optionnel'"
-          />
-          <span class="tooltip-text">Standard</span>
-        </label>
+      <div class="preview">
+        <h4>Éléments du groupe :</h4>
+        <Draggable
+          v-model="selectedItems"
+          item-key="label"
+          handle=".liste-item"
+          animation="200"
+        >
+          <template #item="{ element, index }">
+            <li class="liste-item">
+              {{ element.label }}
+              
+              <template v-if="element.type === 'produit' && element.description">
+                - {{ element.description.length > 10 ? element.description.slice(0, 10) + '…' : element.description }}
+              </template>
+              
+              <template v-else-if="element.type === 'robot' && element.generation">
+                {{ element.generation }}
+              </template>
+              
+              ({{ element.type }})
 
-        <button class="cancel-button" @click="removeItem(i)">❌</button>
+              <div class="footer-buttons">
+                <label class="statut-label">
+                  <input
+                    type="checkbox"
+                    v-model="selectedItems[index].statut"
+                    :true-value="'standard'"
+                    :false-value="'optionnel'"
+                  />
+                  <span class="tooltip-text">Standard</span>
+                </label>
+
+                <button class="cancel-button" @click="removeItem(index)">❌</button>
+              </div>
+            </li>
+          </template>
+        </Draggable>
       </div>
-    </li>
-  </ul>
-</div>
 
       <div class="actions">
         <button :disabled="iscreating" @click="valider">✅ {{ props.initialGroup ? 'Modifier' : 'Créer' }}</button>
@@ -205,16 +445,18 @@ function valider() {
 
 .modal-content {
   background: #ffffff;
-  padding: 2.5rem 3rem;
+  padding: 0 3rem 2rem 3rem;
   border-radius: 16px;
   width: 480px;
   max-height: 90vh;
+  height: 90%;
   overflow-y: auto;
   display: flex;
   flex-direction: column;
   gap: 1.5rem;
   box-shadow: 0 16px 40px rgba(0, 0, 0, 0.15);
   font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+  position: relative;
 }
 
 h3 {
@@ -255,29 +497,129 @@ input:focus {
   justify-content: space-between;
 }
 
-select {
+.searchable-select {
   flex: 1;
-  padding: 0.55rem 1.2rem 0.55rem 0.9rem;
-  font-size: 1rem;
-  border-radius: 10px;
-  border: 1.5px solid #cbd5e1;
-  background-color: #f9fafb;
-  color: #334155;
-  cursor: pointer;
-  transition: border-color 0.3s ease, background-color 0.3s ease;
-  appearance: none;
-  background-repeat: no-repeat;
-  background-position: right 12px center;
-  background-size: 16px 16px;
+  position: relative;
   min-width: 0;
-  overflow: hidden;
-  white-space: nowrap;
-  text-overflow: ellipsis;
 }
 
-select:hover {
-  border-color: #3b82f6;
-  background-color: #e0e7ff;
+.select-header {
+  display: flex;
+  align-items: center;
+  background: linear-gradient(135deg, #f8fafc 0%, #f1f5f9 100%);
+  border: 1.5px solid #cbd5e1;
+  border-radius: 12px;
+  padding: 0.35rem 0.7rem;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  position: relative;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.02);
+  height: 38px;
+}
+
+.select-header:hover {
+  background: linear-gradient(135deg, #e0e7ff 0%, #ddd6fe 100%);
+  transform: translateY(-1px);
+  box-shadow: 0 4px 12px rgba(59, 130, 246, 0.15);
+}
+
+.select-icon {
+  font-size: 0.90rem;
+  opacity: 0.8;
+  user-select: none;
+  flex-shrink: 0;
+}
+
+.search-input {
+  flex: 1;
+  border: none;
+  background: transparent;
+  outline: none;
+  font-size: 0.85rem;
+  color: #334155;
+  font-weight: 500;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.search-input::placeholder {
+  color: #64748b;
+  font-size: 0.85rem;
+  font-weight: 500;
+}
+
+.dropdown-list {
+  position: absolute;
+  top: 100%;
+  left: 0;
+  width: 250px;
+  background: #ffffff;
+  border: 1.5px solid #e2e8f0;
+  border-radius: 12px;
+  box-shadow: 0 12px 35px rgba(0, 0, 0, 0.12);
+  z-index: 1001;
+  max-height: 300px;
+  overflow-y: auto;
+  margin-top: 6px;
+  backdrop-filter: blur(10px);
+  scrollbar-width: thin;
+  scrollbar-color: #cbd5e1 transparent;
+}
+
+.dropdown-list::-webkit-scrollbar {
+  width: 6px;
+}
+
+.dropdown-list::-webkit-scrollbar-thumb {
+  background-color: #cbd5e1;
+  border-radius: 3px;
+}
+
+.dropdown-list::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.dropdown-item {
+  padding: 1rem 1.4rem;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  border-bottom: 1px solid #f1f5f9;
+}
+
+.dropdown-item:hover {
+  background: linear-gradient(90deg, #e0e7ff 0%, #f0f4ff 100%);
+}
+
+.dropdown-item:last-child {
+  border-bottom: none;
+}
+
+.item-main {
+  font-weight: 600;
+  color: #1e293b;
+  font-size: 1.05rem;
+  margin-bottom: 4px;
+  line-height: 1.4;
+  word-wrap: break-word;
+}
+
+.item-sub {
+  font-size: 0.9rem;
+  color: #64748b;
+  font-style: italic;
+  line-height: 1.3;
+  word-wrap: break-word;
+  max-width: 100%;
+}
+
+.no-results {
+  padding: 1.2rem;
+  text-align: center;
+  color: #64748b;
+  font-style: italic;
+  font-size: 0.95rem;
 }
 
 .preview {
@@ -285,6 +627,9 @@ select:hover {
   border-radius: 12px;
   padding: 1rem 1.25rem;
   background-color: #f8fafc;
+  height: 70%;
+  max-height: 70%;
+  overflow-y: auto;
 }
 
 .preview h4 {
@@ -298,7 +643,7 @@ select:hover {
 .preview ul {
   list-style: none;
   padding-left: 0;
-  max-height: 150px;
+  max-height: 310px;
   overflow-y: auto;
   scrollbar-width: thin;
   scrollbar-color: #94a3b8 #f1f5f9;
@@ -317,7 +662,7 @@ select:hover {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  padding: 0.35rem 0.5rem;
+  padding: 0.1rem 0.5rem;
   border-radius: 8px;
   transition: background-color 0.15s ease;
   cursor: default;
@@ -449,6 +794,4 @@ select:hover {
 .cancel-button:hover {
   background-color: #f3f4f6;
 }
-
-
 </style>

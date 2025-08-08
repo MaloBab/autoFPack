@@ -23,7 +23,7 @@ const emit = defineEmits([
 <template>
   <td class="actions">
     <!-- Mode édition -->
-    <template v-if="isEditing">
+    <template v-if="props.isEditing">
       <button @click="emit('validate-edit')">✅</button>
       <button @click="emit('cancel-edit')">❌</button>
     </template>
@@ -35,7 +35,7 @@ const emit = defineEmits([
       
       <!-- Actions spécifiques par table -->
       <button 
-        v-if="tableConfig.hasRemplir && tableConfig.remplirType === 'equipement'" 
+        v-if="props.tableConfig.hasRemplir && props.tableConfig.remplirType === 'equipement'" 
         title="Remplir" 
         @click="emit('remplir-equipement')"
       >
@@ -43,7 +43,7 @@ const emit = defineEmits([
       </button>
       
       <button 
-        v-if="tableConfig.hasRemplir && tableConfig.remplirType === 'fpack'" 
+        v-if="props.tableConfig.hasRemplir && props.tableConfig.remplirType === 'fpack'" 
         title="Remplir" 
         @click="emit('remplir-fpack')"
       >
@@ -51,7 +51,7 @@ const emit = defineEmits([
       </button>
       
       <button 
-        v-if="tableConfig.hasDuplicate" 
+        v-if="props.tableConfig.hasDuplicate" 
         title="Dupliquer" 
         @click="emit('duplicate')"
       >
@@ -59,7 +59,7 @@ const emit = defineEmits([
       </button>
       
       <button 
-        v-if="tableConfig.hasExport" 
+        v-if="props.tableConfig.hasExport" 
         title="Exporter" 
         @click="emit('export')"
       >
@@ -67,7 +67,7 @@ const emit = defineEmits([
       </button>
       
       <button 
-        v-if="tableConfig.hasRemplir && tableConfig.remplirType === 'projet'" 
+        v-if="props.tableConfig.hasRemplir && props.tableConfig.remplirType === 'projet'" 
         title="Completer" 
         @click="emit('remplir-projet')"
       >

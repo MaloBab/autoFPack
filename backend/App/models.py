@@ -99,7 +99,7 @@ class FPack(Base):
     nom = Column(String)
     client = Column(Integer, ForeignKey("dbo.FPM_clients.id", ondelete="CASCADE"), nullable=False)
     fpack_abbr = Column(String, unique=True)
-    FPack_number = Column(Integer, nullable=True, unique=False)
+    FPack_number = Column(String, nullable=True, unique=False)
     Robot_Location_Code = Column(String, nullable=True)
     client_relfpack = relationship("Client", back_populates="fpacks", passive_deletes=True)
     

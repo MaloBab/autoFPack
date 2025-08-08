@@ -208,8 +208,8 @@ const orderedColumns = computed(() => {
           <th v-for="col in orderedColumns" :key="col">
             <div style="display: flex; align-items: center; gap: 0.3rem;">
               <span>
-                <template v-if="col === 'fournisseur_id'">fournisseur</template>
-                <template v-else>{{ col }}</template>
+                <template v-if="col === 'fournisseur_id'">Fournisseur</template>
+                <template v-else>{{ col.charAt(0).toUpperCase() + col.slice(1) }}</template>
               </span>
               <Filters
                 :column="col"
@@ -263,7 +263,7 @@ const orderedColumns = computed(() => {
   background: #f7f7f7;
 }
 .table-head {
-  width: 90%;
+  width: 95%;
   margin-top: 3%;
   margin-left: 2%;
   min-width: 80%;
@@ -275,7 +275,7 @@ const orderedColumns = computed(() => {
   table-layout: fixed;
 }
 .table-body-scroll {
-  width: 90%;
+  width: 95%;
   margin-left: 2%;
   max-height: 40vh;
   overflow-y: auto;

@@ -22,7 +22,7 @@ function isForeignKeyColumn(col: string, tableName: string): boolean {
     robots: ['client'],
     prix: ['produit_id', 'client_id'],
     prix_robot: ['id', 'reference']
-  }
+  } as any
   
   return foreignKeys[tableName]?.includes(col) || false
 }
@@ -31,22 +31,22 @@ function isForeignKeyColumn(col: string, tableName: string): boolean {
 
 <template>
   <tr>
-    <td v-for="col in columns" :key="col">
+    <td v-for="col in props.columns" :key="col">
       <TableCellForeignKey
-        v-if="isForeignKeyColumn(col, tableName)"
+        v-if="isForeignKeyColumn(col, props.tableName)"
         :column="col"
-        :table-name="tableName"
-        :model-value="newRow"
-        :table-data="tableData"
+        :table-name="props.tableName"
+        :model-value="props.newRow"
+        :table-data="props.tableData"
         mode="add"
         @keyup.enter="emit('validate')"
       />
       
       <AutoComplete
         v-else-if="col !== 'id'"
-        v-model="newRow[col]"
+        v-model="props.newRow[col]"
         @keyup.enter="emit('validate')"
-        :suggestions="[...columnValues[col] || []]"
+        :suggestions="[...props.columnValues[col] || []]"
       />
     </td>
     <td class="actions">

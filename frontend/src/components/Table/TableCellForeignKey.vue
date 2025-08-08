@@ -26,9 +26,9 @@ const options = computed(() => {
       if (props.tableName === 'projets') {
         const clientNom = rowData.value.client_nom
         if (clientNom) {
-          const client = props.tableData.clients.value.find(c => c.nom === clientNom)
+          const client = props.tableData.clients.value.find((c:any) => c.nom === clientNom)
           if (client) {
-            return props.tableData.fpacks.value.filter(f => f.client === client.id)
+            return props.tableData.fpacks.value.filter((f:any) => f.client === client.id)
           }
         }
       }
@@ -55,7 +55,7 @@ const modelKey = computed(() => {
     produit_id: 'produit_nom',
     id: props.tableName === 'prix_robot' ? 'robot_nom' : 'id',
     reference: props.tableName === 'prix_robot' ? 'robot_reference' : 'reference'
-  }
+  } as any
   return keyMap[props.column] || props.column
 })
 

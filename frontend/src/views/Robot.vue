@@ -45,40 +45,68 @@ function resetAjouter() {
 <style lang="css" scoped>
 
 .btn-incompat {
-  padding: 0.4rem 0.8rem;
-  margin-top: 1rem ;
-  margin-left: 3%;
+  margin-left: 2%;
+  margin-top: 0.5%;
+  position: relative;
+  overflow: hidden;
   background-color: #ef4444;
   color: white;
+  font-weight: 700;
+  font-size: 16px;
+  padding: 12px 28px;
+  border-radius: 12px;
   border: none;
-  border-radius: 6px;
-  font-weight: 500;
-  font-size: 0.9rem;
   cursor: pointer;
+  box-shadow: 0 8px 15px rgba(239, 68, 68, 0.3);
+  transition: box-shadow 0.3s ease, transform 0.2s ease;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  letter-spacing: 1px;
+  user-select: none;
 }
 
 .btn-incompat:hover {
   background-color: #d63c3c;
-
+  box-shadow: 0 12px 25px rgba(239, 68, 68, 0.4);
+  transform: translateY(-3px);
 }
 
+.btn-incompat:active {
+  box-shadow: 0 6px 12px rgba(239, 68, 68, 0.3);
+  transform: translateY(1px);
+}
 
 .btn-prix {
-  padding: 0.4rem 0.8rem;
-  margin-top: 0.5rem ;
   margin-left: 2%;
+  margin-top: 0.5%;
+  position: relative;
+  overflow: hidden;
   background-color: #727272;
   color: white;
+  font-weight: 700;
+  font-size: 16px;
+  padding: 12px 28px;
+  border-radius: 12px;
   border: none;
-  border-radius: 6px;
-  font-weight: 500;
-  font-size: 0.9rem;
   cursor: pointer;
+  box-shadow: 0 8px 15px rgba(114, 114, 114, 0.3);
+  transition: box-shadow 0.3s ease, transform 0.2s ease;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  letter-spacing: 1px;
+  user-select: none;
 }
 
 .btn-prix:hover {
   background-color: #525252;
-
+  box-shadow: 0 12px 25px rgba(114, 114, 114, 0.4);
+  transform: translateY(-3px);
 }
 
+.btn-prix:active {
+  box-shadow: 0 6px 12px rgba(114, 114, 114, 0.3);
+  transform: translateY(1px);
+}
 </style>
