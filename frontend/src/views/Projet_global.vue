@@ -615,7 +615,7 @@ onMounted(() => {
   min-width: 180px;  /* Taille minimum */
   background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);
   color: white;
-  padding: 1.5rem;
+  padding: 0.8rem;
   border-radius: 12px;
   display: flex;
   align-items: center;
@@ -671,7 +671,7 @@ onMounted(() => {
   overflow-y: auto;
   position: relative;
   min-height: 200px;
-  max-height: calc(100vh - 505px);
+  max-height: calc(100vh - 450px);
   
   padding-right: 1rem;
 }

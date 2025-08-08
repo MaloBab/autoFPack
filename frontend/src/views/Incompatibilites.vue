@@ -40,6 +40,7 @@ const loading = ref(false)
 const showCompatibilityModal = ref(false)
 const showIncompatibilityModal = ref(false)
 const selectedRobotDetail = ref<Robot | null>(null)
+const selectedProductDetail = ref<Produit | null>(null)
 
 // Form states
 const selectedRobotForCompatibility = ref<Robot | null>(null)
@@ -185,22 +186,24 @@ const filteredRobots = computed(() => {
   )
 })
 
-const filteredIncompatibilities = computed(() => {
-  return incompatibilitesProduits.value.filter(incomp => {
-    const prod1 = produits.value.find(prod => prod.id === incomp.produit_id_1)
-    const prod2 = produits.value.find(prod => prod.id === incomp.produit_id_2)
-    const search = searchTerm.value.toLowerCase()
-    return (prod1?.nom.toLowerCase().includes(search) || prod2?.nom.toLowerCase().includes(search)) ||
-      (prod1?.description?.toLowerCase().includes(search) || prod2?.description?.toLowerCase().includes(search)) ||
-      (prod1?.reference.toLowerCase().includes(search) || prod2?.reference.toLowerCase().includes(search))
+// Nouvelle computed property pour les produits avec incompatibilités
+const productsWithIncompatibilities = computed(() => {
+  const productsSet = new Set<number>()
+  
+  incompatibilitesProduits.value.forEach(incomp => {
+    productsSet.add(incomp.produit_id_1)
+    productsSet.add(incomp.produit_id_2)
   })
+  
+  return produits.value
+    .filter(product => productsSet.has(product.id))
+    .filter(product => {
+      const search = searchTerm.value.toLowerCase()
+      return product.nom.toLowerCase().includes(search) ||
+        product.description?.toLowerCase().includes(search) ||
+        product.reference.toLowerCase().includes(search)
+    })
 })
-
-// Utility functions
-const formatProduit = (id: number): string => {
-  const p = produits.value.find(prod => prod.id === id)
-  return p ? `${p.reference} | ${p.nom}${p.description ? ` - ${p.description.slice(0, 10)}${p.description.length > 10 ? '...' : ''}` : ''}` : `Produit ${id}`;
-}
 
 const getCompatibleProducts = (robotId: number) => {
   const compatibleIds = compatibilitesRobotProduit.value
@@ -216,9 +219,32 @@ const getCompatibilityPercentage = (robotId: number) => {
   return total > 0 ? Math.round((compatible / total) * 100) : 0
 }
 
+// Nouvelles fonctions pour les incompatibilités
+const getIncompatibleProducts = (productId: number) => {
+  const incompatibleIds = new Set<number>()
+  
+  incompatibilitesProduits.value.forEach(incomp => {
+    if (incomp.produit_id_1 === productId) {
+      incompatibleIds.add(incomp.produit_id_2)
+    } else if (incomp.produit_id_2 === productId) {
+      incompatibleIds.add(incomp.produit_id_1)
+    }
+  })
+  
+  return produits.value.filter(produit => incompatibleIds.has(produit.id))
+}
+
+const getIncompatibilityCount = (productId: number) => {
+  return getIncompatibleProducts(productId).length
+}
+
 // Actions
 const selectRobot = (robot: Robot) => {
   selectedRobotDetail.value = robot
+}
+
+const selectProduct = (product: Produit) => {
+  selectedProductDetail.value = product
 }
 
 const toggleProductSelectionForCompatibility = (product: Produit) => {
@@ -297,17 +323,40 @@ const addIncompatibilities = async () => {
   }
 }
 
-
-const deleteIncompatibility = async (incomp: ProduitIncompatibilite) => {
+const removeIncompatibility = async (productId: number, incompatibleProductId: number) => {
   try {
-    await axios.delete('http://localhost:8000/produit-incompatibilites', { data: incomp })
-    incompatibilitesProduits.value = incompatibilitesProduits.value.filter(
-      i => !(i.produit_id_1 === incomp.produit_id_1 && i.produit_id_2 === incomp.produit_id_2)
+    // Trouver l'incompatibilité correspondante
+    const incomp = incompatibilitesProduits.value.find(i => 
+      (i.produit_id_1 === productId && i.produit_id_2 === incompatibleProductId) ||
+      (i.produit_id_1 === incompatibleProductId && i.produit_id_2 === productId)
     )
+    
+    if (incomp) {
+      await axios.delete('http://localhost:8000/produit-incompatibilites', { data: incomp })
+      await fetchData()
+    }
   } catch (error) {
     console.error('Erreur lors de la suppression de l\'incompatibilité:', error)
   }
 }
+
+const removeAllIncompatibilities = async (productId: number) => {
+  try {
+    const incompatibilitiesToRemove = incompatibilitesProduits.value.filter(incomp =>
+      incomp.produit_id_1 === productId || incomp.produit_id_2 === productId
+    )
+
+    for (const incomp of incompatibilitiesToRemove) {
+      await axios.delete('http://localhost:8000/produit-incompatibilites', { data: incomp })
+    }
+    
+    await fetchData()
+    selectedProductDetail.value = null // Fermer le modal après suppression
+  } catch (error) {
+    console.error('Erreur lors de la suppression des incompatibilités:', error)
+  }
+}
+
 
 const closeCompatibilityModal = () => {
   showCompatibilityModal.value = false
@@ -449,31 +498,48 @@ onMounted(fetchData)
       <div class="section-header">
         <h2>Incompatibilités Produit-Produit</h2>
         <button @click="showIncompatibilityModal = true" class="add-btn danger">
-          <span class="btn-icon">⚠️</span>
+          <span class="btn-icon">⚡</span>
           <span class="btn-text">Ajouter des incompatibilités</span>
         </button>
       </div>
 
-      <!-- Incompatibilities List -->
-      <div class="incompatibilities-grid">
+      <!-- Products with incompatibilities Grid -->
+      <div class="products-grid">
         <div 
-          v-for="(incomp, index) in filteredIncompatibilities" 
-          :key="`${incomp.produit_id_1}-${incomp.produit_id_2}`"
-          class="incompatibility-card"
-          :class="{ 'highlight': animatedIncompatibility === index }"
+          v-for="product in productsWithIncompatibilities" 
+          :key="product.id" 
+          class="product-card"
+          @click="selectProduct(product)"
         >
-          <div class="incomp-content">
-            <div class="product-item">
-              <span class="product-icon">📦</span>
-              <span class="product-name">{{ formatProduit(incomp.produit_id_1) }}</span>
+          <div class="card-header">
+            <div class="product-info">
+              <div class="product-icon">📦</div>
+              <div>
+                <h3 class="product-name">{{ product.nom }}</h3>
+                <p class="product-subtitle">Ref : <span class="product-subtitle-value">{{ product.reference }}</span></p>
+                <p class="product-subtitle" v-if="product.description">{{ product.description }}</p>
+              </div>
             </div>
-            <div class="incomp-separator">⚡</div>
-            <div class="product-item">
-              <span class="product-icon">📦</span>
-              <span class="product-name">{{ formatProduit(incomp.produit_id_2) }}</span>
+            <div class="incompatibility-badge">
+              {{ getIncompatibilityCount(product.id) }}
             </div>
           </div>
-          <button @click="deleteIncompatibility(incomp)" class="delete-btn"> 🗑️ </button>
+
+          <div class="incompatible-products">
+            <div 
+              v-for="produit in getIncompatibleProducts(product.id).slice(0, 3)" 
+              :key="produit.id"
+              class="product-chip incompatible"
+            >
+              {{ produit.nom }}
+            </div>
+            <div 
+              v-if="getIncompatibleProducts(product.id).length > 3"
+              class="product-chip more incompatible"
+            >
+              +{{ getIncompatibleProducts(product.id).length - 3 }}
+            </div>
+          </div>
         </div>
       </div>
     </div>
@@ -697,6 +763,63 @@ onMounted(fetchData)
       </div>
     </div>
 
+    <!-- Product Detail Modal -->
+    <div v-if="selectedProductDetail" class="modal-overlay" @click="selectedProductDetail = null">
+      <div class="modal-content large" @click.stop>
+        <div class="modal-header">
+          <h3>{{ selectedProductDetail.nom }}</h3>
+          <button @click="selectedProductDetail = null" class="close-btn">✕</button>
+        </div>
+        <div class="modal-body">
+          <div class="product-details">
+            <div class="product-info-detail">
+              <p><strong>Référence :</strong> {{ selectedProductDetail.reference }}</p>
+              <p v-if="selectedProductDetail.description"><strong>Description :</strong> {{ selectedProductDetail.description }}</p>
+            </div>
+            
+            <div class="incompatibilities-section">
+              <div class="section-title">
+                <h4>Produits incompatibles ({{ getIncompatibleProducts(selectedProductDetail.id).length }})</h4>
+                <button 
+                  @click="removeAllIncompatibilities(selectedProductDetail.id)"
+                  class="btn danger small"
+                  v-if="getIncompatibleProducts(selectedProductDetail.id).length > 0"
+                >
+                  Supprimer tout
+                </button>
+              </div>
+              
+              <div class="incompatibilities-list">
+                <div 
+                  v-for="produit in getIncompatibleProducts(selectedProductDetail.id)" 
+                  :key="produit.id"
+                  class="incompatibility-detail-item"
+                >
+                  <div class="incompatible-product-info">
+                    <span class="product-icon">📦</span>
+                    <div class="product-text">
+                      <span class="product-name">{{ produit.nom }}</span>
+                      <span class="product-desc">{{ produit.reference }} - {{ produit.description }}</span>
+                    </div>
+                  </div>
+                  <button 
+                    @click="removeIncompatibility(selectedProductDetail.id, produit.id)"
+                    class="remove-btn"
+                  >
+                    ✕
+                  </button>
+                </div>
+              </div>
+              
+              <div v-if="getIncompatibleProducts(selectedProductDetail.id).length === 0" class="no-incompatibilities">
+                <p>Aucune incompatibilité trouvée pour ce produit.</p>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
     <!-- Loading Overlay -->
     <div v-if="loading" class="loading-overlay">
       <div class="loading-spinner">⚡</div>
@@ -868,9 +991,9 @@ onMounted(fetchData)
 }
 
 .search-input-modal:disabled {
-  background-color: #e0e0e0; /* gris clair */
-  color: #888;               /* texte plus clair */
-  cursor: not-allowed;       /* curseur désactivé */
+  background-color: #e0e0e0;
+  color: #888;
+  cursor: not-allowed;
   border: 1px solid #ccc;
 }
 
@@ -1030,8 +1153,8 @@ onMounted(fetchData)
 }
 
 .product-chip {
-  background: #f8fafc;
-  border: 1px solid #e2e8f0;
+  background: #9ee7bc;
+  border: 1px solid #1c8040;
   padding: 4px 8px;
   border-radius: 12px;
   font-size: 0.7rem;
@@ -1039,9 +1162,92 @@ onMounted(fetchData)
 }
 
 .product-chip.more {
-  background: #667eea;
+  background: #038603;
   color: white;
-  border-color: #667eea;
+  border-color: #038603;
+}
+
+.product-chip.incompatible {
+  background: #fef2f2;
+  border-color: #ef4444;
+  color: #dc2626;
+}
+
+.product-chip.more.incompatible {
+  background: #ef4444;
+  color: white;
+  border-color: #ef4444;
+}
+
+/* Products Grid for Incompatibilities */
+.products-grid {
+  flex: 1;
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+  gap: 20px;
+  overflow-y: auto;
+  padding: 5px;
+}
+
+.product-card {
+  background: white;
+  border-radius: 15px;
+  padding: 20px;
+  box-shadow: 0 10px 25px rgba(0, 0, 0, 0.1);
+  transition: all 0.3s ease;
+  cursor: pointer;
+  border: 2px solid transparent;
+  height: fit-content;
+}
+
+.product-card:hover {
+  transform: translateY(-5px);
+  box-shadow: 0 20px 40px rgba(0, 0, 0, 0.15);
+  border-color: #ef4444;
+}
+
+.product-info {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.product-icon {
+  font-size: 24px;
+}
+
+.product-name {
+  font-size: 1.1rem;
+  font-weight: 700;
+  color: #333;
+  margin: 0;
+}
+
+.product-subtitle {
+  color: #666;
+  margin: 3px 0 0 0;
+  font-size: 0.8rem;
+}
+
+.product-subtitle-value {
+  color: #000;
+  font-size: 0.8rem;
+}
+
+.incompatibility-badge {
+  background: linear-gradient(135deg, #7a0606, #ec0606);
+  color: white;
+  padding: 6px 10px;
+  border-radius: 15px;
+  font-size: 0.75rem;
+  font-weight: 600;
+}
+
+.incompatible-products {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-top: 15px;
 }
 
 /* Incompatibilities Grid */
@@ -1098,20 +1304,6 @@ onMounted(fetchData)
   min-width: 0;
 }
 
-.product-icon {
-  font-size: 16px;
-  flex-shrink: 0;
-}
-
-.product-name {
-  font-weight: 600;
-  color: #333;
-  font-size: 0.9rem;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-
 .incomp-separator {
   font-size: 16px;
   color: #ef4444;
@@ -1160,7 +1352,6 @@ onMounted(fetchData)
   overflow: hidden;
   box-shadow: 0 25px 50px rgba(0, 0, 0, 0.25);
 }
-
 
 .modal-header {
   padding: 20px 25px;
@@ -1427,6 +1618,11 @@ onMounted(fetchData)
   box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
 }
 
+.btn.small {
+  padding: 6px 12px;
+  font-size: 12px;
+}
+
 .btn.primary {
   background: linear-gradient(135deg, #5f6f5f, #1db62f);
   color: white;
@@ -1517,28 +1713,292 @@ onMounted(fetchData)
   transform: scale(1.1);
 }
 
-/* Loading */
-.loading-overlay {
-  position: fixed;
+/* Product Details */
+.product-details {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+}
+
+.product-info-detail {
+  background: #f8fafc;
+  border-radius: 10px;
+  padding: 15px;
+  margin-bottom: 20px;
+  border: 1px solid #e2e8f0;
+}
+
+.product-info-detail p {
+  margin: 8px 0;
+  font-size: 0.9rem;
+}
+
+.product-info-detail strong {
+  color: #374151;
+}
+
+.incompatibilities-section {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+}
+
+.section-title {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 20px;
+  padding-bottom: 10px;
+  border-bottom: 2px solid #f1f5f9;
+}
+
+.section-title h4 {
+  font-size: 1.1rem;
+  font-weight: 700;
+  color: #333;
+  margin: 0;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.section-title h4::before {
+  content: "⚡";
+  font-size: 16px;
+}
+
+.incompatibilities-list {
+  display: grid;
+  gap: 2%;
+  max-height: 500px;
+  overflow-y: auto;
+  padding-right: 5px;
+  padding-top: 1%;
+}
+
+.incompatibility-detail-item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 1.5rem 3rem;
+  background: linear-gradient(135deg, #fef7f7, #fef2f2);
+  border-radius: 15px;
+  border: 2px solid #fee2e2;
+  gap: 10px;
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  position: relative;
+  overflow: hidden;
+}
+
+.incompatibility-detail-item::before {
+  content: '';
+  position: absolute;
   top: 0;
   left: 0;
-  right: 0;
-  bottom: 0;
-  background: rgba(255, 255, 255, 0.9);
+  width: 4px;
+  height: 100%;
+  background: linear-gradient(135deg, #ef4444, #dc2626);
+  border-radius: 0 2px 2px 0;
+}
+
+.incompatibility-detail-item:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 10px 25px rgba(239, 68, 68, 0.15);
+  border-color: #fecaca;
+  background: linear-gradient(135deg, #fef2f2, #fef7f7);
+}
+
+.incompatible-product-info {
+  display: flex;
+  align-items: center;
+  gap: 15px;
+  flex: 1;
+  min-width: 0;
+}
+
+.incompatible-product-info .product-icon {
+  width: 40px;
+  height: 40px;
+  background: linear-gradient(135deg, #fee2e2, #fecaca);
+  border-radius: 12px;
   display: flex;
   align-items: center;
   justify-content: center;
-  z-index: 2000;
-  backdrop-filter: blur(10px);
+  font-size: 18px;
+  flex-shrink: 0;
+  border: 2px solid #fed7d7;
 }
 
-.loading-spinner {
-  font-size: 3rem;
-  animation: spin 1s linear infinite;
+.incompatible-product-info .product-text {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  min-width: 0;
 }
 
-@keyframes spin {
-  from { transform: rotate(0deg); }
-  to { transform: rotate(360deg); }
+.incompatible-product-info .product-name {
+  font-weight: 700;
+  color: #dc2626;
+  font-size: 1rem;
+  line-height: 1.2;
 }
+
+.incompatible-product-info .product-desc {
+  color: #7f1d1d;
+  font-size: 0.85rem;
+  opacity: 0.8;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  line-height: 1.3;
+}
+
+.no-incompatibilities {
+  text-align: center;
+  padding: 40px 20px;
+  background: linear-gradient(135deg, #f0fdf4, #f7fee7);
+  border-radius: 20px;
+  border: 2px dashed #d9f99d;
+  margin-top: 20px;
+}
+
+.no-incompatibilities p {
+  color: #16a34a;
+  font-size: 1rem;
+  font-weight: 600;
+  margin: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+}
+
+.no-incompatibilities p::before {
+  content: "✅";
+  font-size: 20px;
+}
+
+/* Modal large pour les détails */
+.modal-content.large {
+  max-width: 800px;
+  max-height: 90vh;
+}
+
+.modal-content.large .modal-body {
+  padding: 30px;
+}
+
+/* Amélioration du scroll personnalisé */
+.incompatibilities-list::-webkit-scrollbar,
+.products-list::-webkit-scrollbar {
+  width: 6px;
+}
+
+.incompatibilities-list::-webkit-scrollbar-track,
+.products-list::-webkit-scrollbar-track {
+  background: #f1f5f9;
+  border-radius: 10px;
+}
+
+.incompatibilities-list::-webkit-scrollbar-thumb,
+.products-list::-webkit-scrollbar-thumb {
+  background: linear-gradient(135deg, #ef4444, #dc2626);
+  border-radius: 10px;
+}
+
+.incompatibilities-list::-webkit-scrollbar-thumb:hover,
+.products-list::-webkit-scrollbar-thumb:hover {
+  background: linear-gradient(135deg, #dc2626, #b91c1c);
+}
+
+/* Animation d'apparition pour les éléments de la liste */
+.incompatibility-detail-item {
+  animation: slideInUp 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+@keyframes slideInUp {
+  from {
+    opacity: 0;
+    transform: translateY(20px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+/* Amélioration du header du modal */
+.modal-header {
+  background: linear-gradient(135deg, #f8fafc, #f1f5f9);
+  border-bottom: 2px solid #e2e8f0;
+  position: relative;
+}
+
+.modal-header::after {
+  content: '';
+  position: absolute;
+  bottom: 0;
+  left: 25px;
+  right: 25px;
+  height: 2px;
+  background: linear-gradient(90deg, transparent, #667eea, transparent);
+}
+
+/* Amélioration des boutons de suppression */
+.remove-btn {
+  background: linear-gradient(135deg, #ef4444, #dc2626);
+  box-shadow: 0 4px 12px rgba(239, 68, 68, 0.3);
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.remove-btn:hover {
+  background: linear-gradient(135deg, #dc2626, #b91c1c);
+  transform: scale(1.1) rotate(90deg);
+  box-shadow: 0 6px 16px rgba(239, 68, 68, 0.4);
+}
+
+/* Style pour le bouton "Supprimer tout" */
+.btn.danger.small {
+  background: linear-gradient(135deg, #f50606, #ea580c);
+  border: 2px solid transparent;
+  position: relative;
+  overflow: hidden;
+}
+
+
+.btn.danger.small:hover {
+  background: linear-gradient(135deg, #ea580c, #dc2626);
+  transform: translateY(-2px);
+  box-shadow: 0 8px 20px rgba(234, 88, 12, 0.3);
+}
+
+/* Responsive pour les modals */
+@media (max-width: 768px) {
+  .modal-content.large {
+    max-width: 95vw;
+    margin: 10px;
+    max-height: 95vh;
+  }
+  
+  .incompatible-product-info {
+    gap: 10px;
+  }
+  
+  .incompatible-product-info .product-icon {
+    width: 35px;
+    height: 35px;
+    font-size: 16px;
+  }
+  
+  .incompatibility-detail-item {
+    padding: 12px 15px;
+  }
+  
+  .section-title {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 10px;
+  }
+}
+
 </style>

@@ -32,7 +32,6 @@ function resetAjouter() {
     <router-link to="/prix">
       <button class="btn-prix">💵 Gerer Prix</button>
     </router-link>
-    
     <SQLTable
       :key="tableKey"
       tableName="produits"

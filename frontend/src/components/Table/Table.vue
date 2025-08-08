@@ -82,7 +82,7 @@ watch(() => props.ajouter, (val) => {
       <thead>
         <tr>
           <th v-for="col in orderedColumns" :key="col">
-            <div style="display: flex; align-items: center; gap: 0.3rem;">
+            <div class="table-header-cell">
               <span>{{ getColumnLabel(col) }}</span>
               <Filters
                 :column="col"
@@ -176,7 +176,6 @@ watch(() => props.ajouter, (val) => {
   margin-top: 3%;
   margin-left: 2%;
   min-width: 80%;
-  border-collapse: separate;
   border-spacing: 0;
   background: white;
   font-family: inherit;
@@ -184,15 +183,24 @@ watch(() => props.ajouter, (val) => {
   table-layout: fixed;
 }
 
+.table-header-cell {
+  display: flex;
+  align-items: center;     /* centre verticalement */
+  justify-content: center; /* centre horizontalement */
+  margin-left: 5%;
+  gap: 0.3rem;    
+}
+
 .table-body-scroll {
   width: 95%;
   margin-left: 2%;
-  max-height: 48vh;
+  max-height: 40vh;
   overflow-y: auto;
   padding-left: 1%;
   background: white;
   scrollbar-width: thin;
   scrollbar-color: #b3b3b3 #f3f4f6;
+  text-align: center;
 }
 
 .table-body-scroll::-webkit-scrollbar {
@@ -220,7 +228,7 @@ watch(() => props.ajouter, (val) => {
 
 th, td {
   padding: 0.75rem 1rem;
-  text-align: left;
+  text-align: center
 }
 
 th {
