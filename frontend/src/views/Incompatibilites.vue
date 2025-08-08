@@ -817,16 +817,17 @@ onMounted(fetchData)
 
 .compatibility-btn.active {
   background: linear-gradient(135deg, #000000, #04f610);
+  box-shadow: 0 10px 25px rgba(102, 234, 111, 0.3);
 }
 
 .incompatibility-btn.active {
   background: linear-gradient(135deg, #000000, #ec0606);
+  box-shadow: 0 10px 25px rgba(234, 102, 102, 0.3);
 }
 
 .tab-btn.active {
   color: white;
   transform: translateY(-2px);
-  box-shadow: 0 10px 25px rgba(102, 126, 234, 0.3);
 }
 
 .tab-btn:hover:not(.active) {
