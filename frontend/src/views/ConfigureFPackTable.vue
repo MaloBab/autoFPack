@@ -157,6 +157,7 @@ async function fetchProduitsEtEquipements() {
 
 function handleWheel(e: WheelEvent) {
   const target = e.target as HTMLElement
+  
   const inGroupList = target.closest('.group-list') as HTMLElement | null
   if (inGroupList) {
     const canScrollVertically = inGroupList.scrollHeight > inGroupList.clientHeight
@@ -175,11 +176,13 @@ function handleWheel(e: WheelEvent) {
     }
   }
 
-  e.preventDefault()
   if (columnsRowRef.value) {
-    columnsRowRef.value.scrollLeft += e.deltaY
-  }
-}
+    const canScrollVertically = columnsRowRef.value.scrollHeight > columnsRowRef.value.clientHeight
+    
+    if (canScrollVertically) {
+      return
+    }
+  }}
 
 
 function handleAddProduit(item: { id: number; nom: string; type: string; fournisseur: string; description?: string }) {
@@ -589,14 +592,17 @@ onUnmounted(() => {
 }
 
 .columns-scroll-container {
-  display: flex;
-  overflow-x: auto;
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
   gap: 1rem;
   padding-bottom: 1rem;
+  overflow-y: auto;
+  max-height: calc(100vh - 300px); /* TODO */
 }
 
 .columns-scroll-container::-webkit-scrollbar {
-  height: 8px;
+  width: 8px;
+  height: auto;
 }
 
 .columns-scroll-container::-webkit-scrollbar-thumb {
@@ -609,13 +615,11 @@ onUnmounted(() => {
   border-radius: 12px;
   box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
   padding: 1rem;
-  min-width: 220px;
-  flex: 0 0 auto;
+  width: 220px;
+  height: 80%;
   display: flex;
   flex-direction: column;
   justify-content: space-between;
-  max-height: 50vh;
-  overflow-y: auto;
 }
 
 .card-header {

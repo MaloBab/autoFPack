@@ -1,17 +1,22 @@
+
 <script setup>
 import SideBar from './SideBar.vue'
 import HeaderBar from './HeaderBar.vue'
 import { ref } from 'vue'
 
-const isSidebarOpen = ref(true)
+// 0 = fermé, 1 = icônes seulement, 2 = ouvert complet
+const sidebarState = ref(2)
 
+const toggleSidebar = () => {
+  sidebarState.value = (sidebarState.value + 1) % 3
+}
 </script>
 
 <template>
   <div class="app-container">
-    <HeaderBar @toggle-sidebar="isSidebarOpen = !isSidebarOpen" />
+    <HeaderBar @toggle-sidebar="toggleSidebar" />
     <div class="content-container">
-      <SideBar :open="isSidebarOpen" />
+      <SideBar :state="sidebarState" />
       <div class="main-container">
         <router-view />
       </div>

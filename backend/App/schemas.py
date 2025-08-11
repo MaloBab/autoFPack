@@ -142,8 +142,6 @@ class FPackBase(BaseModel):
     nom: str
     client: int
     fpack_abbr: str
-    FPack_number: Optional[str] = None
-    Robot_Location_Code: Optional[str] = None
 
 class FPackCreate(FPackBase):
     pass
@@ -239,6 +237,8 @@ class ProjetSelectionRead(ProjetSelectionBase):
 
 class ProjetBase(BaseModel):
     nom: str
+    FPack_number: Optional[str] = None
+    Robot_Location_Code: Optional[str] = None
     fpack_id: int
     id_global:int
 

@@ -99,8 +99,6 @@ class FPack(Base):
     nom = Column(String)
     client = Column(Integer, ForeignKey("dbo.FPM_clients.id", ondelete="CASCADE"), nullable=False)
     fpack_abbr = Column(String, unique=True)
-    FPack_number = Column(String, nullable=True, unique=False)
-    Robot_Location_Code = Column(String, nullable=True)
     client_relfpack = relationship("Client", back_populates="fpacks", passive_deletes=True)
     
 class Groupes(Base):
@@ -168,6 +166,8 @@ class Projet(Base):
 
     id = Column(Integer, primary_key=True, autoincrement=True)
     nom = Column(String, nullable=False)
+    FPack_number = Column(String, nullable=True, unique=False)
+    Robot_Location_Code = Column(String, nullable=True)
     fpack_id = Column(Integer, ForeignKey("dbo.FPM_fpacks.id", ondelete="CASCADE"), nullable=False)
     id_global = Column(Integer, ForeignKey("dbo.FPM_projets_global.id", ondelete="CASCADE"), nullable=False)  
 
