@@ -696,7 +696,6 @@ onMounted(fetchDetails)
   border-radius: 2px;
 }
 
-/* Main Content - Calculated height to fit exactly */
 .main-content {
   overflow-y: auto;
   max-height: 380px;
@@ -707,11 +706,10 @@ onMounted(fetchDetails)
   height: 100%;
 }
 
-/* Content Grid - Better spacing */
 .content-grid {
   display: grid;
   grid-template-columns: 1fr 1fr 1fr;
-  gap: 1.5rem;
+  gap: 1rem;
   height: 100%;
 }
 
@@ -731,7 +729,7 @@ onMounted(fetchDetails)
 
 .card-header h3 {
   margin: 0;
-  font-size: 1.1rem;
+  font-size: 1rem;
   font-weight: 600;
   color: #1f2937;
 }
