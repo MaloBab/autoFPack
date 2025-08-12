@@ -347,7 +347,7 @@ onUnmounted(() => {
     :style="{ 
       '--accent-color': accentColor,
       '--gradient-color': gradientColor,
-      '--force-update': forceUpdate
+      '--force-update': forceUpdate // Variable CSS pour forcer le re-render
     }"
     @click="handleCardClick"
     @mousedown="handleMouseDown"
