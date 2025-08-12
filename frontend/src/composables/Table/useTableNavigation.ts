@@ -1,3 +1,4 @@
+// useTableNavigation.ts
 import { useRouter } from 'vue-router'
 
 export function useTableNavigation(tableName: string) {

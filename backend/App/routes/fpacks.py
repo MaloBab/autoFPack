@@ -42,6 +42,13 @@ def delete_fpack(id: int, db: Session = Depends(get_db)):
     db_fpack = db.query(models.FPack).get(id)
     if not db_fpack:
         raise HTTPException(status_code=404, detail="FPack non trouvé")
+    
+    linked_projects = db.query(models.Projet).filter(models.Projet.fpack_id == id).count()
+    if linked_projects > 0:
+        raise HTTPException(
+            status_code=400,
+            detail=f"Impossible de supprimer ce fpack car il est utilisé dans {linked_projects} projet(s)."
+        )
     db.delete(db_fpack)
     db.commit()
     return {"ok": True}

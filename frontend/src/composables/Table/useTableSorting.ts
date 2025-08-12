@@ -1,3 +1,4 @@
+// useTableSorting.ts
 import { computed, reactive, type Ref } from 'vue'
 
 export function useTableSorting(filteredRows: Ref<any[]>, valueLabels: Ref<Record<string, Record<any, string>>>) {
