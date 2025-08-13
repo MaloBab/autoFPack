@@ -53,10 +53,10 @@ function killBackendProcess() {
 
 function createWindow() {
   win = new BrowserWindow({
-    width: 1000,
-    height: 700,
-    minWidth: 1000,
-    minHeight: 700,
+    width: 1100,
+    height: 770,
+    minWidth: 1100,
+    minHeight: 770,
     webPreferences: {
       preload: path.join(__dirname, 'preload.js'),
       contextIsolation: true,

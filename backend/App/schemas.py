@@ -68,6 +68,7 @@ class RobotBase(BaseModel):
     client: int
     payload: int
     range: int
+    commentaire: Optional[str] = None
 
 class RobotCreate(RobotBase):
     pass

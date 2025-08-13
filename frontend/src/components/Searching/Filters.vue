@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref, watch, computed } from 'vue'
+import { ref, watch, computed, nextTick } from 'vue'
 import { onClickOutside } from '@vueuse/core'
 
 const props = defineProps<{
@@ -16,8 +16,9 @@ const emit = defineEmits<{
 
 const dropdownOpen = ref(false)
 const localSelections = ref<Set<any>>(new Set(props.values))
-const container = ref(null)
+const container = ref<any>(null)
 const sortOrder = ref<'asc' | 'desc' | null>(null)
+const dropdownPosition = ref({ top: '0px', left: '0px' })
 
 onClickOutside(container, () => {
   dropdownOpen.value = false
@@ -58,39 +59,75 @@ function onSortClick(order: 'asc' | 'desc') {
   }
   emit('sort-change', props.column, sortOrder.value)
 }
+
+// AJOUTÉ: Calcule la position du dropdown
+function calculateDropdownPosition() {
+  if (container.value) {
+    const rect = container.value.getBoundingClientRect()
+    dropdownPosition.value = {
+      top: rect.bottom + window.scrollY + 'px',
+      left: rect.right + window.scrollX - 180 + 'px' // 180px = min-width du dropdown
+    }
+  }
+}
+
+// MODIFIÉ: Toggle avec calcul de position
+async function toggleDropdown() {
+  if (!dropdownOpen.value) {
+    calculateDropdownPosition()
+    dropdownOpen.value = true
+    await nextTick()
+  } else {
+    dropdownOpen.value = false
+  }
+}
 </script>
 
 <template>
   <div class="searcher" ref="container">
-    <button class="filter-icon" :class="{ 'active-filter': isFilterOrSortActive }" @click="dropdownOpen = !dropdownOpen" type="button">
+    <!-- MODIFIÉ: Utilise la nouvelle fonction toggle -->
+    <button class="filter-icon" :class="{ 'active-filter': isFilterOrSortActive }" @click="toggleDropdown" type="button">
       <img src="../../assets/filtre.png" alt="filtrer" class="filter-img" />
     </button>
-    <div v-if="dropdownOpen" class="dropdown">
-      <div class="dropdown-actions">
-        <button @click="checkAll">Cocher tout</button>
-        <button @click="uncheckAll">Décocher tout</button>
+    
+    <!-- AJOUTÉ: Teleport pour le dropdown -->
+    <Teleport to="body">
+      <div 
+        v-if="dropdownOpen" 
+        class="dropdown dropdown-teleported"
+        :style="{
+          position: 'fixed',
+          top: dropdownPosition.top,
+          left: dropdownPosition.left,
+          zIndex: 9999
+        }"
+      >
+        <div class="dropdown-actions">
+          <button @click="checkAll">Cocher tout</button>
+          <button @click="uncheckAll">Décocher tout</button>
+        </div>
+        <div class="dropdown-actions">
+          <button
+            :class="{ active: sortOrder === 'asc' }"
+            @click="onSortClick('asc')"
+          > A-Z</button>
+          <button
+            :class="{ active: sortOrder === 'desc' }"
+            @click="onSortClick('desc')"
+          > Z-A</button>
+        </div>
+        <div class="dropdown-values">
+          <label v-for="val in props.values" :key="val">
+            <input
+              type="checkbox"
+              :checked="localSelections.has(val)"
+              @change="() => toggleValue(val)"
+            />
+            {{ props.labels?.[val] ?? val }}
+          </label>
+        </div>
       </div>
-      <div class="dropdown-actions">
-        <button
-          :class="{ active: sortOrder === 'asc' }"
-          @click="onSortClick('asc')"
-        > A-Z</button>
-        <button
-          :class="{ active: sortOrder === 'desc' }"
-          @click="onSortClick('desc')"
-        > Z-A</button>
-      </div>
-      <div class="dropdown-values">
-        <label v-for="val in props.values" :key="val">
-          <input
-            type="checkbox"
-            :checked="localSelections.has(val)"
-            @change="() => toggleValue(val)"
-          />
-          {{ props.labels?.[val] ?? val }}
-        </label>
-      </div>
-    </div>
+    </Teleport>
   </div>
 </template>
 
@@ -127,19 +164,22 @@ function onSortClick(order: 'asc' | 'desc') {
   outline: none;
 }
 
+/* MODIFIÉ: Styles pour le dropdown téléporté */
 .dropdown {
-  position: absolute;
-  top: 100%;
-  right: 0;
   background: white;
   border: 1px solid #ccc;
   border-radius: 6px;
   box-shadow: 0 4px 10px rgba(0, 0, 0, 0.1);
   padding: 0.5rem;
-  z-index: 1000;
   min-width: 180px;
   max-height: 300px;
   overflow-y: auto;
+}
+
+/* AJOUTÉ: Styles spécifiques pour le dropdown téléporté */
+.dropdown-teleported {
+  position: fixed !important;
+  z-index: 9999 !important;
 }
 
 .dropdown-actions {
@@ -178,5 +218,4 @@ function onSortClick(order: 'asc' | 'desc') {
   display: flex;
   flex-direction: column;
   gap: 0.25rem;
-}
-</style>
+}</style>

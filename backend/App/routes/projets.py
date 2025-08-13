@@ -240,6 +240,8 @@ def get_projet_details(id: int, db: Session = Depends(get_db)):
             "id": projet.id,
             "nom": projet.nom,
             "fpack_id": projet.fpack_id,
+            "FPack_number": projet.FPack_number,
+            "Robot_Location_Code": projet.Robot_Location_Code,
             "id_global": projet.id_global
         },
         "projet_global": {

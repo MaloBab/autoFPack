@@ -1,6 +1,6 @@
-from sqlalchemy.ext.declarative import declarative_base
-from sqlalchemy import Column, Integer, Numeric, String, ForeignKey
-from sqlalchemy.orm import relationship
+from sqlalchemy.ext.declarative import declarative_base # type: ignore
+from sqlalchemy import Column, Integer, Numeric, String, ForeignKey # type: ignore
+from sqlalchemy.orm import relationship # type: ignore
 
 Base = declarative_base()
 class Fournisseur(Base):
@@ -54,6 +54,8 @@ class Robots(Base):
     client = Column(Integer, ForeignKey("dbo.FPM_clients.id", ondelete="CASCADE"), nullable=False)
     payload = Column(Integer, nullable=False)
     range = Column(Integer, nullable=False)
+    commentaire = Column(String(255), nullable=True)
+    
     client_rel = relationship("Client", back_populates="robots", passive_deletes=True)
     prix = relationship("PrixRobot", uselist=False, back_populates="robot")
         

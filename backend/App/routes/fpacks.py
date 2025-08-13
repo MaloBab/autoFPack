@@ -70,8 +70,6 @@ def duplicate_fpack(fpack_id: int, db: Session = Depends(get_db)):
         nom=original_fpack.nom + " (copie)",
         client=original_fpack.client,
         fpack_abbr=original_fpack.fpack_abbr,
-        FPack_number=original_fpack.FPack_number,
-        Robot_Location_Code=original_fpack.Robot_Location_Code
     )
     db.add(new_fpack)
     db.commit()

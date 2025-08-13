@@ -27,7 +27,7 @@ const titreSingulier = computed(() =>
 <style scoped>
 h1 {
   font-size: 2.5rem;          
-  font-weight: 700; 
+  font-weight: 600; 
   margin-bottom: 1%;
   margin-left: 2%;
 }
