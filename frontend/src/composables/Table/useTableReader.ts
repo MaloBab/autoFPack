@@ -30,7 +30,6 @@ export function useTableReader(
   const fpacks = ref<{ id: number, nom: string, client:number }[]>([])
   const robots = ref<{ id: number, nom: string, reference: string }[]>([])
 
-  const isAdding = ref(false)
   const isDeleting = ref(false)
   const isDuplicating = ref(false)
 
@@ -189,6 +188,14 @@ export function useTableReader(
     })
   }
 
+  async function refresh() {
+    try {
+      await fetchData()
+    } catch (err) {
+      handleError(err, "le rafraîchissement des données")
+    }
+  }
+
   async function duplicateRow(row: any) {
     try {
       if (isDuplicating.value) return
@@ -202,45 +209,7 @@ export function useTableReader(
     }
   }
 
-  async function validateAdd() {
-    if (isAdding.value) return
-    isAdding.value = true
-    try {
-      if (props.tableName === 'prix_robot') {
-        const matched = robots.value.find(r => r.nom === newRow.value.robot_nom)
-        if (matched) {
-          newRow.value.id = matched.id
-        } else {
-          showToast('Robot inconnu', 'error')
-          return
-        }
-      }
-      const dataToSend = { ...newRow.value }
-
-      enrichDataWithForeignKeys(dataToSend)
-      console.log("Enriched data:", dataToSend)
-      if (props.tableName != 'prix_robot') {
-        delete dataToSend.id
-      }
-      
-
-      const missing = validateRequiredFields(dataToSend, ["commentaire", "description", "type"])
-      if (missing.length > 0) {
-        isAdding.value = false
-        console.error("Champs manquants :", missing)
-        showToast("Tous les champs de la ligne n'ont pas été remplis.", "#ef9144")
-        return
-      }
-      await axios.post(`${baseUrl}/${props.tableName}`, dataToSend)
-      
-      await fetchData()
-      emit('added')
-    } catch (err) {
-      handleError(err, "l'ajout")
-    } finally {
-      isAdding.value = false
-    }
-  }
+  
 
   function cancelAdd() {
     emit('cancelled')
@@ -362,8 +331,7 @@ export function useTableReader(
   return {
     columns, rows, newRow, editingId, editRow,
     fournisseurs, clients, produits, fpacks, robots,
-    valueLabels, // Ajout de valueLabels dans le return
-    validateAdd, cancelAdd,
+    valueLabels, cancelAdd, refresh,
     startEdit, validateEdit, cancelEdit,
     deleteRow, startEditPrix, duplicateRow,
     ExportRow

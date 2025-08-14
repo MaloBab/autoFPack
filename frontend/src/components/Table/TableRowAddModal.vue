@@ -6,7 +6,7 @@ const props = defineProps<{
   isOpen: boolean
   tableName: string 
 }>()
-const emit = defineEmits(['close', 'created'])
+const emit = defineEmits(['close', 'added'])
 
 const form: Ref<Record<string, any>> = ref({})
 const columns: Ref<string[]> = ref([])
@@ -17,15 +17,46 @@ const isSaving = ref(false)
 const errors: Ref<Record<string, string>> = ref({})
 const showSuccess = ref(false)
 
-// Animation states
 const modalVisible = ref(false)
 const contentVisible = ref(false)
 
-const filteredColumns = computed(() => columns.value.filter(col => col !== 'id'))
+const filteredColumns = computed(() => {
+  let cols = columns.value.filter(col => col !== 'id')
+  
+  if (props.tableName === 'prix_robot') {
+    cols = cols.filter(col => col !== 'robot')
+    const refIndex = cols.findIndex(col => col.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '') === 'reference')
+    if (refIndex !== -1) {
+      cols.splice(refIndex + 1, 0, 'robot')
+    }
+  }
+  
+  // Trier les colonnes pour mettre "reference" en premier (insensible à la casse et accents)
+  return cols.sort((a, b) => {
+    const normalize = (s: string) => s.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '')
+
+    const aNorm = normalize(a)
+    const bNorm = normalize(b)
+
+    // Priorités : reference > robot > reste
+    const priority = (col: string) => {
+      if (col === 'reference') return 2
+      if (col === 'robot') return 1
+      return 0
+    }
+
+    const aPriority = priority(aNorm)
+    const bPriority = priority(bNorm)
+
+    return bPriority - aPriority // tri décroissant : 2 (reference) en premier, puis 1 (robot)
+  })
+})
 
 const produitsList: Ref<any[]> = ref([])
 const robotsList: Ref<any[]> = ref([])
 const clientsList: Ref<any[]> = ref([])
+const fournisseursList: Ref<any[]> = ref([])
+const fpacksList: Ref<any[]> = ref([])
 
 const incompatibilitesProduits: Ref<any[]> = ref([])
 const compatibilitesRobots: Ref<any[]> = ref([])
@@ -33,18 +64,171 @@ const compatibilitesProduits: Ref<any[]> = ref([])
 
 const prix: Ref<Record<number, any>> = ref({})
 const prixRobot: Ref<any> = ref({
-  prix_robot: 0,
-  prix_transport: 0,
+  prix_robot: null,
+  prix_transport: null,
   commentaire: ''
 })
 
-// Progress indicator
+// États pour les filtres des selects
+const searchTerms: Ref<Record<string, string>> = ref({})
+const showDropdowns: Ref<Record<string, boolean>> = ref({})
+
+// États pour les barres de recherche des relations
+const searchIncompatibilites = ref('')
+const searchCompatibilitesRobots = ref('')
+const searchCompatibilitesProduits = ref('')
+
 const currentStep = computed(() => {
   const stepIndex = tabs.value.indexOf(activeTab.value)
   return ((stepIndex + 1) / tabs.value.length) * 100
 })
 
-// Watch for modal opening
+// Fonction pour nettoyer les noms des colonnes
+const cleanColumnName = (columnName: string) => {
+  // Pour la colonne virtuelle 'robot'
+  if (columnName === 'robot') {
+    return 'Robot'
+  }
+  
+  // Enlever "_id" à la fin
+  let cleaned = columnName.replace(/_id$/i, '')
+  
+  // Enlever "id" au début ou à la fin (case insensitive)
+  cleaned = cleaned.replace(/^id_?/i, '').replace(/_?id$/i, '')
+  
+  // Si après nettoyage il ne reste rien, garder le nom original
+  if (!cleaned.trim()) {
+    cleaned = columnName
+  }
+  
+  return cleaned.charAt(0).toUpperCase() + cleaned.slice(1)
+}
+
+// Fonction pour déterminer si un champ est une clé étrangère ou un select spécial
+const isForeignKey = (columnName: string) => {
+  const foreignKeys = [
+    'fournisseur_id', 'client_id', 'client', 'produit_id', 'fpack_id'
+  ]
+  
+  // Pour prix_robot, 'reference' et 'robot' sont des selects spéciaux
+  if (props.tableName === 'prix_robot' && (columnName === 'reference' || columnName === 'robot')) {
+    return true
+  }
+  
+  return foreignKeys.includes(columnName)
+}
+
+// Fonction pour obtenir les options d'un select
+const getSelectOptions = (columnName: string) => {
+  switch (columnName) {
+    case 'fournisseur_id':
+      return fournisseursList.value
+    case 'client_id':
+    case 'client':
+      return clientsList.value
+    case 'produit_id':
+      return produitsList.value
+    case 'fpack_id':
+      return fpacksList.value
+    default:
+      // Pour prix_robot, 'reference' et 'robot' utilisent la liste des robots
+      if (props.tableName === 'prix_robot' && (columnName === 'reference' || columnName === 'robot')) {
+        return robotsList.value
+      }
+      return []
+  }
+}
+
+// Fonction pour filtrer les options
+const getFilteredOptions = (columnName: string) => {
+  const options = getSelectOptions(columnName)
+  const searchTerm = searchTerms.value[columnName]?.toLowerCase() || ''
+  
+  if (!searchTerm) return options
+  
+  return options.filter(option => {
+    if (props.tableName === 'prix_robot' && columnName === 'reference') {
+      return option.reference?.toLowerCase().includes(searchTerm)
+    } else if (props.tableName === 'prix_robot' && columnName === 'robot') {
+      return option.nom?.toLowerCase().includes(searchTerm)
+    }
+    
+    return option.nom?.toLowerCase().includes(searchTerm) ||
+           option.reference?.toLowerCase().includes(searchTerm)
+  })
+}
+
+// Fonctions pour filtrer les listes dans les relations
+const filteredProduitsList = computed(() => {
+  if (!searchIncompatibilites.value) return produitsList.value
+  return produitsList.value.filter(produit => 
+    produit.nom?.toLowerCase().includes(searchIncompatibilites.value.toLowerCase()) ||
+    produit.reference?.toLowerCase().includes(searchIncompatibilites.value.toLowerCase())
+  )
+})
+
+const filteredRobotsList = computed(() => {
+  if (!searchCompatibilitesRobots.value) return robotsList.value
+  return robotsList.value.filter(robot => 
+    robot.nom?.toLowerCase().includes(searchCompatibilitesRobots.value.toLowerCase()) ||
+    robot.reference?.toLowerCase().includes(searchCompatibilitesRobots.value.toLowerCase())
+  )
+})
+
+const filteredProduitsForRobots = computed(() => {
+  if (!searchCompatibilitesProduits.value) return produitsList.value
+  return produitsList.value.filter(produit => 
+    produit.nom?.toLowerCase().includes(searchCompatibilitesProduits.value.toLowerCase()) ||
+    produit.reference?.toLowerCase().includes(searchCompatibilitesProduits.value.toLowerCase())
+  )
+})
+
+// Fonction pour obtenir le label d'une option
+const getOptionLabel = (option: any, columnName: string) => {
+  if (props.tableName === 'prix_robot') {
+    if (columnName === 'reference') {
+      return option.reference || ''
+    } else if (columnName === 'robot') {
+      return option.nom || ''
+    }
+  }
+  return option.nom || option.reference || option.id
+}
+
+// Fonction pour toggle le dropdown
+const toggleDropdown = (columnName: string) => {
+  showDropdowns.value[columnName] = !showDropdowns.value[columnName]
+}
+
+// Fonction pour sélectionner une option avec synchronisation pour prix_robot
+const selectOption = (columnName: string, option: any) => {
+  if (props.tableName === 'prix_robot') {
+    if (columnName === 'reference') {
+      // Sélection par référence -> synchroniser avec robot
+      form.value['reference'] = option.reference
+      form.value['robot'] = option.nom
+      form.value['id'] = option.id // Stocker l'ID du robot
+      
+      searchTerms.value['reference'] = option.reference
+      searchTerms.value['robot'] = option.nom
+    } else if (columnName === 'robot') {
+      // Sélection par nom de robot -> synchroniser avec référence
+      form.value['robot'] = option.nom
+      form.value['reference'] = option.reference
+      form.value['id'] = option.id // Stocker l'ID du robot
+      
+      searchTerms.value['robot'] = option.nom
+      searchTerms.value['reference'] = option.reference
+    }
+  } else {
+    // Logique normale pour les autres tables
+    form.value[columnName] = option.id
+    searchTerms.value[columnName] = getOptionLabel(option, columnName)
+  }
+  
+  showDropdowns.value[columnName] = false
+}
+
 watch(() => props.isOpen, async (newValue) => {
   if (newValue) {
     modalVisible.value = true
@@ -73,29 +257,46 @@ async function loadData() {
       columns.value = Object.values(columnsData)
     }
     
-    columns.value.forEach(col => form.value[col] = '')
+    // Initialiser le formulaire
+    columns.value.forEach(col => {
+      form.value[col] = ''
+      searchTerms.value[col] = ''
+      showDropdowns.value[col] = false
+    })
+
+    // Pour prix_robot, initialiser aussi les champs virtuels
+    if (props.tableName === 'prix_robot') {
+      searchTerms.value['robot'] = ''
+      showDropdowns.value['robot'] = false
+    }
+
+    // Charger toutes les données de référence
+    const [produitsRes, robotsRes, clientsRes, fournisseursRes, fpacksRes] = await Promise.all([
+      axios.get('http://localhost:8000/produits'),
+      axios.get('http://localhost:8000/robots'),
+      axios.get('http://localhost:8000/clients'),
+      axios.get('http://localhost:8000/fournisseurs'),
+      axios.get('http://localhost:8000/fpacks')
+    ])
+    
+    produitsList.value = produitsRes.data
+    robotsList.value = robotsRes.data
+    clientsList.value = clientsRes.data
+    fournisseursList.value = fournisseursRes.data
+    fpacksList.value = fpacksRes.data
 
     if (['produits', 'robots'].includes(props.tableName)) {
       tabs.value = ['Informations', 'Relations', 'Tarification']
       
-      const [produitsRes, robotsRes, clientsRes] = await Promise.all([
-        axios.get('http://localhost:8000/produits'),
-        axios.get('http://localhost:8000/robots'),
-        axios.get('http://localhost:8000/clients')
-      ])
-      
-      produitsList.value = produitsRes.data
-      robotsList.value = robotsRes.data
-      clientsList.value = clientsRes.data
-      
       if (props.tableName === 'produits') {
         clientsList.value.forEach(c => {
-          prix.value[c.id] = { prix_produit: 0, prix_transport: 0, commentaire: '' }
+          prix.value[c.id] = { prix_produit: null, prix_transport: null, commentaire: '' }
         })
       } else if (props.tableName === 'robots') {
-        prixRobot.value = { prix_robot: 0, prix_transport: 0, commentaire: '' }
+        prixRobot.value = { prix_robot: null, prix_transport: null, commentaire: '' }
       }
     }
+
   } catch (error) {
     console.error('Erreur lors du chargement:', error)
   } finally {
@@ -108,7 +309,19 @@ function validateForm() {
   let isValid = true
 
   filteredColumns.value.forEach(col => {
+    if (col === 'commentaire') return
+    
+    // Pour prix_robot, on vérifie que l'ID du robot est bien défini
+    if (props.tableName === 'prix_robot' && (col === 'reference' || col === 'robot')) {
+      if (!form.value['id']) {
+        errors.value[col] = 'Ce champ est requis'
+        isValid = false
+      }
+      return
+    }
+    
     if (!form.value[col] || form.value[col].toString().trim() === '') {
+      console.warn(`|${col}|`)
       errors.value[col] = 'Ce champ est requis'
       isValid = false
     }
@@ -123,15 +336,15 @@ function toggleAll(list: any[], target: Ref<any[]>) {
 }
 
 function toggleAllIncompatibilites() {
-  toggleAll(produitsList.value, incompatibilitesProduits)
+  toggleAll(filteredProduitsList.value, incompatibilitesProduits)
 }
 
 function toggleAllCompatibilitesRobots() {
-  toggleAll(robotsList.value, compatibilitesRobots)
+  toggleAll(filteredRobotsList.value, compatibilitesRobots)
 }
 
 function toggleAllCompatibilitesProduits() {
-  toggleAll(produitsList.value, compatibilitesProduits)
+  toggleAll(filteredProduitsForRobots.value, compatibilitesProduits)
 }
 
 function switchTab(tab: string) {
@@ -160,7 +373,6 @@ async function save() {
     const { data: newItem } = await axios.post(`http://localhost:8000/${props.tableName}`, form.value)
 
     if (props.tableName === 'produits') {
-      // Sauvegarde des incompatibilités produits
       for (const pid of incompatibilitesProduits.value) {
         await axios.post('http://localhost:8000/produit-incompatibilites', {
           produit_id_1: newItem.id,
@@ -168,7 +380,6 @@ async function save() {
         })
       }
 
-      // Sauvegarde des compatibilités robots
       for (const rid of compatibilitesRobots.value) {
         await axios.post('http://localhost:8000/robot-produit-compatibilites', {
           robot_id: rid,
@@ -176,8 +387,8 @@ async function save() {
         })
       }
 
-      // Sauvegarde des prix produits
       for (const cid in prix.value) {
+        if (!prix.value[cid].prix_produit && !prix.value[cid].prix_transport) continue
         await axios.post('http://localhost:8000/prix', {
           produit_id: newItem.id,
           client_id: parseInt(cid),
@@ -193,6 +404,7 @@ async function save() {
         await axios.post(`http://localhost:8000/robots/${newItem.id}/batch-compatibilites`, compatibilitesProduits.value)
       }
 
+      if (prixRobot.value.prix_robot || prixRobot.value.prix_transport) {
       await axios.post('http://localhost:8000/prix_robot', {
         id: newItem.id,
         reference: newItem.reference,
@@ -201,10 +413,11 @@ async function save() {
         commentaire: prixRobot.value.commentaire
       })
     }
+    }
 
     showSuccess.value = true
     setTimeout(() => {
-      emit('created', newItem)
+      emit('added', newItem)
       closeModal()
     }, 1500)
 
@@ -217,12 +430,17 @@ async function save() {
 
 function closeModal() {
   emit('close')
-  // Reset form
   setTimeout(() => {
     form.value = {}
+    searchTerms.value = {}
+    showDropdowns.value = {}
     activeTab.value = 'Informations'
     showSuccess.value = false
     errors.value = {}
+    // Réinitialiser les barres de recherche des relations
+    searchIncompatibilites.value = ''
+    searchCompatibilitesRobots.value = ''
+    searchCompatibilitesProduits.value = ''
   }, 300)
 }
 
@@ -239,18 +457,13 @@ onMounted(async () => {
       <div v-if="modalVisible" class="modal-overlay">
         <Transition name="modal-content">
           <div v-if="contentVisible" class="modal-container">
-            <!-- Header with progress -->
             <div class="modal-header">
               <div class="header-content">
                 <h2 class="modal-title">
-                  <span class="title-icon">✨</span>
+                  <span class="title-icon">➕</span>
                   Ajouter {{ tableName }}
                 </h2>
-                <button @click="closeModal" class="close-btn">
-                  <svg width="24" height="24" viewBox="0 0 24 24" fill="none">
-                    <path d="M18 6L6 18M6 6L18 18" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
-                  </svg>
-                </button>
+                <button @click="closeModal" class="close-btn">X</button>
               </div>
               <div class="progress-container">
                 <div class="progress-bar">
@@ -269,26 +482,21 @@ onMounted(async () => {
               </div>
             </div>
 
-            <!-- Loading State -->
             <div v-if="isLoading" class="loading-container">
               <div class="loading-spinner"></div>
               <p>Chargement des données...</p>
             </div>
 
-            <!-- Success State -->
             <Transition name="success">
               <div v-if="showSuccess" class="success-overlay">
                 <div class="success-content">
                   <div class="success-icon">✅</div>
                   <h3>Créé avec succès !</h3>
-                  <p>L'élément a été ajouté à la base de données.</p>
                 </div>
               </div>
             </Transition>
 
-            <!-- Main Content -->
             <div v-if="!isLoading && !showSuccess" class="modal-body">
-              <!-- Tabs Navigation -->
               <nav class="tabs-nav">
                 <button 
                   v-for="tab in tabs" 
@@ -306,25 +514,60 @@ onMounted(async () => {
                 </button>
               </nav>
 
-              <!-- Tab Content -->
               <div class="tab-content">
-                <!-- Informations Tab -->
                 <Transition name="fade" mode="out-in">
                   <div v-if="activeTab === 'Informations'" class="info-section">
                     <div class="form-grid">
-                      <div v-for="col in filteredColumns" :key="col" class="form-group">
+                      <div v-for="col in filteredColumns" :key="col" class="form-group" :class="{ 'dropdown-open': showDropdowns[col] }">
                         <label class="form-label">
-                          {{ col.charAt(0).toUpperCase() + col.slice(1) }}
-                          <span class="required">*</span>
+                          {{ cleanColumnName(col) }}
+                          <span v-if="col!=='commentaire'" class="required">*</span>
                         </label>
                         <div class="input-container">
+                          <!-- Input normal pour les champs non-FK -->
                           <input 
+                            v-if="!isForeignKey(col)"
                             v-model="form[col]" 
                             class="form-input"
                             :class="{ error: errors[col] }"
-                            :placeholder="`Entrez ${col}...`"
+                            :placeholder="`${cleanColumnName(col)}`"
                             @input="errors[col] = ''"
                           />
+                          
+                          <!-- Select custom pour les clés étrangères -->
+                          <div v-else class="custom-select" :class="{ error: errors[col] }">
+                            <input
+                              v-model="searchTerms[col]"
+                              class="form-input select-input"
+                              :placeholder="props.tableName === 'prix_robot' && col === 'reference' ? 'Rechercher par référence...' : 
+                                           props.tableName === 'prix_robot' && col === 'robot' ? 'Rechercher par nom de robot...' :
+                                           `Rechercher ${cleanColumnName(col)}...`"
+                              @focus="showDropdowns[col] = true"
+                              @input="showDropdowns[col] = true; errors[col] = ''"
+                              @click="toggleDropdown(col)"
+                            />
+                            
+                            <Transition name="dropdown">
+                              <div 
+                                v-if="showDropdowns[col]" 
+                                class="select-dropdown"
+                                @click.stop
+                              >
+                                <div 
+                                  v-for="option in getFilteredOptions(col)" 
+                                  :key="option.id"
+                                  class="select-option"
+                                  @click="selectOption(col, option)"
+                                >
+                                  {{ getOptionLabel(option, col) }}
+                                </div>
+                                <div v-if="getFilteredOptions(col).length === 0" class="select-option disabled">
+                                  Aucun résultat trouvé
+                                </div>
+                              </div>
+                            </Transition>
+                          </div>
+                          
                           <Transition name="error">
                             <span v-if="errors[col]" class="error-message">
                               {{ errors[col] }}
@@ -335,10 +578,9 @@ onMounted(async () => {
                     </div>
                   </div>
 
-                  <!-- Relations Tab -->
                   <div v-else-if="activeTab === 'Relations' || activeTab === 'Incompatibilités'" class="relations-section">
                     <div v-if="tableName === 'produits'" class="relations-content">
-                      <!-- Incompatibilités produits -->
+  
                       <div class="relation-group">
                         <div class="relation-header">
                           <h3 class="relation-title">
@@ -346,11 +588,35 @@ onMounted(async () => {
                             Produits incompatibles
                           </h3>
                           <button @click="toggleAllIncompatibilites" class="toggle-all-btn">
-                            {{ incompatibilitesProduits.length === produitsList.length ? 'Désélectionner tout' : 'Sélectionner tout' }}
+                            {{ incompatibilitesProduits.length === filteredProduitsList.length ? 'Désélectionner tout' : 'Sélectionner tout' }}
                           </button>
                         </div>
+                        
+                        <!-- Barre de recherche pour les incompatibilités -->
+                        <div class="search-container">
+                          <div class="search-input-wrapper">
+                            <svg class="search-icon" width="20" height="20" viewBox="0 0 24 24" fill="none">
+                              <circle cx="11" cy="11" r="8" stroke="currentColor" stroke-width="2"/>
+                              <path d="m21 21-4.35-4.35" stroke="currentColor" stroke-width="2"/>
+                            </svg>
+                            <input
+                              v-model="searchIncompatibilites"
+                              type="text"
+                              class="search-input"
+                              placeholder="Rechercher des produits..."
+                            />
+                            <button
+                              v-if="searchIncompatibilites"
+                              @click="searchIncompatibilites = ''"
+                              class="clear-search"
+                            >
+                              ✕
+                            </button>
+                          </div>
+                        </div>
+                        
                         <div class="checkbox-grid">
-                          <label v-for="p in produitsList" :key="p.id" class="checkbox-item">
+                          <label v-for="p in filteredProduitsList" :key="p.id" class="checkbox-item">
                             <input 
                               type="checkbox" 
                               v-model="incompatibilitesProduits" 
@@ -361,9 +627,12 @@ onMounted(async () => {
                             <span class="checkbox-label">{{ p.nom }}</span>
                           </label>
                         </div>
+                        
+                        <div v-if="filteredProduitsList.length === 0" class="no-results">
+                          Aucun produit trouvé pour "{{ searchIncompatibilites }}"
+                        </div>
                       </div>
 
-                      <!-- Compatibilités robots -->
                       <div class="relation-group">
                         <div class="relation-header">
                           <h3 class="relation-title">
@@ -371,11 +640,35 @@ onMounted(async () => {
                             Robots compatibles
                           </h3>
                           <button @click="toggleAllCompatibilitesRobots" class="toggle-all-btn">
-                            {{ compatibilitesRobots.length === robotsList.length ? 'Désélectionner tout' : 'Sélectionner tout' }}
+                            {{ compatibilitesRobots.length === filteredRobotsList.length ? 'Désélectionner tout' : 'Sélectionner tout' }}
                           </button>
                         </div>
+                        
+                        <!-- Barre de recherche pour les robots compatibles -->
+                        <div class="search-container">
+                          <div class="search-input-wrapper">
+                            <svg class="search-icon" width="20" height="20" viewBox="0 0 24 24" fill="none">
+                              <circle cx="11" cy="11" r="8" stroke="currentColor" stroke-width="2"/>
+                              <path d="m21 21-4.35-4.35" stroke="currentColor" stroke-width="2"/>
+                            </svg>
+                            <input
+                              v-model="searchCompatibilitesRobots"
+                              type="text"
+                              class="search-input"
+                              placeholder="Rechercher des robots..."
+                            />
+                            <button
+                              v-if="searchCompatibilitesRobots"
+                              @click="searchCompatibilitesRobots = ''"
+                              class="clear-search"
+                            >
+                              ✕
+                            </button>
+                          </div>
+                        </div>
+                        
                         <div class="checkbox-grid">
-                          <label v-for="r in robotsList" :key="r.id" class="checkbox-item">
+                          <label v-for="r in filteredRobotsList" :key="r.id" class="checkbox-item">
                             <input 
                               type="checkbox" 
                               v-model="compatibilitesRobots" 
@@ -385,6 +678,10 @@ onMounted(async () => {
                             <span class="checkbox-custom"></span>
                             <span class="checkbox-label">{{ r.nom }}</span>
                           </label>
+                        </div>
+                        
+                        <div v-if="filteredRobotsList.length === 0" class="no-results">
+                          Aucun robot trouvé pour "{{ searchCompatibilitesRobots }}"
                         </div>
                       </div>
                     </div>
@@ -397,11 +694,35 @@ onMounted(async () => {
                             Produits compatibles
                           </h3>
                           <button @click="toggleAllCompatibilitesProduits" class="toggle-all-btn">
-                            {{ compatibilitesProduits.length === produitsList.length ? 'Désélectionner tout' : 'Sélectionner tout' }}
+                            {{ compatibilitesProduits.length === filteredProduitsForRobots.length ? 'Désélectionner tout' : 'Sélectionner tout' }}
                           </button>
                         </div>
+                        
+                        <!-- Barre de recherche pour les produits compatibles -->
+                        <div class="search-container">
+                          <div class="search-input-wrapper">
+                            <svg class="search-icon" width="20" height="20" viewBox="0 0 24 24" fill="none">
+                              <circle cx="11" cy="11" r="8" stroke="currentColor" stroke-width="2"/>
+                              <path d="m21 21-4.35-4.35" stroke="currentColor" stroke-width="2"/>
+                            </svg>
+                            <input
+                              v-model="searchCompatibilitesProduits"
+                              type="text"
+                              class="search-input"
+                              placeholder="Rechercher des produits..."
+                            />
+                            <button
+                              v-if="searchCompatibilitesProduits"
+                              @click="searchCompatibilitesProduits = ''"
+                              class="clear-search"
+                            >
+                              ✕
+                            </button>
+                          </div>
+                        </div>
+                        
                         <div class="checkbox-grid">
-                          <label v-for="p in produitsList" :key="p.id" class="checkbox-item">
+                          <label v-for="p in filteredProduitsForRobots" :key="p.id" class="checkbox-item">
                             <input 
                               type="checkbox" 
                               v-model="compatibilitesProduits" 
@@ -412,13 +733,15 @@ onMounted(async () => {
                             <span class="checkbox-label">{{ p.nom }}</span>
                           </label>
                         </div>
+                        
+                        <div v-if="filteredProduitsForRobots.length === 0" class="no-results">
+                          Aucun produit trouvé pour "{{ searchCompatibilitesProduits }}"
+                        </div>
                       </div>
                     </div>
                   </div>
 
-                  <!-- Pricing Tab -->
                   <div v-else-if="activeTab === 'Tarification' || activeTab === 'Prix'" class="pricing-section">
-                    <!-- Produit pricing -->
                     <div v-if="tableName === 'produits'" class="pricing-content">
                       <div v-for="client in clientsList" :key="client.id" class="client-pricing">
                         <div class="client-header">
@@ -505,7 +828,6 @@ onMounted(async () => {
               </div>
             </div>
 
-            <!-- Footer -->
             <div v-if="!isLoading && !showSuccess" class="modal-footer">
               <div class="navigation-buttons">
                 <button 
@@ -549,7 +871,7 @@ onMounted(async () => {
 </template>
 
 <style scoped>
-/* Base Styles */
+
 .modal-overlay {
   position: fixed;
   inset: 0;
@@ -576,13 +898,15 @@ onMounted(async () => {
   flex-direction: column;
 }
 
-/* Header */
+/* Header - HAUTEUR FIXE */
 .modal-header {
-  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  background: linear-gradient(135deg, #5a94e4 0%, #430c7a 90%);
   color: white;
   padding: 24px 32px 16px;
   position: relative;
   overflow: hidden;
+  min-height: 140px; 
+  flex-shrink: 0; 
 }
 
 .modal-header::before {
@@ -592,7 +916,6 @@ onMounted(async () => {
   left: 0;
   right: 0;
   bottom: 0;
-  background: url("data:image/svg+xml,%3Csvg width='60' height='60' viewBox='0 0 60 60' xmlns='http://www.w3.org/2000/svg'%3E%3Cg fill='none' fill-rule='evenodd'%3E%3Cg fill='%23ffffff' fill-opacity='0.05'%3E%3Ccircle cx='30' cy='30' r='4'/%3E%3C/g%3E%3C/g%3E%3C/svg%3E") repeat;
   pointer-events: none;
 }
 
@@ -719,11 +1042,11 @@ onMounted(async () => {
   100% { transform: rotate(360deg); }
 }
 
-/* Success */
 .success-overlay {
   position: absolute;
   inset: 0;
-  background: rgba(255, 255, 255, 0.95);
+  background: rgba(255, 255, 255, 0.9);
+  padding: 20%;
   backdrop-filter: blur(4px);
   display: flex;
   align-items: center;
@@ -774,6 +1097,7 @@ onMounted(async () => {
   background: #f8fafc;
   border-bottom: 1px solid #e2e8f0;
   padding: 0 32px;
+  flex-shrink: 0;
 }
 
 .tab-button {
@@ -844,7 +1168,7 @@ onMounted(async () => {
 }
 
 .form-input {
-  width: 100%;
+  width: 80%;
   padding: 16px 20px;
   border: 2px solid #e2e8f0;
   border-radius: 12px;
@@ -857,7 +1181,6 @@ onMounted(async () => {
   outline: none;
   border-color: #667eea;
   box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
-  transform: translateY(-2px);
 }
 
 .form-input.error {
@@ -865,11 +1188,141 @@ onMounted(async () => {
   box-shadow: 0 0 0 3px rgba(239, 68, 68, 0.1);
 }
 
+/* Custom Select */
+.custom-select {
+  position: relative;
+  width: 90%;
+}
+
+.custom-select.error {
+  .select-input {
+    border-color: #ef4444;
+    box-shadow: 0 0 0 3px rgba(239, 68, 68, 0.1);
+  }
+}
+
+.select-input {
+  padding-right: 45px !important;
+  cursor: pointer;
+}
+
+.form-group.dropdown-open {
+  z-index: 2000; 
+  position: relative; 
+}
+
+.select-dropdown {
+  position: absolute;
+  top: 100%;
+  left: 0;
+  right: 0;
+  background: rgb(255, 255, 255);
+  border: 2px solid #e2e8f0;
+  border-top: none;
+  border-radius: 0 0 12px 12px;
+  max-height: 200px;
+  overflow-y: auto;
+  z-index: 99999; /* Z-INDEX TRÈS ÉLEVÉ */
+  box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.1);
+}
+
+
+
+.select-option {
+  padding: 12px 16px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  border-bottom: 1px solid #f1f5f9;
+}
+
+.select-option:hover:not(.disabled) {
+  background: #f8fafc;
+  color: #667eea;
+}
+
+.select-option.disabled {
+  color: #94a3b8;
+  cursor: not-allowed;
+  font-style: italic;
+}
+
+.select-option:last-child {
+  border-bottom: none;
+}
+
 .error-message {
   color: #ef4444;
   font-size: 12px;
   margin-top: 6px;
   display: block;
+}
+
+/* Search Container - NOUVEAU */
+.search-container {
+  margin-bottom: 20px;
+}
+
+.search-input-wrapper {
+  position: relative;
+  display: flex;
+  align-items: center;
+  background: #fff;
+  border: 2px solid #e2e8f0;
+  border-radius: 12px;
+  padding: 12px 16px;
+  transition: all 0.3s ease;
+}
+
+.search-input-wrapper:focus-within {
+  border-color: #667eea;
+  box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
+}
+
+.search-icon {
+  color: #64748b;
+  margin-right: 12px;
+  flex-shrink: 0;
+}
+
+.search-input {
+  border: none;
+  outline: none;
+  background: transparent;
+  font-size: 16px;
+  flex: 1;
+  color: #334155;
+}
+
+.search-input::placeholder {
+  color: #94a3b8;
+}
+
+.clear-search {
+  background: none;
+  border: none;
+  color: #94a3b8;
+  cursor: pointer;
+  padding: 4px;
+  border-radius: 4px;
+  transition: all 0.2s ease;
+  margin-left: 8px;
+  flex-shrink: 0;
+}
+
+.clear-search:hover {
+  background: #f1f5f9;
+  color: #64748b;
+}
+
+/* No Results Message - NOUVEAU */
+.no-results {
+  text-align: center;
+  padding: 40px 20px;
+  color: #64748b;
+  font-style: italic;
+  background: #f8fafc;
+  border-radius: 12px;
+  border: 2px dashed #e2e8f0;
 }
 
 /* Relations Section */
@@ -1068,6 +1521,7 @@ onMounted(async () => {
   justify-content: space-between;
   align-items: center;
   gap: 20px;
+  flex-shrink: 0;
 }
 
 .navigation-buttons, .action-buttons {
@@ -1200,129 +1654,39 @@ onMounted(async () => {
   transform: translateY(-10px);
 }
 
-/* Responsive Design */
-@media (max-width: 768px) {
-  .modal-container {
-    margin: 10px;
-    width: calc(100% - 20px);
-    max-height: calc(100vh - 20px);
-  }
-  
-  .modal-header {
-    padding: 20px 24px 16px;
-  }
-  
-  .modal-title {
-    font-size: 24px;
-  }
-  
-  .tab-content {
-    padding: 24px 20px;
-  }
-  
-  .form-grid {
-    grid-template-columns: 1fr;
-    gap: 20px;
-  }
-  
-  .checkbox-grid {
-    grid-template-columns: 1fr;
-  }
-  
-  .pricing-grid {
-    grid-template-columns: 1fr;
-  }
-  
-  .modal-footer {
-    flex-direction: column;
-    gap: 16px;
-    padding: 16px 20px;
-  }
-  
-  .navigation-buttons, .action-buttons {
-    width: 100%;
-    justify-content: center;
-  }
-  
-  .tabs-nav {
-    overflow-x: auto;
-    padding: 0 20px;
-  }
-  
-  .tab-button {
-    white-space: nowrap;
-    padding: 16px 20px;
-  }
+.dropdown-enter-active, .dropdown-leave-active {
+  transition: all 0.2s ease;
 }
 
-/* Dark theme support */
-@media (prefers-color-scheme: dark) {
-  .modal-container {
-    background: linear-gradient(145deg, #1e293b 0%, #0f172a 100%);
-    color: #e2e8f0;
-  }
-  
-  .tabs-nav {
-    background: #334155;
-    border-bottom-color: #475569;
-  }
-  
-  .tab-button {
-    color: #94a3b8;
-  }
-  
-  .tab-button:hover {
-    color: #e2e8f0;
-    background: rgba(102, 126, 234, 0.1);
-  }
-  
-  .form-input, .pricing-input, .pricing-textarea {
-    background: #334155;
-    border-color: #475569;
-    color: #e2e8f0;
-  }
-  
-  .form-input:focus, .pricing-input:focus, .pricing-textarea:focus {
-    background: #3f4b5b;
-  }
-  
-  .relation-group, .client-pricing, .robot-pricing {
-    background: #334155;
-    border-color: #475569;
-  }
-  
-  .modal-footer {
-    background: #334155;
-    border-top-color: #475569;
-  }
-  
-  .nav-btn, .cancel-btn {
-    background: #475569;
-    border-color: #64748b;
-    color: #e2e8f0;
-  }
+.dropdown-enter-from, .dropdown-leave-to {
+  opacity: 0;
+  transform: translateY(-10px);
 }
 
 /* Custom scrollbar */
-.tab-content::-webkit-scrollbar {
+.tab-content::-webkit-scrollbar,
+.select-dropdown::-webkit-scrollbar {
   width: 8px;
 }
 
-.tab-content::-webkit-scrollbar-track {
+.tab-content::-webkit-scrollbar-track,
+.select-dropdown::-webkit-scrollbar-track {
   background: #f1f5f9;
   border-radius: 4px;
 }
 
-.tab-content::-webkit-scrollbar-thumb {
+.tab-content::-webkit-scrollbar-thumb,
+.select-dropdown::-webkit-scrollbar-thumb {
   background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
   border-radius: 4px;
 }
 
-.tab-content::-webkit-scrollbar-thumb:hover {
+.tab-content::-webkit-scrollbar-thumb:hover,
+.select-dropdown::-webkit-scrollbar-thumb:hover {
   background: linear-gradient(135deg, #5a6fd8 0%, #6b4190 100%);
 }
 
-/* Animations for enhanced UX */
+/* Animations pour enhanced UX */
 .checkbox-item {
   animation: fadeInUp 0.3s ease forwards;
   animation-delay: calc(var(--index, 0) * 0.05s);
@@ -1338,10 +1702,10 @@ onMounted(async () => {
 }
 
 .form-group {
+  position: relative;
   animation: slideInLeft 0.4s ease forwards;
   animation-delay: calc(var(--index, 0) * 0.1s);
   opacity: 0;
-  transform: translateX(-30px);
 }
 
 @keyframes slideInLeft {
@@ -1350,12 +1714,4 @@ onMounted(async () => {
     transform: translateX(0);
   }
 }
-
-/* Focus management for accessibility */
-.modal-container:focus-within .form-input:focus,
-.modal-container:focus-within .pricing-input:focus,
-.modal-container:focus-within .pricing-textarea:focus {
-  box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.2);
-}
-
 </style>

@@ -106,10 +106,11 @@ function closeAddModal() {
   emit('cancelled')
 }
 
-function handleModalCreated(newItem: any) {
+async function handleModalCreated(newItem: any) {
   console.log('Modal created:', newItem)
   showAddModal.value = false
   emit('added', newItem)
+  tableData.refresh()
 }
 
 // Gestion du scroll et duplication
@@ -281,8 +282,6 @@ function handleRowHover(rowId: string | null) {
               @mouseenter="handleRowHover(getRowId(row, props.tableName))"
               @mouseleave="handleRowHover(null)"
             >
-              <!-- Indicateur de statut -->
-              <div class="row-status-indicator"></div>
               
               <!-- Cellules de données -->
               <template v-if="getEditingId(row)">
@@ -332,10 +331,10 @@ function handleRowHover(rowId: string | null) {
     </div>
 
     <TableRowAddModal 
-      :is-open="showAddModal"
-      :table-name="props.tableName"
+      :isOpen="showAddModal"
+      :table-name="props.tableName" 
       @close="closeAddModal"
-      @created="handleModalCreated"
+      @added="handleModalCreated"
     />
     
     <div v-if="isLoading" class="loading-overlay">

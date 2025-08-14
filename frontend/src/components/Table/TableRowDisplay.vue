@@ -90,20 +90,6 @@ function formatCellValue(value: any, type: string) {
   }
 }
 
-function getCellVariant(col: string, value: any, tableName: string) {
-  if (col === 'nom' && tableName === 'projets') {
-    return props.row.complet ? 'success' : 'warning'
-  }
-  if (col === 'prix_produit' || col === 'prix_transport') {
-    if (typeof props.row[col] === 'number') {
-      if (props.row[col] > 1000) return 'success'
-      if (props.row[col] < 100) return 'warning'
-    }
-  }
-  if (typeof value === 'number' && value < 0) return 'danger'
-  if (typeof value === 'boolean') return value ? 'success' : 'danger'
-  return 'default'
-}
 </script>
 
 <template>
@@ -113,7 +99,7 @@ function getCellVariant(col: string, value: any, tableName: string) {
     class="modern-cell"
     :class="[
       `cell-${getCellType(getDisplayValue(props.row, col, props.tableName, props.tableData))}`,
-      `cell-variant-${getCellVariant(col, getDisplayValue(props.row, col, props.tableName, props.tableData), props.tableName)}`
+      `cell-disp`
     ]"
   >
     <div class="cell-content">
@@ -207,7 +193,7 @@ function getCellVariant(col: string, value: any, tableName: string) {
 }
 
 .cell-currency .cell-value {
-  color: #dc2626;
+  color: #dca226;
   font-weight: 700;
 }
 
@@ -248,58 +234,12 @@ function getCellVariant(col: string, value: any, tableName: string) {
   font-size: 1.1rem;
 }
 
-/* Variants de cellules */
-.cell-variant-success {
-  background: linear-gradient(135deg, rgba(16, 185, 129, 0.05), rgba(34, 197, 94, 0.05));
-  border-left: 3px solid #10b981;
-}
 
-.cell-variant-success .cell-value {
-  color: #065f46;
-  font-weight: 600;
-}
-
-.cell-variant-warning {
-  background: linear-gradient(135deg, rgba(251, 191, 36, 0.05), rgba(245, 158, 11, 0.05));
-  border-left: 3px solid #f59e0b;
-}
-
-.cell-variant-warning .cell-value {
-  color: #92400e;
-  font-weight: 600;
-}
-
-.cell-variant-danger {
-  background: linear-gradient(135deg, rgba(239, 68, 68, 0.05), rgba(220, 38, 38, 0.05));
-  border-left: 3px solid #ef4444;
-}
-
-.cell-variant-danger .cell-value {
-  color: #991b1b;
-  font-weight: 600;
-}
-
-.cell-variant-default {
+.cell-disp {
   border-left: 3px solid transparent;
 }
 
-/* Effets hover pour les variants */
-.cell-variant-success:hover {
-  background: linear-gradient(135deg, rgba(16, 185, 129, 0.1), rgba(34, 197, 94, 0.1));
-  transform: translateX(2px);
-}
-
-.cell-variant-warning:hover {
-  background: linear-gradient(135deg, rgba(251, 191, 36, 0.1), rgba(245, 158, 11, 0.1));
-  transform: translateX(2px);
-}
-
-.cell-variant-danger:hover {
-  background: linear-gradient(135deg, rgba(239, 68, 68, 0.1), rgba(220, 38, 38, 0.1));
-  transform: translateX(2px);
-}
-
-.cell-variant-default:hover {
+.cell-disp:hover {
   background: rgba(59, 130, 246, 0.05);
   border-left-color: #3b82f6;
   transform: translateX(2px);
