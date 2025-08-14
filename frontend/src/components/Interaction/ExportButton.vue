@@ -52,7 +52,7 @@ function exportFile() {
   margin-top: 0.5%;
   position: relative;
   overflow: hidden;
-  background: linear-gradient(45deg, #28a745, #2ecc71);
+  background: linear-gradient(45deg, #0059b8, #3498db);
   color: white;
   font-weight: 700;
   font-size: 16px;
@@ -60,7 +60,7 @@ function exportFile() {
   border-radius: 12px;
   border: none;
   cursor: pointer;
-  box-shadow: 0 8px 15px rgba(62, 252, 37, 0.3);
+  box-shadow: 0 8px 15px rgba(0, 123, 255, 0.3);
   transition: box-shadow 0.3s ease, transform 0.2s ease;
   display: inline-flex;
   align-items: center;
@@ -77,7 +77,7 @@ function exportFile() {
   left: -50%;
   width: 200%;
   height: 200%;
-  background: linear-gradient(60deg, #28a745, #2ecc71, #28a745, #2ecc71);
+  background: linear-gradient(60deg, #0154ae, #3498db, #007bff, #3498db);
   background-size: 400% 400%;
   animation: gradientShift 8s ease infinite;
   opacity: 0.6;
@@ -93,12 +93,12 @@ function exportFile() {
 }
 
 .ExportButton:hover {
-  box-shadow: 0 12px 25px rgba(37, 252, 116, 0.7);
+  box-shadow: 0 12px 25px rgba(52, 152, 219, 0.7);
   transform: translateY(-3px);
 }
 
 .ExportButton:active {
-  box-shadow: 0 6px 12px rgba(37, 252, 116, 0.7);
+  box-shadow: 0 6px 12px rgba(52, 152, 219, 0.7);
   transform: translateY(1px);
 }
 
@@ -125,5 +125,4 @@ function exportFile() {
   0% { transform: rotate(0deg); }
   100% { transform: rotate(360deg); }
 }
-
 </style>

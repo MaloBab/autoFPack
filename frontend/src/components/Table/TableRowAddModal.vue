@@ -321,7 +321,6 @@ function validateForm() {
     }
     
     if (!form.value[col] || form.value[col].toString().trim() === '') {
-      console.warn(`|${col}|`)
       errors.value[col] = 'Ce champ est requis'
       isValid = false
     }
@@ -428,6 +427,12 @@ async function save() {
   }
 }
 
+const hideDropdown = (col: string, time: number) => {
+  setTimeout(() => {
+    showDropdowns.value[col] = false
+  }, time)
+}
+
 function closeModal() {
   emit('close')
   setTimeout(() => {
@@ -524,7 +529,6 @@ onMounted(async () => {
                           <span v-if="col!=='commentaire'" class="required">*</span>
                         </label>
                         <div class="input-container">
-                          <!-- Input normal pour les champs non-FK -->
                           <input 
                             v-if="!isForeignKey(col)"
                             v-model="form[col]" 
@@ -534,7 +538,6 @@ onMounted(async () => {
                             @input="errors[col] = ''"
                           />
                           
-                          <!-- Select custom pour les clés étrangères -->
                           <div v-else class="custom-select" :class="{ error: errors[col] }">
                             <input
                               v-model="searchTerms[col]"
@@ -542,9 +545,10 @@ onMounted(async () => {
                               :placeholder="props.tableName === 'prix_robot' && col === 'reference' ? 'Rechercher par référence...' : 
                                            props.tableName === 'prix_robot' && col === 'robot' ? 'Rechercher par nom de robot...' :
                                            `Rechercher ${cleanColumnName(col)}...`"
-                              @focus="showDropdowns[col] = true"
-                              @input="showDropdowns[col] = true; errors[col] = ''"
                               @click="toggleDropdown(col)"
+
+                              @blur="hideDropdown(col,200) "
+                              
                             />
                             
                             <Transition name="dropdown">

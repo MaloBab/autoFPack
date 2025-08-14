@@ -1,7 +1,7 @@
 {
   "name": "fpack-app",
   "private": true,
-  "version": "0.5.0",
+  "version": "0.8.0",
   "description": "Application desktop F-Pack pour configurer et gérer vos packs",
   "author": "FANUC",
   "type": "module",

@@ -393,10 +393,10 @@ function handleRowHover(rowId: string | null) {
   display: flex;
   align-items: center;
   gap: 0.5rem;
-  background: linear-gradient(135deg,#b7eddf, #0f582b);
+  background: linear-gradient(95deg,#14d5a2, #056921);
   color: white;
   border: none;
-  padding: 0.875rem 1.25rem;
+  padding: 1rem 1.5rem;
   border-radius: 10px;
   font-weight: 600;
   font-size: 0.875rem;

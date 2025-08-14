@@ -84,7 +84,7 @@ async function onFileChange(event: Event) {
   margin-left: 3%;
   position: relative;
   overflow: hidden;
-  background: linear-gradient(45deg, #43e97b, #38f9d7);
+  background: linear-gradient(45deg, #4396e9, #38d7f9);
   color: white;
   font-weight: 700;
   font-size: 16px;
@@ -92,7 +92,7 @@ async function onFileChange(event: Event) {
   border-radius: 12px;
   border: none;
   cursor: pointer;
-  box-shadow: 0 8px 15px rgba(56, 233, 123, 0.5);
+  box-shadow: 0 8px 15px rgba(56, 123, 233, 0.5);
   transition: box-shadow 0.3s ease, transform 0.2s ease;
   display: inline-flex;
   align-items: center;
@@ -109,7 +109,7 @@ async function onFileChange(event: Event) {
   left: -50%;
   width: 200%;
   height: 200%;
-  background: linear-gradient(60deg, #43e97b, #38f9d7, #43e97b, #38f9d7);
+  background: linear-gradient(60deg, #4396e9, #38d7f9, #4396e9, #38d7f9);
   background-size: 400% 400%;
   animation: gradientShift 8s ease infinite;
   opacity: 0.6;
@@ -125,12 +125,12 @@ async function onFileChange(event: Event) {
 }
 
 .ImportButton:hover {
-  box-shadow: 0 12px 25px rgba(56, 233, 123, 0.7);
+  box-shadow: 0 12px 25px rgba(56, 123, 233, 0.7);
   transform: translateY(-3px);
 }
 
 .ImportButton:active {
-  box-shadow: 0 6px 12px rgba(56, 233, 123, 0.4);
+  box-shadow: 0 6px 12px rgba(56, 123, 233, 0.4);
   transform: translateY(1px);
 }
 

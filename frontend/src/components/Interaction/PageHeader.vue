@@ -18,9 +18,7 @@ const titreSingulier = computed(() =>
 <template>
   <div>
     <h1 class="title">{{ titre }}</h1>
-    <button class="add" @click="emit('ajouter')">
-      Ajouter {{ titreSingulier }}
-    </button>
+
   </div>
 </template>
 
