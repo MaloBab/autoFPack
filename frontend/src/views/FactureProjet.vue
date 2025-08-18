@@ -186,7 +186,6 @@ onMounted(fetchFacture)
   
 }
 
-/* Garde l'en-tête aligné */
 .facture-table thead,
 .facture-table tfoot {
   display: table;

@@ -22,7 +22,6 @@ const options = computed(() => {
     case 'client_id':
       return props.tableData.clients.value
     case 'fpack_id':
-      // Pour les projets, filtrer les fpacks selon le client sélectionné
       if (props.tableName === 'projets') {
         const clientNom = rowData.value.client_nom
         if (clientNom) {

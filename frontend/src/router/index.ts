@@ -1,4 +1,3 @@
-// router/index.ts - Routes mises à jour
 import { createRouter, createWebHashHistory } from 'vue-router'
 import Dashboard from '../views/Dashboard.vue'
 import Produits from '../views/Produits.vue'
@@ -35,7 +34,6 @@ const routes = [
   { path: '/prix', name: 'Prix', component: Prix},
   { path: '/prix_robot', name: 'Prix-Robot', component: PrixRobot},
   
-  // Routes des projets - structure hiérarchique
   { path: '/projet_global', name: 'Projet_global', component: Projet_global},
   { path: '/projets/:id/details', name: 'ProjetDetails', component: ProjetDetails},
   { path: '/complete/:tableName/:id', name: 'CompleteProjet', component: CompProjet},

@@ -52,7 +52,6 @@ const emit = defineEmits<{
   (e: 'view-details', projetId: number): void
 }>()
 
-// État local
 const showActions = ref(false)
 const showProjetActions = ref<Record<number, boolean>>({})
 const isExpanded = ref(props.forceExpanded)
@@ -67,7 +66,6 @@ const stats = ref({
   total_selections: 0
 })
 
-// Transformation des données pour créer la structure sous-projets avec protection
 const sousProjets = computed((): SousProjet[] => {
   if (!props.projetGlobal?.projets || !Array.isArray(props.projetGlobal.projets)) {
     return []
@@ -77,7 +75,7 @@ const sousProjets = computed((): SousProjet[] => {
   const grouped: Record<string, ProjetItem[]> = {}
   
   props.projetGlobal.projets.forEach(projet => {
-    if (!projet) return // Skip null/undefined projects
+    if (!projet) return
     
     const key = projet.fpack_nom || 'Groupe par défaut'
     if (!grouped[key]) {
@@ -357,7 +355,6 @@ watch(
 
 <template>
   <div class="projet-global-card" :class="{ expanded: isExpanded }">
-    <!-- En-tête du projet global -->
     <div class="card-header" @click="handleHeaderClick">
       <div class="header-left">
         <div class="project-title-section">
@@ -428,7 +425,6 @@ watch(
         </div>
         
         <div class="header-actions">
-          <!-- Bouton retour en mode sous-projet -->
           <button 
             v-if="selectedSousProjet"
             @click.stop="exitSousProjetMode" 
@@ -438,7 +434,6 @@ watch(
             <span class="btn-icon">←</span>
           </button>
           
-          <!-- Bouton d'ajout contextuel -->
           <button 
             @click.stop="handleAddClick" 
             class="action-btn add-btn"
@@ -487,11 +482,9 @@ watch(
       </div>
     </div>
 
-    <!-- Contenu dynamique -->
     <Transition name="expand" @enter="startTransition" @leave="endTransition">
       <div v-if="isExpanded" class="card-content-wrapper" ref="contentWrapper">
         <div class="card-content">
-          <!-- Mode liste des sous-projets -->
           <div v-if="!selectedSousProjet" class="sous-projets-mode">
             <div v-if="sousProjets.length === 0" class="empty-sous-projets">
               <div class="empty-icon">📁</div>
@@ -559,7 +552,6 @@ watch(
             </div>
           </div>
           
-          <!-- Mode FPacks du sous-projet sélectionné -->
           <div v-else class="fpacks-mode">
             <div v-if="!selectedSousProjet.fpacks || selectedSousProjet.fpacks.length === 0" class="empty-projects">
               <div class="empty-icon">📋</div>
@@ -584,7 +576,6 @@ watch(
                     'not-started': (projet.nb_selections || 0) === 0
                   }"
                 >
-                  <!-- En-tête du projet -->
                   <div class="projet-header">
                     <div class="projet-status">
                       <span 
@@ -646,7 +637,6 @@ watch(
                     </div>
                   </div>
 
-                  <!-- Progression du projet -->
                   <div class="projet-progress">
                     <div class="progress-info">
                       <span class="progress-label">Progression</span>
@@ -669,7 +659,6 @@ watch(
                     </div>
                   </div>
 
-                  <!-- Actions rapides -->
                   <div class="quick-actions">
                     <button 
                       @click="emit('complete-projet', projet.id)"
@@ -730,7 +719,6 @@ watch(
   transform: translateY(-2px);
 }
 
-/* En-tête */
 .card-header {
   background: linear-gradient(135deg, #f8fafc 0%, #e2e8f0 100%);
   padding: 1.5rem; 
@@ -964,14 +952,12 @@ watch(
   height: auto;
 }
 
-/* Contenu */
 .card-content {
   transition: all 0.3s ease-in-out;
   padding: 1.5rem;
   height: auto;
 }
 
-/* Mode Sous-projets */
 .sous-projets-mode {
   min-height: 200px;
 }
@@ -1143,7 +1129,6 @@ watch(
   color: #ef4444;
 }
 
-/* Mode FPacks */
 .fpacks-mode {
   min-height: 200px;
 }
@@ -1304,7 +1289,6 @@ watch(
   margin: 0.5rem 0;
 }
 
-/* Progression */
 .projet-progress {
   margin-bottom: 1rem;
 }
@@ -1355,7 +1339,6 @@ watch(
   text-align: right;
 }
 
-/* Actions rapides */
 .quick-actions {
   display: flex;
   gap: 0.75rem;
@@ -1411,7 +1394,6 @@ watch(
   font-size: 0.85rem;
 }
 
-/* Transitions */
 .dropdown-enter-active,
 .dropdown-leave-active {
   transition: all 0.2s ease;
@@ -1467,21 +1449,4 @@ watch(
   transition: transform 0.3s ease;
 }
 
-/* Responsive */
-@media (max-width: 768px) {
-  .card-header {
-    grid-template-columns: 1fr;
-    gap: 1rem;
-    text-align: center;
-  }
-  
-  .header-center {
-    margin-right: 0;
-  }
-  
-  .sous-projets-container,
-  .projects-container {
-    grid-template-columns: 1fr;
-  }
-}
 </style>

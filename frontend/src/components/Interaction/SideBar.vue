@@ -129,7 +129,6 @@ const menuItems = [
   margin-right: 0;
 }
 
-/* Tooltip pour le mode icônes seulement */
 .sidebar.icons-only .menu-link {
   position: relative;
 }

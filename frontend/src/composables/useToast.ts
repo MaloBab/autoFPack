@@ -7,7 +7,6 @@ const color = ref('#1e293b')
 let timeoutId: ReturnType<typeof setTimeout> | null = null
 
 function showToast(msg: string, bgColor = '#1e293b', duration = 3000) {
-  // Reset timer si un toast est déjà en cours
   if (timeoutId) {
     clearTimeout(timeoutId)
     timeoutId = null

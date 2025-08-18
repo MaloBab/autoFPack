@@ -178,7 +178,6 @@ export function useIncompatibilitesChecker(columns: () => ConfigColumn[]) {
     })
   }
 
-  // MODIFIÉ: nouvelle logique pour les conflits entre colonnes
   function getConflictingColumns(): number[] {
     const conflictIds = new Set<number>()
     const cols = columns()
@@ -240,83 +239,55 @@ export function useIncompatibilitesChecker(columns: () => ConfigColumn[]) {
 function getFullyConflictingGroups(columns: ConfigColumn[], newColumn?: ConfigColumn): number[] {
   const conflicts: number[] = []
 
-  // Créer la liste complète des colonnes (existantes + nouvelle si fournie)
   const allColumns = newColumn ? [...columns, newColumn] : columns
 
-  console.log('=== DEBUG getFullyConflictingGroups ===')
-  console.log('Existing columns:', columns.length)
-  console.log('New column:', newColumn ? `${newColumn.type}-${newColumn.ref_id}` : 'none')
-  console.log('Total columns to analyze:', allColumns.length)
-
-  // Parcourir chaque groupe pour vérifier s'il est entièrement en conflit
   for (let i = 0; i < allColumns.length; i++) {
     const currentCol = allColumns[i]
     
-    console.log(`\n=== Column ${i} ===`)
-    console.log('Type:', currentCol.type, 'Display name:', currentCol.display_name)
-    
-    // On ne traite que les groupes
     if (currentCol.type !== 'group' || !currentCol.group_items || currentCol.group_items.length === 0) {
-      console.log('Skipping: not a group or empty group')
       continue
     }
 
-    console.log('Group items:', currentCol.group_items)
-
-    // Récupérer tous les produits de TOUTES les autres colonnes (pas ce groupe)
     const otherColumns = allColumns.filter((_, index) => index !== i)
-    console.log('Other columns count:', otherColumns.length)
     
     const otherProduits: number[] = []
     
     for (const col of otherColumns) {
-      console.log(`Processing other column: ${col.type} - ${col.display_name}`)
       
       if (col.type === 'produit') {
         otherProduits.push(col.ref_id)
-        console.log(`Added produit: ${col.ref_id}`)
       } 
       else if (col.type === 'equipement') {
         const equipProduits = getProduitsFromEquipement(col.ref_id)
         otherProduits.push(...equipProduits)
-        console.log(`Added equipement produits: ${equipProduits}`)
       }
       else if (col.type === 'group' && col.group_items) {
         for (const item of col.group_items) {
           if (item.type === 'produit') {
             otherProduits.push(item.ref_id)
-            console.log(`Added group produit: ${item.ref_id}`)
           }
           else if (item.type === 'equipement') {
             const equipProduits = getProduitsFromEquipement(item.ref_id)
             otherProduits.push(...equipProduits)
-            console.log(`Added group equipement produits: ${equipProduits}`)
           }
         }
       }
     }
 
-    console.log('Final other produits:', otherProduits)
 
-    // Si aucun autre produit n'existe, le groupe ne peut pas être en conflit
     if (otherProduits.length === 0) {
-      console.log('No other products found - group cannot be conflicting')
       continue
     }
 
-    // Vérifier si CHAQUE élément du groupe serait incompatible s'il était choisi
     let allItemsAreIncompatible = true
 
     for (let j = 0; j < currentCol.group_items.length; j++) {
       const groupItem = currentCol.group_items[j]
-      console.log(`\n  --- Checking group item ${j}: ${groupItem.type}-${groupItem.ref_id} ---`)
       
       let canThisItemCoexist = true
 
       if (groupItem.type === 'produit') {
-        console.log(`  Checking produit ${groupItem.ref_id} against other produits:`, otherProduits)
         
-        // Ce produit a-t-il une incompatibilité avec au moins un produit extérieur ?
         for (const otherProduitId of otherProduits) {
           const hasIncompatibility = produitIncompatibilites.value.some(incomp => {
             const match1 = incomp.produit_id_1 === groupItem.ref_id && incomp.produit_id_2 === otherProduitId
@@ -324,20 +295,15 @@ function getFullyConflictingGroups(columns: ConfigColumn[], newColumn?: ConfigCo
             return match1 || match2
           })
           
-          console.log(`    vs produit ${otherProduitId}: incompatible = ${hasIncompatibility}`)
-          
           if (hasIncompatibility) {
             canThisItemCoexist = false
-            console.log(`    → Cannot coexist due to incompatibility with produit ${otherProduitId}`)
             break
           }
         }
       } 
       else if (groupItem.type === 'equipement') {
         const equipementProduits = getProduitsFromEquipement(groupItem.ref_id)
-        console.log(`  Equipement ${groupItem.ref_id} has produits:`, equipementProduits)
         
-        // Au moins un produit de cet équipement a-t-il une incompatibilité ?
         for (const equipProduitId of equipementProduits) {
           for (const otherProduitId of otherProduits) {
             const hasIncompatibility = produitIncompatibilites.value.some(incomp => 
@@ -347,54 +313,35 @@ function getFullyConflictingGroups(columns: ConfigColumn[], newColumn?: ConfigCo
             
             if (hasIncompatibility) {
               canThisItemCoexist = false
-              console.log(`    → Cannot coexist: equipement produit ${equipProduitId} incompatible with ${otherProduitId}`)
               break
             }
           }
           if (!canThisItemCoexist) break
         }
       }
-      else if (groupItem.type === 'robot') {
-        console.log(`  Checking robot ${groupItem.ref_id} against other produits:`, otherProduits)
-        
-        // Ce robot est-il compatible avec TOUS les produits extérieurs ?
+      else if (groupItem.type === 'robot') {    
         for (const otherProduitId of otherProduits) {
           const isCompatible = isRobotCompatibleWithProduit(groupItem.ref_id, otherProduitId)
-          console.log(`    vs produit ${otherProduitId}: compatible = ${isCompatible}`)
           
           if (!isCompatible) {
             canThisItemCoexist = false
-            console.log(`    → Cannot coexist due to incompatibility with produit ${otherProduitId}`)
             break
           }
         }
       }
 
-      console.log(`  Item ${groupItem.type}-${groupItem.ref_id} can coexist: ${canThisItemCoexist}`)
-
-      // Si au moins un élément du groupe peut coexister, le groupe n'est pas entièrement incompatible
       if (canThisItemCoexist) {
         allItemsAreIncompatible = false
-        console.log(`  → Group is NOT fully conflicting because this item can coexist`)
         break
       }
     }
 
-    console.log(`Group ${i} final result - all items incompatible: ${allItemsAreIncompatible}`)
-
     if (allItemsAreIncompatible) {
-      // Si c'est un groupe existant (pas la nouvelle colonne), on l'ajoute aux conflits
       if (i < columns.length) {
         conflicts.push(i)
-        console.log(`→ Added existing group ${i} to conflicts`)
-      } else {
-        console.log(`→ New column would be fully conflicting (not added to results)`)
       }
     }
   }
-
-  console.log('\n=== FINAL RESULT ===')
-  console.log('Fully conflicting existing groups:', conflicts)
   return conflicts
 }
 

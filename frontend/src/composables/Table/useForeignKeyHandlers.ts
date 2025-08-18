@@ -1,8 +1,6 @@
-//useForeignKeyHandlers.ts
 import { computed, watch } from 'vue'
 
 export function useForeignKeyHandlers(tableData: any, tableName: string) {
-  // Fpacks filtrés pour projets
   const filteredFpacks = computed(() => {
     if (tableData.newRow.value.client_nom) {
       const client = tableData.clients.value.find((c:any) => c.nom === tableData.newRow.value.client_nom)
@@ -23,7 +21,6 @@ export function useForeignKeyHandlers(tableData: any, tableName: string) {
     return tableData.fpacks.value
   })
 
-  // Watchers pour projets - nouvelle ligne
   watch(() => tableData.newRow.value.client_nom, (clientNom) => {
     if (tableName !== 'projets') return
     if (!clientNom) {
@@ -48,7 +45,6 @@ export function useForeignKeyHandlers(tableData: any, tableName: string) {
     }
   })
 
-  // Watchers pour prix_robot - nouvelle ligne
   watch(() => tableData.newRow.value.robot_nom, (nom) => {
     if (tableName !== 'prix_robot') return
     const r = tableData.robots.value.find((r:any) => r.nom === nom)
@@ -61,7 +57,6 @@ export function useForeignKeyHandlers(tableData: any, tableName: string) {
     if (r) tableData.newRow.value.robot_nom = r.nom
   })
 
-  // Watchers pour prix_robot - édition
   watch(() => tableData.editRow.value.robot_nom, (nom) => {
     if (tableName !== 'prix_robot') return
     const r = tableData.robots.value.find((r:any) => r.nom === nom)
@@ -74,7 +69,6 @@ export function useForeignKeyHandlers(tableData: any, tableName: string) {
     if (r) tableData.editRow.value.robot_nom = r.nom
   })
 
-  // Watchers pour projets - édition
   watch(() => tableData.editRow.value.client_nom, (clientNom) => {
     if (tableName !== 'projets') return
     if (!clientNom) {
@@ -99,7 +93,6 @@ export function useForeignKeyHandlers(tableData: any, tableName: string) {
     }
   })
 
-  // Initialisation spéciale pour projets
   function initializeNewRow(ajouter: boolean) {
     if (!ajouter || tableName !== 'projets') return
     

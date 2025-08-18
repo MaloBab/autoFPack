@@ -1,9 +1,7 @@
-// composables/useProjets.ts - Version optimisée avec sécurité null/undefined
 import {computed, reactive } from 'vue'
 import axios from 'axios'
 import { showToast } from './useToast'
 
-// Types étendus avec nouvelles propriétés
 export interface ProjetGlobal {
   id: number
   projet: string
@@ -70,7 +68,6 @@ export interface ProjetDetails {
   progression_percent: number
 }
 
-// Fonction utilitaire pour valider un projet
 function isValidProjet(projet: any): projet is Sous_Projet {
   return projet && 
          typeof projet === 'object' && 
@@ -79,7 +76,6 @@ function isValidProjet(projet: any): projet is Sous_Projet {
          typeof projet.complet === 'boolean'
 }
 
-// Fonction utilitaire pour valider un projet global
 function isValidProjetGlobal(pg: any): pg is ProjetGlobal {
   return pg && 
          typeof pg === 'object' && 
@@ -87,7 +83,6 @@ function isValidProjetGlobal(pg: any): pg is ProjetGlobal {
          Array.isArray(pg.projets)
 }
 
-// État réactif centralisé
 const state = reactive({
   projetsGlobaux: [] as ProjetGlobal[],
   loading: false,
@@ -99,7 +94,6 @@ const state = reactive({
 export function useProjets() {
   const baseUrl = 'http://localhost:8000'
 
-  // === Getters computed optimisés avec protection null ===
   const allProjets = computed(() => {
     try {
       return state.projetsGlobaux
@@ -116,7 +110,6 @@ export function useProjets() {
       const projets = allProjets.value
       return projets.find(p => p?.id === state.currentProjetId) || null
     } catch (error) {
-      console.error('Error in currentProjet computed:', error)
       return null
     }
   })
@@ -213,10 +206,8 @@ export function useProjets() {
     }
   }
 
-  // === Actions principales avec validation ===
   async function fetchProjetsGlobaux(force = false) {
-    // Cache simple : ne recharge que si nécessaire
-    if (!force && state.lastFetch && (Date.now() - state.lastFetch.getTime()) < 30000) {
+    if (!force && state.lastFetch && (Date.now() - state.lastFetch.getTime()) < 20000) {
       return state.projetsGlobaux
     }
 
@@ -231,7 +222,6 @@ export function useProjets() {
           return []
         }
 
-        // Normalisation backend → frontend
         const cleanedData = projetsGlobauxData.map((pg: any) => ({
           ...pg,
           projets: Array.isArray(pg.sous_projets)

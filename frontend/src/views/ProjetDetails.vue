@@ -12,7 +12,6 @@ const {
   loading
 } = useProjets()
 
-// État local
 const projetDetails = ref<any>(null)
 const activeTab = ref('overview')
 const animatedStats = ref({
@@ -20,7 +19,6 @@ const animatedStats = ref({
   progression: 0
 })
 
-// Computed
 const projetId = computed(() => parseInt(route.params.id as string))
 
 const progressColor = computed(() => {
@@ -62,13 +60,11 @@ const typeIcons = computed(() => ({
   robot: '🤖'
 }))
 
-// Méthodes
 async function fetchDetails() {
   try {
     const details = await getProjetDetails(projetId.value)
     projetDetails.value = details
     
-    // Animation des statistiques
     animateStats()
   } catch (error: any) {
     console.error('Erreur lors du chargement des détails:', error)
@@ -132,7 +128,6 @@ function getTypeDisplayName(type: string) {
 }
 
 
-// Watchers
 watch(() => route.params.id, () => {
   if (route.params.id) {
     fetchDetails()
@@ -197,7 +192,6 @@ onMounted(fetchDetails)
       </div>
     </div>
 
-    <!-- Statistiques compactes -->
     <div v-if="projetDetails" class="stats-section">
       <div class="stat-card">
         <div class="stat-icon">🎯</div>
@@ -233,7 +227,7 @@ onMounted(fetchDetails)
       </div>
     </div>
 
-    <!-- Navigation par onglets -->
+
     <div class="tabs-navigation">
       <button 
         v-for="tab in [
@@ -251,13 +245,11 @@ onMounted(fetchDetails)
       </button>
     </div>
 
-    <!-- Contenu principal avec hauteur fixe -->
     <div class="main-content">
       <Transition name="tab-content" mode="out-in">
-        <!-- Vue d'ensemble -->
         <div v-if="activeTab === 'overview'" key="overview" class="tab-content">
           <div class="content-grid">
-            <!-- Informations du projet -->
+
             <div class="info-card">
               <div class="card-header">
                 <h3>🏗️ Informations Projet</h3>
@@ -287,7 +279,6 @@ onMounted(fetchDetails)
               </div>
             </div>
 
-            <!-- Progression compacte -->
             <div class="progress-card">
               <div class="card-header">
                 <h3>📈 Progression</h3>
@@ -331,7 +322,6 @@ onMounted(fetchDetails)
           </div>
         </div>
 
-        <!-- Onglet Sélections -->
         <div v-else-if="activeTab === 'selections'" key="selections" class="tab-content">
           <div v-if="!projetDetails?.selections.length" class="empty-selections">
             <div class="empty-icon">🎯</div>
@@ -376,7 +366,6 @@ onMounted(fetchDetails)
           </div>
         </div>
 
-        <!-- Onglet Timeline -->
         <div v-else-if="activeTab === 'timeline'" key="timeline" class="tab-content">
           <div class="timeline-container">
             <div class="timeline-header">
@@ -423,7 +412,6 @@ onMounted(fetchDetails)
       </Transition>
     </div>
 
-    <!-- État de chargement -->
     <div v-if="loading" class="loading-overlay">
       <div class="loading-content">
         <div class="loading-spinner"></div>
@@ -445,7 +433,6 @@ onMounted(fetchDetails)
   box-sizing: border-box;
 }
 
-/* Header Section - Optimized for desktop */
 .header-section {
   flex-shrink: 0;
   margin-bottom: 1.5rem;
@@ -821,7 +808,6 @@ onMounted(fetchDetails)
 }
 
 
-/* Selections Section - Compact */
 .empty-selections {
   text-align: center;
   padding: 2rem;
@@ -1000,7 +986,6 @@ onMounted(fetchDetails)
   border: 1px dashed #d1d5db;
 }
 
-/* Timeline - Compact */
 .timeline-container {
   height: 100%;
 }
@@ -1064,7 +1049,6 @@ onMounted(fetchDetails)
   color: #6b7280;
 }
 
-/* Loading overlay */
 .loading-overlay {
   position: fixed;
   top: 0;
@@ -1097,7 +1081,6 @@ onMounted(fetchDetails)
   to { transform: rotate(360deg); }
 }
 
-/* Animations */
 .tab-content-enter-active,
 .tab-content-leave-active {
   transition: all 0.3s ease;

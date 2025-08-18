@@ -29,7 +29,6 @@ const props = defineProps<{
 
 const emit = defineEmits(['added', 'cancelled'])
 
-// Fonction pour générer un ID unique pour les tables avec clé composée
 function getRowId(row: any, tableName: string) {
   if (tableName === 'prix') {
     return `${row.produit_id}_${row.client_id}`
@@ -37,7 +36,6 @@ function getRowId(row: any, tableName: string) {
   return row.id?.toString() || ''
 }
 
-// Composables
 const filters = ref<Record<string, Set<any>>>({})
 const tableData = useTableReader(props, emit, filters)
 const { tableConfig } = useTableConfig(props.tableName)
@@ -47,27 +45,20 @@ const { sortOrders, onSortChange, filteredAndSortedRows } = useTableSorting(filt
 const { remplirEquipement, remplirFPack, remplirProjet } = useTableNavigation(props.tableName)
 const { getEditingId, handleStartEdit, handleValidateEdit, handleDeleteRow } = useTableRowHandlers(tableData, props.tableName)
 
-// Colonnes ordonnées
 const orderedColumns = computed(() => {
   if (!tableData.columns.value) return []
   
   let cols = tableData.columns.value.filter((col:any) => {
-    // Filtrage spécialisé selon la table
     if (props.tableName === 'prix') {
-      // Pour la table prix, on garde tout sauf si c'est explicitement exclu
       return true
     } else if (props.tableName === 'prix_robot') {
-      // Pour prix_robot, on garde l'ID
       return col.toLowerCase() !== 'reference'
     } else {
-      // Pour les autres tables, on exclut l'ID sauf prix_robot
       return col.toLowerCase() !== 'id' && col.toLowerCase() !== 'reference'
     }
   })
   
-  // Réorganiser les colonnes pour certaines tables
   if (props.tableName === 'prix') {
-    // Pour la table prix, mettre les IDs au début
     const idColumns = cols.filter((col:any) => col.includes('_id'))
     const otherColumns = cols.filter((col:any) => !col.includes('_id'))
     cols = [...idColumns, ...otherColumns]
@@ -78,7 +69,6 @@ const orderedColumns = computed(() => {
   return cols
 })
 
-// Fonction pour obtenir le label d'une colonne
 function getColumnLabel(col: string): string {
   const mappings: Record<string, Record<string, string>> = {
     produits: { fournisseur_id: 'Fournisseur' },
@@ -113,7 +103,6 @@ async function handleModalCreated(newItem: any) {
   tableData.refresh()
 }
 
-// Gestion du scroll et duplication
 async function onDuplicate(row: any) {
   await tableData.duplicateRow(row)
   if (scrollContainer.value) {
@@ -132,20 +121,16 @@ function synchronizeColumnWidths() {
   
   if (bodyRows.length === 0) return
   
-  // Calculer les largeurs avec une colonne d'actions plus large
   const dataColumns = headerCells.length
   const remainingWidth = `calc((100%  / ${dataColumns})`
   
-  // Appliquer les largeurs au header
   headerCells.forEach((cell) => {
-    // Colonnes de données
     cell.style.width = remainingWidth
     cell.style.minWidth = remainingWidth
     cell.style.maxWidth = remainingWidth
     
   })
   
-  // Appliquer les largeurs à toutes les lignes du body
   bodyRows.forEach(row => {
     const bodyCells = row.querySelectorAll('td')
     bodyCells.forEach((cell) => {
@@ -156,7 +141,6 @@ function synchronizeColumnWidths() {
     })
   })
   
-  // Force les tables à avoir la même largeur
   if (headerTable.value && bodyTable.value) {
     const tableWidth = '100%'
     headerTable.value.style.width = tableWidth
@@ -164,7 +148,6 @@ function synchronizeColumnWidths() {
   }
 }
 
-// Animation d'entrée
 onMounted(async () => {
   await nextTick()
   setTimeout(() => {
@@ -173,13 +156,11 @@ onMounted(async () => {
   }, 500)
 })
 
-// Resynchroniser quand les données changent
 watch([filteredAndSortedRows, orderedColumns], async () => {
   await nextTick()
   setTimeout(synchronizeColumnWidths, 100)
 })
 
-// Resynchroniser également au scroll (au cas où)
 watch(scrollContainer, (newVal) => {
   if (newVal) {
     newVal.addEventListener('scroll', () => {
@@ -188,14 +169,12 @@ watch(scrollContainer, (newVal) => {
   }
 })
 
-// Watch pour l'ouverture automatique du modal
 watch(() => props.ajouter, (val) => {
   if (val) {
     openAddModal()
   }
 })
 
-// Gestion du hover sur les lignes
 function handleRowHover(rowId: string | null) {
   hoveredRow.value = rowId
 }
@@ -203,7 +182,6 @@ function handleRowHover(rowId: string | null) {
 
 <template>
   <div class="modern-table-wrapper" ref="tableContainer" :class="{ loading: isLoading }">
-    <!-- Header avec statistiques et bouton d'ajout -->
     <div class="table-stats">
       <div class="stats-card">
         <div class="stats-icon">📊</div>
@@ -220,7 +198,6 @@ function handleRowHover(rowId: string | null) {
         </div>
       </div>
       
-      <!-- Bouton d'ajout -->
       <button 
         @click="openAddModal"
         class="add-button"
@@ -232,7 +209,6 @@ function handleRowHover(rowId: string | null) {
     </div>
 
     <div class="table-container">
-      <!-- Header fixe -->
       <div class="table-header-wrapper">
         <table class="table-header" ref="headerTable">
           <thead>
@@ -266,7 +242,6 @@ function handleRowHover(rowId: string | null) {
         </table>
       </div>
       
-      <!-- Corps du tableau avec scroll -->
       <div class="table-body-container" ref="scrollContainer">
         <table class="table-body" ref="bodyTable">
           <tbody>
@@ -283,9 +258,7 @@ function handleRowHover(rowId: string | null) {
               @mouseleave="handleRowHover(null)"
             >
               
-              <!-- Cellules de données -->
               <template v-if="getEditingId(row)">
-                <!-- Mode édition -->
                 <TableRowEdit
                   :row="row"
                   :columns="orderedColumns"
@@ -298,7 +271,6 @@ function handleRowHover(rowId: string | null) {
                 />
               </template>
               <template v-else>
-                <!-- Mode lecture -->
                 <TableRowDisplay
                   :row="row"
                   :columns="orderedColumns"
@@ -307,7 +279,6 @@ function handleRowHover(rowId: string | null) {
                 />
               </template>
 
-              <!-- Actions avec animations -->
               <td class="actions-cell">
                 <TableActions
                   :row="row"
@@ -676,7 +647,6 @@ function handleRowHover(rowId: string | null) {
   border-top-color: var(--warning-color);
 }
 
-/* Animations */
 @keyframes fadeIn {
   from { opacity: 0; }
   to { opacity: 1; }

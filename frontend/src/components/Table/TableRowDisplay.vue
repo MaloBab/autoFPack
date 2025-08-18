@@ -52,8 +52,7 @@ function getDisplayValue(row: any, col: string, tableName: string, tableData: an
         return `${row.complet ? '✔️' : '⏳'} | ${row.nom}`
       }
       break
-      
-    // Formatage spécial pour les prix
+
     case 'prix_produit':
     case 'prix_transport':
       if (tableName === 'prix' && typeof row[col] === 'number') {
@@ -80,7 +79,7 @@ function formatCellValue(value: any, type: string) {
     case 'number':
       return new Intl.NumberFormat('fr-FR').format(value)
     case 'currency':
-      return value // Déjà formaté dans getDisplayValue
+      return value
     case 'date':
       return new Date(value).toLocaleDateString('fr-FR')
     case 'boolean':
@@ -110,7 +109,6 @@ function formatCellValue(value: any, type: string) {
         ) }}
       </div>
       
-      <!-- Indicateur de type pour certaines cellules -->
       <div 
         v-if="getCellType(getDisplayValue(props.row, col, props.tableName, props.tableData)) !== 'text'" 
         class="cell-type-indicator"
@@ -123,7 +121,6 @@ function formatCellValue(value: any, type: string) {
         <span v-else-if="getCellType(getDisplayValue(props.row, col, props.tableName, props.tableData)) === 'boolean'">🔘</span>
       </div>
       
-      <!-- Effet de surbrillance -->
       <div class="cell-highlight"></div>
     </div>
   </td>
@@ -183,7 +180,6 @@ function formatCellValue(value: any, type: string) {
   transform: translateX(100%);
 }
 
-/* Types de cellules */
 .cell-number .cell-value,
 .cell-currency .cell-value {
   font-family: 'SF Mono', 'Monaco', 'Inconsolata', 'Roboto Mono', monospace;
@@ -245,7 +241,6 @@ function formatCellValue(value: any, type: string) {
   transform: translateX(2px);
 }
 
-/* Animation d'entrée pour les cellules */
 .modern-cell {
   animation: cellSlideIn 0.3s ease-out;
   animation-fill-mode: both;

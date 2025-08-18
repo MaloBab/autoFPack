@@ -66,7 +66,6 @@ const actionButtons = computed(() => {
     }
   ]
   
-  // Actions spécifiques par table (secondaires)
   if (props.tableConfig.hasRemplir && props.tableConfig.remplirType === 'equipement') {
     actions.push({
       key: 'remplir-equipement',
@@ -125,7 +124,6 @@ const actionButtons = computed(() => {
   return actions
 })
 
-// Séparer les actions principales et secondaires
 const primaryActions = computed(() => {
   return actionButtons.value.filter(action => action.priority === 'primary')
 })
@@ -136,7 +134,7 @@ const secondaryActions = computed(() => {
 
 async function handleAction(action: any) {
   isActionProcessing.value = action.key
-  showDropdown.value = false // Fermer le dropdown
+  showDropdown.value = false
   try {
     await new Promise(resolve => setTimeout(resolve, 200))
     action.action()
@@ -169,14 +167,11 @@ async function openDropdown() {
   await nextTick()
   
   if (dropdownMenu.value && dropdownButton.value) {
-    // Position simple : directement sous le bouton
     const buttonRect = dropdownButton.value.getBoundingClientRect()
     
-    // Position : juste en dessous du bouton, centré horizontalement
     const top = buttonRect.bottom + 4
-    const left = buttonRect.left + (buttonRect.width / 2) - (180 / 2) // 180 = largeur du menu
+    const left = buttonRect.left + (buttonRect.width / 2) - (180 / 2) 
     
-    // Appliquer les positions
     dropdownMenu.value.style.position = 'fixed'
     dropdownMenu.value.style.top = `${top}px`
     dropdownMenu.value.style.left = `${left}px`
@@ -191,7 +186,6 @@ function closeDropdown() {
   showDropdown.value = false
 }
 
-// Fermer le dropdown si on clique à l'extérieur
 function handleClickOutside(event: Event) {
   if (!dropdownButton.value || !dropdownMenu.value) return
   
@@ -218,7 +212,6 @@ onUnmounted(() => {
   <td class="modern-actions">
     <div class="actions-container" :class="{ editing: props.isEditing }">
       <div class="actions-primary">
-        <!-- Actions principales (toujours visibles) -->
         <button
           v-for="action in primaryActions"
           :key="action.key"
@@ -241,17 +234,14 @@ onUnmounted(() => {
             <template v-else>{{ action.icon }}</template>
           </span>
           
-          <!-- Tooltip -->
           <div class="action-tooltip" v-if="showTooltip === action.key">
             {{ action.label }}
             <div class="tooltip-arrow"></div>
           </div>
           
-          <!-- Ripple effect -->
           <div class="ripple-effect"></div>
         </button>
         
-        <!-- Menu déroulant pour les actions secondaires -->
         <div class="actions-dropdown" v-if="secondaryActions.length > 0">
           <button 
             ref="dropdownButton"
@@ -264,14 +254,12 @@ onUnmounted(() => {
         </div>
       </div>
       
-      <!-- Indicateur d'état -->
       <div class="action-status" v-if="props.isEditing">
         <div class="status-dot editing"></div>
         <span class="status-text">Édition</span>
       </div>
     </div>
     
-    <!-- Menu dropdown rendu dans le body via Teleport -->
     <Teleport to="body">
       <div 
         ref="dropdownMenu"
@@ -352,7 +340,6 @@ onUnmounted(() => {
   transform: scale(0.95);
 }
 
-/* Variants de boutons principaux */
 .action-primary {
   background: linear-gradient(135deg, #3b82f6, #1d4ed8);
   color: white;
@@ -399,7 +386,6 @@ onUnmounted(() => {
   animation: spin 1s linear infinite;
 }
 
-/* Dropdown */
 .actions-dropdown {
   position: relative;
   display: inline-block;
@@ -448,7 +434,6 @@ onUnmounted(() => {
   transform: translateY(-10px) scale(0.95);
   transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
   backdrop-filter: blur(10px);
-  /* Suppression du positionnement relatif */
 }
 
 .dropdown-menu.show {
@@ -494,7 +479,6 @@ onUnmounted(() => {
   cursor: not-allowed;
 }
 
-/* Variants pour les items du dropdown */
 .dropdown-item.item-info:hover:not(:disabled) {
   background: linear-gradient(135deg, rgba(6, 182, 212, 0.1), rgba(8, 145, 178, 0.1));
   color: #0891b2;
@@ -514,7 +498,6 @@ onUnmounted(() => {
   flex-grow: 1;
 }
 
-/* Tooltip */
 .action-tooltip {
   position: absolute;
   bottom: calc(100% + 8px);
@@ -552,7 +535,6 @@ onUnmounted(() => {
   border-top: 4px solid rgba(0, 0, 0, 0.9);
 }
 
-/* Effet ripple */
 .ripple-effect {
   position: absolute;
   top: 50%;
@@ -571,7 +553,6 @@ onUnmounted(() => {
   height: 100%;
 }
 
-/* Indicateur d'état */
 .action-status {
   display: flex;
   align-items: center;
@@ -601,7 +582,6 @@ onUnmounted(() => {
   letter-spacing: 0.05em;
 }
 
-/* Animations */
 @keyframes spin {
   to {
     transform: rotate(360deg);

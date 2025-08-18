@@ -83,7 +83,6 @@ function ajouterEquipement(e: Equipement) {
 </template>
 
 <style scoped>
-/* styles identiques à AddProduitModal pour cohérence */
 .modal {
   position: fixed;
   inset: 0;

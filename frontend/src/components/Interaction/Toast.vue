@@ -25,7 +25,6 @@ const { visible, message, color } = useToastStore()
   z-index: 9999;
 }
 
-/* Animation de fade */
 .fade-enter-active, .fade-leave-active {
   transition: opacity 0.5s ease;
 }

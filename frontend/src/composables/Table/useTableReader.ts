@@ -1,4 +1,3 @@
-// useTableReader.ts
 import { ref, onMounted, watch, computed, type Ref } from 'vue'
 import axios from 'axios'
 import { showToast } from '../useToast'
@@ -35,11 +34,9 @@ export function useTableReader(
 
   const baseUrl = props.apiUrl || 'http://localhost:8000'
 
-  // Ajout de valueLabels computed
   const valueLabels = computed(() => {
     const labels: Record<string, Record<any, string>> = {}
     
-    // Mapping pour les fournisseurs
     if (fournisseurs.value.length > 0) {
       labels.fournisseur_id = {}
       fournisseurs.value.forEach(f => {
@@ -47,7 +44,6 @@ export function useTableReader(
       })
     }
 
-    // Mapping pour les clients
     if (clients.value.length > 0) {
       labels.client_id = {}
       labels.client = {}
@@ -57,7 +53,6 @@ export function useTableReader(
       })
     }
 
-    // Mapping pour les produits
     if (produits.value.length > 0) {
       labels.produit_id = {}
       produits.value.forEach(p => {
@@ -65,7 +60,6 @@ export function useTableReader(
       })
     }
 
-    // Mapping pour les fpacks
     if (fpacks.value.length > 0) {
       labels.fpack_id = {}
       fpacks.value.forEach(f => {
@@ -73,7 +67,6 @@ export function useTableReader(
       })
     }
 
-    // Mapping pour les robots (cas spécial pour prix_robot)
     if (robots.value.length > 0 && props.tableName === 'prix_robot') {
       labels.id = {}
       robots.value.forEach(r => {

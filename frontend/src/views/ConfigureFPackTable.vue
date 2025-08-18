@@ -210,7 +210,7 @@ function handleAddProduit(item: { id: number; nom: string; type: string; fournis
       .filter(Boolean)
       .join(', ')
     showToast(`Ce produit rend ce(s) groupe(s) inutilisable(s) : ${groupeNames}.`, "#f97316")
-    //return
+    //return TODO :corriger erreur
   }
   
   columns.value.push(col)
@@ -238,7 +238,7 @@ function handleAddEquipement(item: Equipement) {
       .filter(Boolean)
       .join(', ')
     showToast(`Cet equipement rend ce(s) groupe(s) inutilisable(s) : ${groupeNames}.`, "#f97316")
-    //return
+    //return TODO : Corriger erreur
   }
 
   columns.value.push(col);
@@ -324,7 +324,7 @@ async function handleGroupUpdate(group: { type: 'group'; ref_id: null; display_n
       .filter(Boolean)
       .join(', ')
     showToast(`Ce groupe rend ce(s) groupe(s) inutilisable(s) : ${groupeNames}.`, "#f97316")
-    //return
+    //return TODO : Corriger erreur
   }
 
   if (editingGroupIndex.value !== null) {
@@ -597,7 +597,7 @@ onUnmounted(() => {
   gap: 1rem;
   padding-bottom: 1rem;
   overflow-y: auto;
-  max-height: calc(100vh - 300px); /* TODO */
+  max-height: calc(100vh - 300px);
 }
 
 .columns-scroll-container::-webkit-scrollbar {

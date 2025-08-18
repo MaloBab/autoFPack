@@ -26,7 +26,6 @@ interface RobotProduitCompatibilite {
   produit_id: number
 }
 
-// Reactive data
 const produits = ref<Produit[]>([])
 const robots = ref<Robot[]>([])
 const incompatibilitesProduits = ref<ProduitIncompatibilite[]>([])
@@ -36,18 +35,15 @@ const activeTab = ref<'compatibilities' | 'incompatibilities'>('compatibilities'
 const searchTerm = ref('')
 const loading = ref(false)
 
-// Modal states
 const showCompatibilityModal = ref(false)
 const showIncompatibilityModal = ref(false)
 const selectedRobotDetail = ref<Robot | null>(null)
 const selectedProductDetail = ref<Produit | null>(null)
 
-// Form states
 const selectedRobotForCompatibility = ref<Robot | null>(null)
 const selectedProductsForCompatibility = ref<Produit[]>([])
 const selectedProductsForIncompatibility = ref<Produit[]>([])
 
-// Search states for modals
 const robotSearchTerm = ref('')
 const productSearchTerm = ref('')
 const incompatibilityProductSearchTerm = ref('')
@@ -93,11 +89,8 @@ function toggleIncompatibleProduct(product:any) {
 }
 
 
-
-// Animation
 const animatedIncompatibility = ref<number | null>(null)
 
-// API calls
 const fetchData = async () => {
   loading.value = true
   try {
@@ -119,7 +112,6 @@ const fetchData = async () => {
   }
 }
 
-// Computed properties for modal filtering
 const filteredRobotsForModal = computed(() => {
   return robots.value.filter(robot => 
     robot.nom.toLowerCase().includes(robotSearchTerm.value.toLowerCase()) ||
@@ -161,7 +153,6 @@ const availableProductsForIncompatibility = computed(() => {
   const selectedIds = selectedProductsForIncompatibility.value.map(p => p.id)
   const existingIncompatibilities = new Set<number>()
   
-  // Pour chaque produit sélectionné, ajouter tous ses produits incompatibles
   selectedProductsForIncompatibility.value.forEach(selected => {
     incompatibilitesProduits.value.forEach(incomp => {
       if (incomp.produit_id_1 === selected.id) {
@@ -177,7 +168,6 @@ const availableProductsForIncompatibility = computed(() => {
   )
 })
 
-// Computed properties
 const filteredRobots = computed(() => {
   return robots.value.filter(robot => 
     robot.nom.toLowerCase().includes(searchTerm.value.toLowerCase()) ||
@@ -186,7 +176,6 @@ const filteredRobots = computed(() => {
   )
 })
 
-// Nouvelle computed property pour les produits avec incompatibilités
 const productsWithIncompatibilities = computed(() => {
   const productsSet = new Set<number>()
   
@@ -219,7 +208,6 @@ const getCompatibilityPercentage = (robotId: number) => {
   return total > 0 ? Math.round((compatible / total) * 100) : 0
 }
 
-// Nouvelles fonctions pour les incompatibilités
 const getIncompatibleProducts = (productId: number) => {
   const incompatibleIds = new Set<number>()
   
@@ -238,7 +226,6 @@ const getIncompatibilityCount = (productId: number) => {
   return getIncompatibleProducts(productId).length
 }
 
-// Actions
 const selectRobot = (robot: Robot) => {
   selectedRobotDetail.value = robot
 }
@@ -325,7 +312,6 @@ const addIncompatibilities = async () => {
 
 const removeIncompatibility = async (productId: number, incompatibleProductId: number) => {
   try {
-    // Trouver l'incompatibilité correspondante
     const incomp = incompatibilitesProduits.value.find(i => 
       (i.produit_id_1 === productId && i.produit_id_2 === incompatibleProductId) ||
       (i.produit_id_1 === incompatibleProductId && i.produit_id_2 === productId)
@@ -351,7 +337,7 @@ const removeAllIncompatibilities = async (productId: number) => {
     }
     
     await fetchData()
-    selectedProductDetail.value = null // Fermer le modal après suppression
+    selectedProductDetail.value = null
   } catch (error) {
     console.error('Erreur lors de la suppression des incompatibilités:', error)
   }
@@ -379,7 +365,6 @@ onMounted(fetchData)
 
 <template>
   <div class="compatibility-manager">
-    <!-- Header Section -->
     <div class="header-container">
       <div class="header-glass">
         <div class="header-content">
@@ -403,7 +388,6 @@ onMounted(fetchData)
       </div>
     </div>
 
-    <!-- Navigation Tabs -->
     <div class="tabs-container">
       <div class="tabs-wrapper">
         <button 
@@ -434,7 +418,6 @@ onMounted(fetchData)
       </div>
     </div>
 
-    <!-- Compatibilities Tab -->
     <div v-show="activeTab === 'compatibilities'" class="content-section">
       <div class="section-header">
         <h2>Compatibilités Robot-Produit</h2>
@@ -444,7 +427,6 @@ onMounted(fetchData)
         </button>
       </div>
 
-      <!-- Robot Cards Grid -->
       <div class="robots-grid">
         <div 
           v-for="robot in filteredRobots" 
@@ -493,7 +475,6 @@ onMounted(fetchData)
       </div>
     </div>
 
-    <!-- Incompatibilities Tab -->
     <div v-show="activeTab === 'incompatibilities'" class="content-section">
       <div class="section-header">
         <h2>Incompatibilités Produit-Produit</h2>
@@ -503,7 +484,6 @@ onMounted(fetchData)
         </button>
       </div>
 
-      <!-- Products with incompatibilities Grid -->
       <div class="products-grid">
         <div 
           v-for="product in productsWithIncompatibilities" 
@@ -544,7 +524,6 @@ onMounted(fetchData)
       </div>
     </div>
 
-    <!-- Compatibility Modal -->
     <div v-if="showCompatibilityModal" class="modal-overlay" @click="closeCompatibilityModal">
       <div class="modal-content" @click.stop>
         <div class="modal-header">
@@ -552,7 +531,6 @@ onMounted(fetchData)
           <button @click="closeCompatibilityModal" class="close-btn">✕</button>
         </div>
         <div class="modal-body">
-          <!-- Robot Selection -->
           <div class="form-group">
             <label>Robot</label>
             <div class="search-select-container">
@@ -581,11 +559,9 @@ onMounted(fetchData)
             </div>
           </div>
 
-          <!-- Products Selection -->
           <div class="form-group" v-if="selectedRobotForCompatibility">
             <label>Produits compatibles ({{ selectedProductsForCompatibility.length }} sélectionnés)</label>
             
-            <!-- Selected products display -->
             <div v-if="selectedProductsForCompatibility.length > 0" class="selected-products">
               <div 
                 v-for="product in selectedProductsForCompatibility" 
@@ -597,7 +573,6 @@ onMounted(fetchData)
               </div>
             </div>
 
-            <!-- Product search and selection -->
             <div class="search-select-container">
               <input 
                 v-model="productSearchTerm" 
@@ -640,7 +615,6 @@ onMounted(fetchData)
       </div>
     </div>
 
-    <!-- Incompatibility Modal -->
     <div v-if="showIncompatibilityModal" class="modal-overlay" @click="closeIncompatibilityModal">
       <div class="modal-content" @click.stop>
         <div class="modal-header">
@@ -648,7 +622,6 @@ onMounted(fetchData)
           <button @click="closeIncompatibilityModal" class="close-btn">✕</button>
         </div>
         <div class="modal-body">
-          <!-- Produit source -->
           <div class="form-group">
             <label>Produit source</label>
             <div class="search-select-container">
@@ -677,7 +650,6 @@ onMounted(fetchData)
             </div>
           </div>
 
-          <!-- Produits incompatibles -->
           <div class="form-group" v-if="selectedProductForIncompatibility">
             <label>Produits incompatibles ({{ selectedIncompatibleProducts.length }} sélectionnés)</label>
             
@@ -732,7 +704,6 @@ onMounted(fetchData)
       </div>
     </div>
 
-    <!-- Robot Detail Modal -->
     <div v-if="selectedRobotDetail" class="modal-overlay" @click="selectedRobotDetail = null">
       <div class="modal-content large" @click.stop>
         <div class="modal-header">
@@ -763,7 +734,6 @@ onMounted(fetchData)
       </div>
     </div>
 
-    <!-- Product Detail Modal -->
     <div v-if="selectedProductDetail" class="modal-overlay" @click="selectedProductDetail = null">
       <div class="modal-content large" @click.stop>
         <div class="modal-header">
@@ -820,7 +790,6 @@ onMounted(fetchData)
       </div>
     </div>
 
-    <!-- Loading Overlay -->
     <div v-if="loading" class="loading-overlay">
       <div class="loading-spinner">⚡</div>
     </div>
@@ -906,7 +875,6 @@ onMounted(fetchData)
   letter-spacing: 1px;
 }
 
-/* Tabs */
 .tabs-container {
   flex-shrink: 0;
   margin-bottom: 15px;
@@ -961,7 +929,6 @@ onMounted(fetchData)
   font-size: 16px;
 }
 
-/* Search */
 .search-section {
   flex-shrink: 0;
   margin-bottom: 15px;
@@ -997,7 +964,6 @@ onMounted(fetchData)
   border: 1px solid #ccc;
 }
 
-/* Content Section */
 .content-section {
   flex: 1;
   background: rgba(255, 255, 255, 0.95);
@@ -1028,7 +994,6 @@ onMounted(fetchData)
   margin: 0;
 }
 
-/* Buttons */
 .add-btn {
   padding: 10px 20px;
   border: none;
@@ -1179,7 +1144,6 @@ onMounted(fetchData)
   border-color: #ef4444;
 }
 
-/* Products Grid for Incompatibilities */
 .products-grid {
   flex: 1;
   display: grid;
@@ -1250,7 +1214,6 @@ onMounted(fetchData)
   margin-top: 15px;
 }
 
-/* Incompatibilities Grid */
 .incompatibilities-grid {
   flex: 1;
   display: grid;
@@ -1327,7 +1290,6 @@ onMounted(fetchData)
   transform: scale(1.05);
 }
 
-/* Modals */
 .modal-overlay {
   position: fixed;
   inset: 0; 
@@ -1650,7 +1612,6 @@ onMounted(fetchData)
   transform: none;
 }
 
-/* Robot Details */
 .robot-details h4 {
   font-size: 1.1rem;
   font-weight: 700;
@@ -1713,7 +1674,6 @@ onMounted(fetchData)
   transform: scale(1.1);
 }
 
-/* Product Details */
 .product-details {
   display: flex;
   flex-direction: column;
@@ -1878,7 +1838,6 @@ onMounted(fetchData)
   font-size: 20px;
 }
 
-/* Modal large pour les détails */
 .modal-content.large {
   max-width: 800px;
   max-height: 90vh;
@@ -1888,7 +1847,6 @@ onMounted(fetchData)
   padding: 30px;
 }
 
-/* Amélioration du scroll personnalisé */
 .incompatibilities-list::-webkit-scrollbar,
 .products-list::-webkit-scrollbar {
   width: 6px;
@@ -1911,7 +1869,6 @@ onMounted(fetchData)
   background: linear-gradient(135deg, #dc2626, #b91c1c);
 }
 
-/* Animation d'apparition pour les éléments de la liste */
 .incompatibility-detail-item {
   animation: slideInUp 0.4s cubic-bezier(0.4, 0, 0.2, 1);
 }
@@ -1927,7 +1884,6 @@ onMounted(fetchData)
   }
 }
 
-/* Amélioration du header du modal */
 .modal-header {
   background: linear-gradient(135deg, #f8fafc, #f1f5f9);
   border-bottom: 2px solid #e2e8f0;
@@ -1944,7 +1900,6 @@ onMounted(fetchData)
   background: linear-gradient(90deg, transparent, #667eea, transparent);
 }
 
-/* Amélioration des boutons de suppression */
 .remove-btn {
   background: linear-gradient(135deg, #ef4444, #dc2626);
   box-shadow: 0 4px 12px rgba(239, 68, 68, 0.3);
@@ -1957,7 +1912,6 @@ onMounted(fetchData)
   box-shadow: 0 6px 16px rgba(239, 68, 68, 0.4);
 }
 
-/* Style pour le bouton "Supprimer tout" */
 .btn.danger.small {
   background: linear-gradient(135deg, #f50606, #ea580c);
   border: 2px solid transparent;
@@ -1970,35 +1924,6 @@ onMounted(fetchData)
   background: linear-gradient(135deg, #ea580c, #dc2626);
   transform: translateY(-2px);
   box-shadow: 0 8px 20px rgba(234, 88, 12, 0.3);
-}
-
-/* Responsive pour les modals */
-@media (max-width: 768px) {
-  .modal-content.large {
-    max-width: 95vw;
-    margin: 10px;
-    max-height: 95vh;
-  }
-  
-  .incompatible-product-info {
-    gap: 10px;
-  }
-  
-  .incompatible-product-info .product-icon {
-    width: 35px;
-    height: 35px;
-    font-size: 16px;
-  }
-  
-  .incompatibility-detail-item {
-    padding: 12px 15px;
-  }
-  
-  .section-title {
-    flex-direction: column;
-    align-items: flex-start;
-    gap: 10px;
-  }
 }
 
 </style>

@@ -58,15 +58,12 @@ const fournisseur = ref<any[]>([])
 const clients = ref<any[]>([])
 const iscreating = ref(false)
 
-// État des onglets
 const activeTab = ref<'produit' | 'equipement' | 'robot' | 'selection'>('selection')
 
-// États de recherche pour chaque onglet
 const searchProduit = ref('')
 const searchEquipement = ref('')
 const searchRobot = ref('')
 
-// Éléments sélectionnés temporaires pour chaque type
 const tempSelectedProduits = ref<Set<number>>(new Set())
 const tempSelectedEquipements = ref<Set<number>>(new Set())
 const tempSelectedRobots = ref<Set<number>>(new Set())
@@ -102,7 +99,6 @@ async function loadData() {
 
 onMounted(loadData)
 
-// Produits filtrés par recherche
 const filteredProduits = computed(() => {
   if (!searchProduit.value) return produits.value
   return produits.value.filter(p => 
@@ -179,7 +175,6 @@ function mapClient(id: number): string {
 function applySelections() {
   selectedItems.value = []
   
-  // Ajouter les produits sélectionnés
   tempSelectedProduits.value.forEach(id => {
     const produit = produits.value.find(p => p.id === id)
     if (produit) {
@@ -205,7 +200,6 @@ function applySelections() {
     }
   })
 
-  // Ajouter les robots sélectionnés
   tempSelectedRobots.value.forEach(id => {
     const robot = robots.value.find(r => r.id === id)
     if (robot) {
@@ -261,7 +255,6 @@ function valider() {
         <input v-model="nomGroupe" placeholder="Nom du groupe" class="group-name-input" />
       </div>
 
-      <!-- Navigation par onglets -->
       <div class="tabs-navigation">
         <button 
           :class="['tab-button', { active: activeTab === 'selection' }, `tab-${activeTab}`]"
@@ -300,9 +293,7 @@ function valider() {
         </button>
       </div>
 
-      <!-- Contenu des onglets -->
       <div class="tab-content">
-        <!-- Onglet Sélection -->
         <div v-if="activeTab === 'selection'" class="selection-tab">
           <div class="selection-header">
             <h4>Éléments du groupe</h4>
@@ -358,7 +349,6 @@ function valider() {
           </Draggable>
         </div>
 
-        <!-- Onglet Produits -->
         <div v-if="activeTab === 'produit'" class="table-tab">
           <div class="tab-header">
             <div class="search-section">
@@ -414,7 +404,6 @@ function valider() {
           </div>
         </div>
 
-        <!-- Onglet Équipements -->
         <div v-if="activeTab === 'equipement'" class="table-tab">
           <div class="tab-header">
             <div class="search-section">
@@ -464,7 +453,6 @@ function valider() {
           </div>
         </div>
 
-        <!-- Onglet Robots -->
         <div v-if="activeTab === 'robot'" class="table-tab">
           <div class="tab-header">
             <div class="search-section">
@@ -521,7 +509,6 @@ function valider() {
         </div>
       </div>
 
-      <!-- Actions -->
       <div class="actions">
         <button @click="$emit('close')" class="cancel-button">
           Annuler
@@ -1092,7 +1079,6 @@ h3 {
   cursor: not-allowed;
 }
 
-/* Scrollbars personnalisées */
 .selected-items-list::-webkit-scrollbar,
 .table-container::-webkit-scrollbar,
 .items-table::-webkit-scrollbar {

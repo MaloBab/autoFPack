@@ -86,25 +86,20 @@ function isItemIncompatible(groupe: any, item: any): boolean {
     }
   })
   for (const sel of selectedItems) {
-    // Cas produit-produit
     if (item.type === 'produit' && sel.type === 'produit') {
       if (areProduitsIncompatible(item.ref_id, sel.ref_id)) return true
     }
-    // Cas équipement-produit (un équipement est incompatible si un de ses produits est incompatible)
     if (item.type === 'equipement' && sel.type === 'produit') {
       const produits = equipementProduitsMap.value[item.ref_id] || []
       if (produits.some(pid => areProduitsIncompatible(pid, sel.ref_id))) return true
     }
-    // Cas produit-équipement (inverse)
     if (item.type === 'produit' && sel.type === 'equipement') {
       const produits = equipementProduitsMap.value[sel.ref_id] || []
       if (produits.some(pid => areProduitsIncompatible(item.ref_id, pid))) return true
     }
-    // Cas robot-produit
     if (item.type === 'robot' && sel.type === 'produit') {
       if (!isRobotcompatibleWithProduit(item.ref_id, sel.ref_id)) return true
     }
-    // Cas produit-robot (inverse)
     if (item.type === 'produit' && sel.type === 'robot') {
       if (!isRobotcompatibleWithProduit(sel.ref_id, item.ref_id)) return true
     }

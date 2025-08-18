@@ -7,7 +7,7 @@ const props = defineProps<{
   values: any[]
   selected: Set<any>
   labels?: Record<any, string>
-  maxDropdownHeight?: number // Nouvelle prop pour personnaliser la hauteur max
+  maxDropdownHeight?: number 
 }>()
 
 const emit = defineEmits<{
@@ -22,9 +22,7 @@ const dropdown = ref<any>(null)
 const sortOrder = ref<'asc' | 'desc' | null>(null)
 const dropdownPosition = ref({ top: '0px', left: '0px', maxValuesHeight: '200px' })
 
-// CORRIGÉ: Inclure le dropdown téléporté dans la détection du clic extérieur
 onClickOutside(container, (event) => {
-  // Vérifier si le clic est dans le dropdown téléporté
   if (dropdown.value && dropdown.value.contains(event.target)) {
     return
   }
@@ -35,7 +33,6 @@ watch(() => props.selected, (newSelected) => {
   localSelections.value = new Set([...newSelected])
 }, { immediate: true })
 
-// CORRIGÉ: Fonction toggleValue avec event handler
 function toggleValue(val: any) {
   const newSet = new Set(localSelections.value)
   if (newSet.has(val)) {
@@ -75,59 +72,51 @@ function onSortClick(order: 'asc' | 'desc') {
 function calculateDropdownPosition() {
   if (container.value) {
     const rect = container.value.getBoundingClientRect()
-    const dropdownWidth = 280 // Légèrement plus large
+    const dropdownWidth = 280 
     
-    // Calculer la hauteur des sections fixes avec plus de précision
     const headerHeight = isFilterOrSortActive.value ? 45 : 0
-    const actionsHeight = 94 // Actions rapides
-    const sortHeight = 94 // Section tri
-    const titleHeight = 40 // Titre "Valeurs"
-    const padding = 32 // Padding général
-    const bottomPadding = 16 // Padding du bas
+    const actionsHeight = 94 
+    const sortHeight = 94 
+    const titleHeight = 40 
+    const padding = 32 
+    const bottomPadding = 16
     
     const fixedHeight = headerHeight + actionsHeight + sortHeight + titleHeight + padding + bottomPadding
     
-    // Hauteur max personnalisable avec des limites plus intelligentes
     const customMaxHeight = props.maxDropdownHeight || 400
-    const viewportMaxHeight = window.innerHeight * 0.7 // Max 70% de la hauteur viewport
+    const viewportMaxHeight = window.innerHeight * 0.7
     const maxDropdownHeight = Math.min(customMaxHeight, viewportMaxHeight, 500)
     
-    // Calculer la hauteur disponible pour les valeurs
     const availableHeight = maxDropdownHeight - fixedHeight
-    const minValuesHeight = 150 // Hauteur minimum pour voir au moins quelques éléments
+    const minValuesHeight = 150 
     const maxValuesHeight = Math.max(minValuesHeight, availableHeight)
     
-    // Estimer la hauteur finale du dropdown
     const estimatedValuesHeight = Math.min(maxValuesHeight, props.values.length * 42)
     const finalDropdownHeight = fixedHeight + estimatedValuesHeight
     
-    // Position horizontale - éviter de dépasser à droite avec marge de sécurité
+
     let left = rect.right + window.scrollX - dropdownWidth
-    if (left < 20) { // Marge de 20px du bord gauche
+    if (left < 20) { 
       left = Math.max(20, rect.left + window.scrollX)
     }
     if (left + dropdownWidth > window.innerWidth - 20) {
       left = window.innerWidth - dropdownWidth - 20
     }
     
-    // Position verticale - CENTRER sur le bouton de filtre
     const buttonCenterY = rect.top + window.scrollY + rect.height / 2
     let top = buttonCenterY - finalDropdownHeight / 2
     
-    // Vérifier les débordements et ajuster si nécessaire
     const viewportTop = window.scrollY + 20
     const viewportBottom = window.scrollY + window.innerHeight - 20
     
-    // Si le dropdown dépasse en haut
     if (top < viewportTop) {
       top = viewportTop
     }
     
-    // Si le dropdown dépasse en bas
     if (top + finalDropdownHeight > viewportBottom) {
       top = viewportBottom - finalDropdownHeight
       
-      // Si même comme ça ça ne rentre pas, le repositionner au centre du viewport
+
       if (top < viewportTop) {
         top = viewportTop + (window.innerHeight - finalDropdownHeight) / 2
       }
@@ -147,7 +136,6 @@ async function toggleDropdown() {
     dropdownOpen.value = true
     await nextTick()
     
-    // Auto-scroll vers le premier élément sélectionné si il y en a
     if (dropdown.value) {
       const firstChecked = dropdown.value.querySelector('input[type="checkbox"]:checked')
       if (firstChecked) {
@@ -162,14 +150,12 @@ async function toggleDropdown() {
   }
 }
 
-// Fonction pour recalculer la position lors du redimensionnement
 function handleResize() {
   if (dropdownOpen.value) {
     calculateDropdownPosition()
   }
 }
 
-// Écouter les changements de taille de fenêtre
 if (typeof window !== 'undefined') {
   window.addEventListener('resize', handleResize)
   window.addEventListener('scroll', handleResize)
@@ -195,12 +181,10 @@ if (typeof window !== 'undefined') {
         }"
         @click.stop
       >
-        <!-- Indicateur de filtre actif -->
         <div v-if="isFilterOrSortActive" class="filter-status">
           <span class="active-count">{{ localSelections.size }}/{{ props.values.length }} sélectionnés</span>
         </div>
         
-        <!-- Actions de filtre -->
         <div class="dropdown-section">
           <div class="section-title">Actions rapides</div>
           <div class="dropdown-actions">
@@ -215,7 +199,6 @@ if (typeof window !== 'undefined') {
           </div>
         </div>
         
-        <!-- Actions de tri -->
         <div class="dropdown-section">
           <div class="section-title">Trier</div>
           <div class="dropdown-actions sort-actions">
@@ -238,7 +221,6 @@ if (typeof window !== 'undefined') {
           </div>
         </div>
         
-        <!-- Valeurs avec scrollbar optimisée -->
         <div class="dropdown-section values-section">
           <div class="section-title">
             <span>Valeurs ({{ props.values.length }})</span>
@@ -259,7 +241,6 @@ if (typeof window !== 'undefined') {
               <span class="checkbox-text" :title="props.labels?.[val] ?? val">{{ props.labels?.[val] ?? val }}</span>
             </label>
             
-            <!-- Indicateur de fin de liste -->
             <div v-if="props.values.length > 0" class="end-indicator">
               <span class="end-text">{{ props.values.length }} élément{{ props.values.length > 1 ? 's' : '' }} au total</span>
             </div>
@@ -306,7 +287,6 @@ if (typeof window !== 'undefined') {
   outline: none;
 }
 
-/* Dropdown principal - optimisé */
 .dropdown {
   background: white;
   border: 1px solid #e1e5e9;
@@ -340,7 +320,6 @@ if (typeof window !== 'undefined') {
   z-index: 9999 !important;
 }
 
-/* En-tête - Indicateur de filtre */
 .filter-status {
   padding: 14px 18px;
   background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
@@ -351,7 +330,6 @@ if (typeof window !== 'undefined') {
   letter-spacing: 0.3px;
 }
 
-/* Sections */
 .dropdown-section {
   padding: 18px;
   border-bottom: 1px solid #f0f2f5;
@@ -374,8 +352,6 @@ if (typeof window !== 'undefined') {
   align-items: center;
 }
 
-
-/* Actions */
 .dropdown-actions {
   display: flex;
   gap: 10px;
@@ -481,13 +457,11 @@ if (typeof window !== 'undefined') {
   transform: scale(1.05);
 }
 
-/* Support amélioré pour Firefox */
 .dropdown-values {
   scrollbar-width: thin;
   scrollbar-color: #cbd5e1 #f8fafc;
 }
 
-/* Checkbox personnalisé amélioré */
 .checkbox-label {
   display: flex;
   align-items: center;
@@ -578,8 +552,6 @@ if (typeof window !== 'undefined') {
   white-space: nowrap;
 }
 
-
-/* Indicateur de fin de liste */
 .end-indicator {
   padding: 16px 14px 8px;
   text-align: center;
@@ -603,7 +575,6 @@ if (typeof window !== 'undefined') {
   box-shadow: 0 0 0 3px rgba(16, 103, 185, 0.3);
 }
 
-/* Animation d'entrée optimisée pour les éléments de la liste */
 .checkbox-label {
   animation: fadeInUp 0.4s cubic-bezier(0.34, 1.56, 0.64, 1) forwards;
   opacity: 0;

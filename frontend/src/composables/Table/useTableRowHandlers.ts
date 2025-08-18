@@ -1,4 +1,3 @@
-// useTableRowHandlers.ts
 export function useTableRowHandlers(tableData: any, tableName: string) {
   function getEditingId(row: any): number | null {
     if (tableName === 'prix') {

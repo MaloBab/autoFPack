@@ -1,4 +1,3 @@
-//useTableConfig.ts
 import { computed } from 'vue'
 
 export function useTableConfig(tableName: string) {

@@ -31,14 +31,12 @@ const filteredColumns = computed(() => {
     }
   }
   
-  // Trier les colonnes pour mettre "reference" en premier (insensible à la casse et accents)
   return cols.sort((a, b) => {
     const normalize = (s: string) => s.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '')
 
     const aNorm = normalize(a)
     const bNorm = normalize(b)
 
-    // Priorités : reference > robot > reste
     const priority = (col: string) => {
       if (col === 'reference') return 2
       if (col === 'robot') return 1
@@ -48,7 +46,7 @@ const filteredColumns = computed(() => {
     const aPriority = priority(aNorm)
     const bPriority = priority(bNorm)
 
-    return bPriority - aPriority // tri décroissant : 2 (reference) en premier, puis 1 (robot)
+    return bPriority - aPriority 
   })
 })
 
@@ -69,11 +67,11 @@ const prixRobot: Ref<any> = ref({
   commentaire: ''
 })
 
-// États pour les filtres des selects
+
 const searchTerms: Ref<Record<string, string>> = ref({})
 const showDropdowns: Ref<Record<string, boolean>> = ref({})
 
-// États pour les barres de recherche des relations
+
 const searchIncompatibilites = ref('')
 const searchCompatibilitesRobots = ref('')
 const searchCompatibilitesProduits = ref('')
@@ -83,20 +81,16 @@ const currentStep = computed(() => {
   return ((stepIndex + 1) / tabs.value.length) * 100
 })
 
-// Fonction pour nettoyer les noms des colonnes
 const cleanColumnName = (columnName: string) => {
-  // Pour la colonne virtuelle 'robot'
   if (columnName === 'robot') {
     return 'Robot'
   }
   
-  // Enlever "_id" à la fin
   let cleaned = columnName.replace(/_id$/i, '')
   
-  // Enlever "id" au début ou à la fin (case insensitive)
   cleaned = cleaned.replace(/^id_?/i, '').replace(/_?id$/i, '')
   
-  // Si après nettoyage il ne reste rien, garder le nom original
+
   if (!cleaned.trim()) {
     cleaned = columnName
   }
@@ -104,13 +98,11 @@ const cleanColumnName = (columnName: string) => {
   return cleaned.charAt(0).toUpperCase() + cleaned.slice(1)
 }
 
-// Fonction pour déterminer si un champ est une clé étrangère ou un select spécial
 const isForeignKey = (columnName: string) => {
   const foreignKeys = [
     'fournisseur_id', 'client_id', 'client', 'produit_id', 'fpack_id'
   ]
   
-  // Pour prix_robot, 'reference' et 'robot' sont des selects spéciaux
   if (props.tableName === 'prix_robot' && (columnName === 'reference' || columnName === 'robot')) {
     return true
   }
@@ -118,7 +110,6 @@ const isForeignKey = (columnName: string) => {
   return foreignKeys.includes(columnName)
 }
 
-// Fonction pour obtenir les options d'un select
 const getSelectOptions = (columnName: string) => {
   switch (columnName) {
     case 'fournisseur_id':
@@ -131,7 +122,6 @@ const getSelectOptions = (columnName: string) => {
     case 'fpack_id':
       return fpacksList.value
     default:
-      // Pour prix_robot, 'reference' et 'robot' utilisent la liste des robots
       if (props.tableName === 'prix_robot' && (columnName === 'reference' || columnName === 'robot')) {
         return robotsList.value
       }
@@ -139,7 +129,6 @@ const getSelectOptions = (columnName: string) => {
   }
 }
 
-// Fonction pour filtrer les options
 const getFilteredOptions = (columnName: string) => {
   const options = getSelectOptions(columnName)
   const searchTerm = searchTerms.value[columnName]?.toLowerCase() || ''
@@ -158,7 +147,6 @@ const getFilteredOptions = (columnName: string) => {
   })
 }
 
-// Fonctions pour filtrer les listes dans les relations
 const filteredProduitsList = computed(() => {
   if (!searchIncompatibilites.value) return produitsList.value
   return produitsList.value.filter(produit => 
@@ -183,7 +171,6 @@ const filteredProduitsForRobots = computed(() => {
   )
 })
 
-// Fonction pour obtenir le label d'une option
 const getOptionLabel = (option: any, columnName: string) => {
   if (props.tableName === 'prix_robot') {
     if (columnName === 'reference') {
@@ -195,33 +182,28 @@ const getOptionLabel = (option: any, columnName: string) => {
   return option.nom || option.reference || option.id
 }
 
-// Fonction pour toggle le dropdown
 const toggleDropdown = (columnName: string) => {
   showDropdowns.value[columnName] = !showDropdowns.value[columnName]
 }
 
-// Fonction pour sélectionner une option avec synchronisation pour prix_robot
 const selectOption = (columnName: string, option: any) => {
   if (props.tableName === 'prix_robot') {
     if (columnName === 'reference') {
-      // Sélection par référence -> synchroniser avec robot
       form.value['reference'] = option.reference
       form.value['robot'] = option.nom
-      form.value['id'] = option.id // Stocker l'ID du robot
+      form.value['id'] = option.id 
       
       searchTerms.value['reference'] = option.reference
       searchTerms.value['robot'] = option.nom
     } else if (columnName === 'robot') {
-      // Sélection par nom de robot -> synchroniser avec référence
       form.value['robot'] = option.nom
       form.value['reference'] = option.reference
-      form.value['id'] = option.id // Stocker l'ID du robot
+      form.value['id'] = option.id 
       
       searchTerms.value['robot'] = option.nom
       searchTerms.value['reference'] = option.reference
     }
   } else {
-    // Logique normale pour les autres tables
     form.value[columnName] = option.id
     searchTerms.value[columnName] = getOptionLabel(option, columnName)
   }
@@ -257,20 +239,17 @@ async function loadData() {
       columns.value = Object.values(columnsData)
     }
     
-    // Initialiser le formulaire
     columns.value.forEach(col => {
       form.value[col] = ''
       searchTerms.value[col] = ''
       showDropdowns.value[col] = false
     })
 
-    // Pour prix_robot, initialiser aussi les champs virtuels
     if (props.tableName === 'prix_robot') {
       searchTerms.value['robot'] = ''
       showDropdowns.value['robot'] = false
     }
 
-    // Charger toutes les données de référence
     const [produitsRes, robotsRes, clientsRes, fournisseursRes, fpacksRes] = await Promise.all([
       axios.get('http://localhost:8000/produits'),
       axios.get('http://localhost:8000/robots'),
@@ -311,7 +290,6 @@ function validateForm() {
   filteredColumns.value.forEach(col => {
     if (col === 'commentaire') return
     
-    // Pour prix_robot, on vérifie que l'ID du robot est bien défini
     if (props.tableName === 'prix_robot' && (col === 'reference' || col === 'robot')) {
       if (!form.value['id']) {
         errors.value[col] = 'Ce champ est requis'
@@ -442,7 +420,6 @@ function closeModal() {
     activeTab.value = 'Informations'
     showSuccess.value = false
     errors.value = {}
-    // Réinitialiser les barres de recherche des relations
     searchIncompatibilites.value = ''
     searchCompatibilitesRobots.value = ''
     searchCompatibilitesProduits.value = ''
@@ -596,7 +573,6 @@ onMounted(async () => {
                           </button>
                         </div>
                         
-                        <!-- Barre de recherche pour les incompatibilités -->
                         <div class="search-container">
                           <div class="search-input-wrapper">
                             <svg class="search-icon" width="20" height="20" viewBox="0 0 24 24" fill="none">
@@ -648,7 +624,6 @@ onMounted(async () => {
                           </button>
                         </div>
                         
-                        <!-- Barre de recherche pour les robots compatibles -->
                         <div class="search-container">
                           <div class="search-input-wrapper">
                             <svg class="search-icon" width="20" height="20" viewBox="0 0 24 24" fill="none">
@@ -702,7 +677,6 @@ onMounted(async () => {
                           </button>
                         </div>
                         
-                        <!-- Barre de recherche pour les produits compatibles -->
                         <div class="search-container">
                           <div class="search-input-wrapper">
                             <svg class="search-icon" width="20" height="20" viewBox="0 0 24 24" fill="none">
@@ -902,7 +876,6 @@ onMounted(async () => {
   flex-direction: column;
 }
 
-/* Header - HAUTEUR FIXE */
 .modal-header {
   background: linear-gradient(135deg, #5a94e4 0%, #430c7a 90%);
   color: white;
@@ -969,7 +942,6 @@ onMounted(async () => {
   transform: scale(1.05);
 }
 
-/* Progress */
 .progress-container {
   margin-top: 20px;
   position: relative;
@@ -1021,7 +993,6 @@ onMounted(async () => {
   color: white;
 }
 
-/* Loading */
 .loading-container {
   display: flex;
   flex-direction: column;
@@ -1087,7 +1058,6 @@ onMounted(async () => {
   font-size: 16px;
 }
 
-/* Modal Body */
 .modal-body {
   flex: 1;
   overflow: hidden;
@@ -1095,7 +1065,6 @@ onMounted(async () => {
   flex-direction: column;
 }
 
-/* Tabs Navigation */
 .tabs-nav {
   display: flex;
   background: #f8fafc;
@@ -1134,14 +1103,12 @@ onMounted(async () => {
   font-size: 20px;
 }
 
-/* Tab Content */
 .tab-content {
   flex: 1;
   overflow-y: auto;
   padding: 32px;
 }
 
-/* Info Section */
 .form-grid {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
@@ -1192,7 +1159,6 @@ onMounted(async () => {
   box-shadow: 0 0 0 3px rgba(239, 68, 68, 0.1);
 }
 
-/* Custom Select */
 .custom-select {
   position: relative;
   width: 90%;
@@ -1226,7 +1192,7 @@ onMounted(async () => {
   border-radius: 0 0 12px 12px;
   max-height: 200px;
   overflow-y: auto;
-  z-index: 99999; /* Z-INDEX TRÈS ÉLEVÉ */
+  z-index: 99999;
   box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.1);
 }
 
@@ -1261,7 +1227,6 @@ onMounted(async () => {
   display: block;
 }
 
-/* Search Container - NOUVEAU */
 .search-container {
   margin-bottom: 20px;
 }
@@ -1318,7 +1283,6 @@ onMounted(async () => {
   color: #64748b;
 }
 
-/* No Results Message - NOUVEAU */
 .no-results {
   text-align: center;
   padding: 40px 20px;
@@ -1329,7 +1293,6 @@ onMounted(async () => {
   border: 2px dashed #e2e8f0;
 }
 
-/* Relations Section */
 .relations-content {
   display: flex;
   flex-direction: column;
@@ -1440,7 +1403,6 @@ onMounted(async () => {
   font-weight: 500;
 }
 
-/* Pricing Section */
 .pricing-content {
   display: flex;
   flex-direction: column;
@@ -1516,7 +1478,6 @@ onMounted(async () => {
   font-family: inherit;
 }
 
-/* Footer */
 .modal-footer {
   background: #f8fafc;
   border-top: 1px solid #e2e8f0;
@@ -1613,7 +1574,6 @@ onMounted(async () => {
   animation: spin 1s linear infinite;
 }
 
-/* Transitions */
 .modal-backdrop-enter-active, .modal-backdrop-leave-active {
   transition: all 0.3s ease;
 }
@@ -1667,7 +1627,6 @@ onMounted(async () => {
   transform: translateY(-10px);
 }
 
-/* Custom scrollbar */
 .tab-content::-webkit-scrollbar,
 .select-dropdown::-webkit-scrollbar {
   width: 8px;
@@ -1690,7 +1649,6 @@ onMounted(async () => {
   background: linear-gradient(135deg, #5a6fd8 0%, #6b4190 100%);
 }
 
-/* Animations pour enhanced UX */
 .checkbox-item {
   animation: fadeInUp 0.3s ease forwards;
   animation-delay: calc(var(--index, 0) * 0.05s);

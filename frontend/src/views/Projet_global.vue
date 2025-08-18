@@ -9,7 +9,6 @@ import { showToast } from '../composables/useToast'
 import { useLoading } from '../composables/useLoading'
 import axios from 'axios'
 
-// Types pour les sous-projets
 interface SousProjet {
   id: number
   nom: string
@@ -20,7 +19,6 @@ interface SousProjet {
 const { startLoading, stopLoading } = useLoading()
 const router = useRouter()
 
-// Utilisation du composable optimisé
 const {
   projetsGlobaux,
   loading,
@@ -34,7 +32,6 @@ const {
   updateProjetGlobal
 } = useProjets()
 
-// Fonctions pour les sous-projets (à ajouter si elles n'existent pas dans le composable)
 async function createSousProjet(sousProjetData: { nom: string; description: string; id_global?: number | null }) {
   try {
     const response = await axios.post('http://localhost:8000/sous_projets', sousProjetData)
@@ -151,7 +148,6 @@ const validateSousProjetForm = (): boolean => {
   return Object.keys(sousProjetErrors.value).length === 0
 }
 
-// Actions principales
 async function fetchData() {
   startLoading()
   try {
@@ -237,7 +233,6 @@ function toggleAllCards() {
   allCardsExpanded.value = !allCardsExpanded.value
 }
 
-// Gestion des modales
 function openAddGlobalModal() {
   resetGlobalForm()
   showAddGlobalModal.value = true
@@ -250,7 +245,6 @@ function openAddProjetModal(globalId: number, sousProjetId?: number) {
   newProjet.value.id_global = globalId
   newProjet.value.id_sous_projet = sousProjetId || null
   
-  // Pré-sélectionner le premier FPack disponible
   const availableFpacks = fpacksForProjet.value
   if (availableFpacks.length > 0) {
     newProjet.value.fpack_id = availableFpacks[0].id
@@ -299,7 +293,6 @@ function resetSousProjetForm() {
   sousProjetErrors.value = {}
 }
 
-// Navigation
 function navigateToComplete(projetId: number) {
   console.log(`/complete/projets/${projetId}`)
   router.push(`/complete/projets/${projetId}`)
@@ -313,7 +306,6 @@ function navigateToDetails(projetId: number) {
   router.push(`/projets/${projetId}/details`)
 }
 
-// Édition
 const showEditGlobalModal = ref(false)
 const showEditSousProjetModal = ref(false)
 const editingGlobal = ref({
@@ -342,7 +334,6 @@ function openEditGlobalModal(globalId: number) {
 }
 
 function openEditSousProjetModal(sousProjetId: number) {
-  // Chercher le sous-projet dans tous les projets globaux
   let targetSousProjet: SousProjet | null = null
   for (const pg of projetsGlobaux.value) {
     const sousProjet = pg.projets?.find((sp: SousProjet) => sp.id === sousProjetId)
@@ -405,7 +396,6 @@ async function handleUpdateSousProjet() {
   }
 }
 
-// Watchers
 watch(
   () => router.currentRoute.value.path,
   async (newPath, oldPath) => {
@@ -420,7 +410,6 @@ watch(
   { immediate: false }
 )
 
-// Watchers pour réinitialiser les erreurs
 watch(() => newGlobal.value.projet, () => {
   if (globalErrors.value.projet) delete globalErrors.value.projet
 })
@@ -455,11 +444,9 @@ onMounted(() => {
   </div>
   
   <div class="projets-page">
-    <!-- En-tête avec statistiques -->
     <div class="page-header-enhanced">
       
       
-      <!-- Dashboard des statistiques -->
       <div class="stats-dashboard" v-if="globalStats">
         <div class="stat-card">
           <div class="stat-icon">📊</div>
@@ -487,7 +474,6 @@ onMounted(() => {
       </div>
     </div>
 
-    <!-- Contenu principal avec transitions -->
     <div class="projets-container">
       <Transition name="fade" appear>
         <div v-if="loading" class="loading-state">
@@ -526,7 +512,6 @@ onMounted(() => {
       </div>
     </div>
 
-    <!-- Modal Nouveau Projet -->
     <Teleport to="body">
       <Transition name="modal">
         <div v-if="showAddGlobalModal" class="modal-overlay" @click="closeGlobalModal">
@@ -574,7 +559,6 @@ onMounted(() => {
       </Transition>
     </Teleport>
 
-    <!-- Modal Édition Projet Global -->
     <Teleport to="body">
       <Transition name="modal">
         <div v-if="showEditGlobalModal" class="modal-overlay" @click="closeEditModal">
@@ -620,7 +604,6 @@ onMounted(() => {
       </Transition>
     </Teleport>
 
-    <!-- Modal Nouveau Sous-Projet -->
     <Teleport to="body">
       <Transition name="modal">
         <div v-if="showAddSousProjetModal" class="modal-overlay" @click="closeSousProjetModal">
@@ -662,7 +645,6 @@ onMounted(() => {
       </Transition>
     </Teleport>
 
-    <!-- Modal Édition Sous-Projet -->
     <Teleport to="body">
       <Transition name="modal">
         <div v-if="showEditSousProjetModal" class="modal-overlay" @click="closeEditSousProjetModal">
@@ -703,7 +685,6 @@ onMounted(() => {
       </Transition>
     </Teleport>
 
-    <!-- Modal Nouveau F-Pack  -->
     <Teleport to="body">
       <Transition name="modal">
         <div v-if="showAddProjetModal" class="modal-overlay" @click="closeProjetModal">
@@ -762,7 +743,6 @@ onMounted(() => {
       </Transition>
     </Teleport>
 
-    <!-- Modal de Confirmation de Suppression -->
     <Teleport to="body">
       <Transition name="modal">
         <div v-if="showDeleteConfirmModal" class="modal-overlay" @click="showDeleteConfirmModal = false">
@@ -802,7 +782,6 @@ onMounted(() => {
     </Teleport>
   </div>
   
-  <!-- Barre de recherche améliorée -->
   <div class="search-section">
     <TextSearch 
       v-model="searchTerm" 
@@ -1012,7 +991,6 @@ onMounted(() => {
   transform: translateY(-2px);
 }
 
-/* Modales améliorées */
 .modal-overlay {
   position: fixed;
   top: 0;
@@ -1224,7 +1202,6 @@ onMounted(() => {
   box-shadow: 0 4px 12px rgba(239, 68, 68, 0.4);
 }
 
-/* Transitions */
 .fade-enter-active, .fade-leave-active {
   transition: opacity 0.3s ease;
 }
@@ -1262,22 +1239,4 @@ onMounted(() => {
   transform: scale(0.9);
 }
 
-@media (max-width: 768px) {
-  .projets-page {
-    padding: 1rem;
-  }
-  
-  .stats-dashboard {
-    grid-template-columns: 1fr;
-    gap: 1rem;
-  }
-  
-  .projets-grid {
-    grid-template-columns: 1fr;
-  }
-  
-  .modal-actions {
-    flex-direction: column;
-  }
-}
 </style>

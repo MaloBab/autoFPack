@@ -1,4 +1,3 @@
-// useTableFilters.ts
 import { computed, type Ref } from 'vue'
 
 export function useTableFilters(tableData: any, filters: Ref<Record<string, Set<any>>>, props: any) {
@@ -26,7 +25,6 @@ export function useTableFilters(tableData: any, filters: Ref<Record<string, Set<
         return tableData.columns.value.some((col:any) => {
           let cellValue = row[col]
 
-          // Gestion spéciale pour les foreign keys
           cellValue = getForeignKeyDisplayValue(cellValue, col, props.tableName, tableData)
           
           return String(cellValue).toLowerCase().includes(search)
