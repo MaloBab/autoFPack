@@ -517,7 +517,7 @@ if (typeof window !== 'undefined') {
   background: linear-gradient(135deg, #109db9 0%, #055c96 100%);
   border-color: #1081b9;
   transform: scale(1.1);
-  box-shadow: 0 4px 12px rgba(16, 185, 129, 0.3);
+  box-shadow: 0 4px 12px rgba(18, 6, 237, 0.3);
 }
 
 .custom-checkbox input[type="checkbox"]:checked + .checkmark::after {
