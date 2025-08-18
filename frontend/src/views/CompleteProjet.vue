@@ -13,6 +13,7 @@ const router = useRouter()
 const projet = ref<any>(null)
 const configColumns = ref<any[]>([])
 const produits = ref<any[]>([])
+const robots = ref<any[]>([])
 const produitsSeuls = ref<any[]>([])
 const equipementsSeuls = ref<any[]>([])
 const groupes = ref<any[]>([])
@@ -35,6 +36,27 @@ const groupesRestants = computed(() =>
   groupes.value.filter(g => !selections.value[g.ref_id])
 )
 
+const RobotsRef = computed<Record<number, string>>(() => {
+  if (!robots.value) return {}
+
+  return robots.value.reduce((acc, r) => {
+    if (r?.id && r?.reference) {
+      acc[r.id] = r.reference
+    }
+    return acc
+  }, {} as Record<string, string>)
+})
+
+const ProduitRef = computed<Record<number, string>>(() => {
+  if (!produits.value) return {}
+
+  return produits.value.reduce((acc, r) => {
+    if (r?.id && r?.reference) {
+      acc[r.id] = r.reference
+    }
+    return acc
+  }, {} as Record<string, string>)
+})
 
 function areProduitsIncompatible(id1: number, id2: number): boolean {
   return produitIncompatibilites.value.some(
@@ -162,6 +184,9 @@ async function fetchData() {
 
     const resProduits = await axios.get('http://localhost:8000/produits')
     produits.value = resProduits.data
+
+    const resRobots = await axios.get('http://localhost:8000/robots')
+    robots.value = resRobots.data
 
     const projetId = route.params.id
     const resProjet = await axios.get(`http://localhost:8000/projets/${projetId}`)
@@ -318,9 +343,9 @@ async function saveSelections(goBack = true) {
                     :class="{ 'option-incompatible': isItemIncompatible(groupe, item) }">
                     <span v-if="(item.statut ?? 'optionnel') === 'standard'" class="badge-standard">⭐</span>
                     {{ item.label }}
-                    <span v-if="item.type === 'produit'">🧩</span>
+                    <span v-if="item.type === 'produit'">— {{ ProduitRef[item.ref_id] }} 🧩</span>
                     <span v-else-if="item.type === 'equipement'">🔧</span>
-                    <span v-else-if="item.type === 'robot'">🤖</span>
+                    <span v-else-if="item.type === 'robot'"> — {{ RobotsRef[item.ref_id] }} 🤖</span>
                   </option>
                 </select>
               </div>

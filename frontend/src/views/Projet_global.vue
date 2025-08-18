@@ -206,6 +206,7 @@ function resetProjetForm() {
 
 // Navigation
 function navigateToComplete(projetId: number) {
+  console.log(`/complete/projets/${projetId}`)
   router.push(`/complete/projets/${projetId}`)
 }
 
