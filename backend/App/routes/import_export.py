@@ -1,23 +1,22 @@
-from fastapi import HTTPException
-from fastapi import APIRouter, Depends, File, UploadFile
-from sqlalchemy import inspect
-from sqlalchemy.orm import Session 
+from fastapi import APIRouter, Depends, File, UploadFile, HTTPException # type: ignore
+from sqlalchemy import inspect # type: ignore
+from sqlalchemy.orm import Session  # type: ignore
 from App.database import SessionLocal
 from App import models
 from App.export_fpack_to_excel import export_fpack_config, export_all_fpacks
-from fastapi.responses import StreamingResponse
+from fastapi.responses import StreamingResponse # type: ignore
 from io import BytesIO
 import os
-from openpyxl import Workbook
-from openpyxl.styles import Font, Alignment, PatternFill
-from reportlab.lib.pagesizes import A4
-from reportlab.platypus import SimpleDocTemplate, Table, TableStyle, Image, Paragraph, Spacer
-from reportlab.lib import colors
-from reportlab.lib.styles import getSampleStyleSheet
-from App.routes.projets import get_projet_facture
-from fastapi.responses import StreamingResponse
-import openpyxl
-from openpyxl.worksheet.datavalidation import DataValidation
+from openpyxl import Workbook # type: ignore
+from openpyxl.styles import Font, Alignment, PatternFill # type: ignore
+from reportlab.lib.pagesizes import A4 # type: ignore
+from reportlab.platypus import SimpleDocTemplate, Table, TableStyle, Image, Paragraph, Spacer # type: ignore
+from reportlab.lib import colors # type: ignore
+from reportlab.lib.styles import getSampleStyleSheet # type: ignore
+from App.routes.sous_projets import get_projet_facture
+import openpyxl # type: ignore
+from openpyxl.worksheet.datavalidation import DataValidation # type: ignore
+from openpyxl.utils import get_column_letter # type: ignore
 
 router = APIRouter()
 
@@ -127,12 +126,10 @@ def export_produits_excel(db: Session = Depends(get_db)):
     ws.add_data_validation(dv)
     dv.add(f"D2:D{ws.max_row}")
 
-    from openpyxl.utils import get_column_letter
     for col_idx, col in enumerate(ws.columns, 1):
         max_length = max(len(str(cell.value or "")) for cell in col)
         ws.column_dimensions[get_column_letter(col_idx)].width = max_length + 2
 
-    from io import BytesIO
     stream = BytesIO()
     wb.save(stream)
     stream.seek(0)
@@ -219,12 +216,11 @@ def export_robots_excel(db: Session = Depends(get_db)):
     ws.add_data_validation(dv)
     dv.add(f"D2:D{ws.max_row}")
 
-    from openpyxl.utils import get_column_letter
+    
     for col_idx, col in enumerate(ws.columns, 1):
         max_length = max(len(str(cell.value or "")) for cell in col)
         ws.column_dimensions[get_column_letter(col_idx)].width = max_length + 2
 
-    from io import BytesIO
     stream = BytesIO()
     wb.save(stream)
     stream.seek(0)
@@ -272,7 +268,7 @@ async def import_robots_add(file: UploadFile = File(...), db: Session = Depends(
 
 #EXPORT FACTURE PROJET
 
-@router.get("/projets/{id}/facture-pdf")
+@router.get("/sous_projets/{id}/facture-pdf")
 def export_projet_facture_pdf(id: int, db: Session = Depends(get_db)):
     facture = get_projet_facture(id, db)
     output = BytesIO()
@@ -326,7 +322,7 @@ def export_projet_facture_pdf(id: int, db: Session = Depends(get_db)):
         headers={"Content-Disposition": f'attachment; filename="facture-projet-{id}.pdf"'}
     )
 
-@router.get("/projets/{id}/facture-excel")
+@router.get("/sous_projets/{id}/facture-excel")
 def export_projet_facture_excel(id: int, db: Session = Depends(get_db)):
     facture = get_projet_facture(id, db)
     wb = Workbook()

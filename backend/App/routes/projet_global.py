@@ -28,7 +28,7 @@ class ProjetService:
         return {f.id: f for f in db.query(models.FPack).all()}
     
     @staticmethod
-    def calculate_projet_stats(db: Session, projet: models.Projet, fpacks_map: Dict) -> Dict:
+    def calculate_projet_stats(db: Session, projet: models.SousProjet, fpacks_map: Dict) -> Dict:
         """Calcule les statistiques d'un projet"""
         nb_selections = db.query(models.ProjetSelection)\
             .filter_by(projet_id=projet.id).count()
@@ -60,7 +60,7 @@ class ProjetService:
                 projet["client_nom"] = clients_map.get(fpack.client)
         return projets_details
 
-@router.get("/projets-global", response_model=list[schemas.ProjetGlobalReadWithProjets])
+@router.get("/projets-global", response_model=list[schemas.ProjetGlobalReadWithSousProjets])
 def list_projets_global(db: Session = Depends(get_db)):
     """Liste tous les projets globaux avec leurs projets enrichis"""
     projets_global = db.query(models.ProjetGlobal).all()
@@ -69,7 +69,7 @@ def list_projets_global(db: Session = Depends(get_db)):
     
     result = []
     for pg in projets_global:
-        projets = db.query(models.Projet).filter_by(id_global=pg.id).all()
+        projets = db.query(models.SousProjet).filter_by(id_global=pg.id).all()
         projets_details = [
             ProjetService.calculate_projet_stats(db, projet, fpacks_map) 
             for projet in projets
@@ -89,7 +89,7 @@ def list_projets_global(db: Session = Depends(get_db)):
     
     return result
 
-@router.get("/projets-global/{id}", response_model=schemas.ProjetGlobalReadWithProjets)
+@router.get("/projets-global/{id}", response_model=schemas.ProjetGlobalReadWithSousProjets)
 def get_projet_global(id: int, db: Session = Depends(get_db)):
     """Récupère un projet global avec ses projets"""
     projet_global = db.query(models.ProjetGlobal).get(id)
@@ -99,7 +99,7 @@ def get_projet_global(id: int, db: Session = Depends(get_db)):
     clients_map = ProjetService.get_clients_map(db)
     fpacks_map = ProjetService.get_fpacks_map(db)
     
-    projets = db.query(models.Projet).filter_by(id_global=id).all()
+    projets = db.query(models.SousProjet).filter_by(id_global=id).all()
     projets_details = [
         ProjetService.calculate_projet_stats(db, projet, fpacks_map) 
         for projet in projets
@@ -143,7 +143,7 @@ def update_projet_global(id: int, data: schemas.ProjetGlobalCreate, db: Session 
             raise HTTPException(status_code=404, detail="Client non trouvé")
         
         # Validation des projets associés
-        projets_associes = db.query(models.Projet).filter_by(id_global=id).all()
+        projets_associes = db.query(models.SousProjet).filter_by(id_global=id).all()
         conflicted_projets = []
         
         for p in projets_associes:
@@ -171,7 +171,7 @@ def delete_projet_global(id: int, db: Session = Depends(get_db)):
     if not projet:
         raise HTTPException(status_code=404, detail="Projet global non trouvé")
 
-    projets_associes = db.query(models.Projet).filter_by(id_global=id).all()
+    projets_associes = db.query(models.SousProjet).filter_by(id_global=id).all()
     if projets_associes:
         noms = [p.nom for p in projets_associes]
         raise HTTPException(
@@ -190,7 +190,7 @@ def get_projet_global_stats(id: int, db: Session = Depends(get_db)):
     if not projet_global:
         raise HTTPException(status_code=404, detail="Projet global non trouvé")
     
-    projets = db.query(models.Projet).filter_by(id_global=id).all()
+    projets = db.query(models.SousProjet).filter_by(id_global=id).all()
     fpacks_map = ProjetService.get_fpacks_map(db)
     
     projets_details = [

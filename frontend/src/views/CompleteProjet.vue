@@ -189,7 +189,7 @@ async function fetchData() {
     robots.value = resRobots.data
 
     const projetId = route.params.id
-    const resProjet = await axios.get(`http://localhost:8000/projets/${projetId}`)
+    const resProjet = await axios.get(`http://localhost:8000/sous_projets/${projetId}`)
     projet.value = resProjet.data
 
     const resConfig = await axios.get(`http://localhost:8000/fpack_config_columns/${projet.value.fpack_id}`)
@@ -200,7 +200,7 @@ async function fetchData() {
     equipementsSeuls.value = configColumns.value.filter(c => c.type === 'equipement' && !c.group_items)
     groupes.value = configColumns.value.filter(c => c.type === 'group')
 
-    const resSelections = await axios.get(`http://localhost:8000/projets/${projetId}/selections`)
+    const resSelections = await axios.get(`http://localhost:8000/sous_projets/${projetId}/selections`)
     for (const sel of resSelections.data) {
       if (sel.groupe_id && groupes.value.find(g => g.ref_id === sel.groupe_id)) {
         selections.value[sel.groupe_id] = sel.ref_id
@@ -257,7 +257,7 @@ async function saveSelections(goBack = true) {
         type_item: selectedItem?.type ?? null
       }
     })
-    await axios.put(`http://localhost:8000/projets/${projet.value.id}/selections`, { selections: payload })
+    await axios.put(`http://localhost:8000/sous_projets/${projet.value.id}/selections`, { selections: payload })
     showToast('Sélection enregistrée', "#059669")
   } catch (err) {
     showToast("Erreur lors de l'enregistrement","#EE1111")

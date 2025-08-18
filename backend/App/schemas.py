@@ -236,28 +236,27 @@ class ProjetSelectionRead(ProjetSelectionBase):
     class Config:
         from_attributes = True
 
-class ProjetBase(BaseModel):
+class SousProjetBase(BaseModel):
     nom: str
     FPack_number: Optional[str] = None
     Robot_Location_Code: Optional[str] = None
     fpack_id: int
     id_global:int
 
-class ProjetCreate(ProjetBase):
+class SousProjetCreate(SousProjetBase):
     pass
 
-class ProjetRead(ProjetBase):
+class SousProjetRead(SousProjetBase):
     id: int
 
     class Config:
         from_attributes = True
         
-class ProjetReadExtended(ProjetRead):
+class SousProjetReadExtended(SousProjetRead):
     complet: bool
     
 class ProjetGlobalBase(BaseModel):
     projet: Optional[str] = None
-    sous_projet: Optional[str] = None
     client: int
 
 class ProjetGlobalCreate(ProjetGlobalBase):
@@ -269,7 +268,7 @@ class ProjetGlobalRead(ProjetGlobalBase):
     class Config:
         from_attributes = True
         
-class ProjetReadWithDetails(ProjetRead):
+class SousProjetReadWithDetails(SousProjetRead):
     """Schema pour afficher un projet avec ses détails complets"""
     fpack_nom: Optional[str] = None
     client_nom: Optional[str] = None
@@ -279,9 +278,9 @@ class ProjetReadWithDetails(ProjetRead):
     nb_selections: int = 0
     nb_groupes_attendus: int = 0
 
-class ProjetGlobalReadWithProjets(ProjetGlobalRead):
+class ProjetGlobalReadWithSousProjets(ProjetGlobalRead):
     """Schema pour afficher un projet global avec ses projets"""
-    projets: List[ProjetReadWithDetails] = []
+    sous_projets: List[SousProjetReadWithDetails] = []
     client_nom: Optional[str] = None
 
 class ProjetSelectionReadWithDetails(ProjetSelectionRead):
@@ -291,4 +290,4 @@ class ProjetSelectionReadWithDetails(ProjetSelectionRead):
     
 class ProjetTree(BaseModel):
     """Schema pour l'arbre complet des projets"""
-    projets_global: List[ProjetGlobalReadWithProjets] = []
+    projets_global: List[ProjetGlobalReadWithSousProjets] = []

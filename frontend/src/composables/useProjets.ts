@@ -1,8 +1,7 @@
-// composables/useProjets.ts - Version optimisée et maintenable
+// composables/useProjets.ts - Version optimisée avec sécurité null/undefined
 import {computed, reactive } from 'vue'
 import axios from 'axios'
 import { showToast } from './useToast'
-
 
 // Types étendus avec nouvelles propriétés
 export interface ProjetGlobal {
@@ -11,7 +10,7 @@ export interface ProjetGlobal {
   sous_projet?: string
   client: number
   client_nom: string
-  projets: Projet[]
+  projets: Sous_Projet[]
   stats?: {
     nb_projets: number
     nb_projets_complets: number
@@ -22,7 +21,7 @@ export interface ProjetGlobal {
   }
 }
 
-export interface Projet {
+export interface Sous_Projet {
   id: number
   nom: string
   fpack_id: number
@@ -71,6 +70,23 @@ export interface ProjetDetails {
   progression_percent: number
 }
 
+// Fonction utilitaire pour valider un projet
+function isValidProjet(projet: any): projet is Sous_Projet {
+  return projet && 
+         typeof projet === 'object' && 
+         typeof projet.id === 'number' && 
+         typeof projet.nom === 'string' &&
+         typeof projet.complet === 'boolean'
+}
+
+// Fonction utilitaire pour valider un projet global
+function isValidProjetGlobal(pg: any): pg is ProjetGlobal {
+  return pg && 
+         typeof pg === 'object' && 
+         typeof pg.id === 'number' && 
+         Array.isArray(pg.projets)
+}
+
 // État réactif centralisé
 const state = reactive({
   projetsGlobaux: [] as ProjetGlobal[],
@@ -83,47 +99,103 @@ const state = reactive({
 export function useProjets() {
   const baseUrl = 'http://localhost:8000'
 
-  // === Getters computed optimisés ===
-  const allProjets = computed(() => 
-    state.projetsGlobaux.flatMap(pg => pg.projets)
-  )
+  // === Getters computed optimisés avec protection null ===
+  const allProjets = computed(() => {
+    try {
+      return state.projetsGlobaux
+        .filter(isValidProjetGlobal)
+        .flatMap(pg => pg.projets?.filter(isValidProjet) || [])
+    } catch (error) {
+      console.error('Error in allProjets computed:', error)
+      return []
+    }
+  })
 
-  const currentProjet = computed(() => 
-    allProjets.value.find(p => p.id === state.currentProjetId) || null
-  )
+  const currentProjet = computed(() => {
+    try {
+      const projets = allProjets.value
+      return projets.find(p => p?.id === state.currentProjetId) || null
+    } catch (error) {
+      console.error('Error in currentProjet computed:', error)
+      return null
+    }
+  })
 
   const projetsParClient = computed(() => {
-    const map = new Map<number, Projet[]>()
-    for (const pg of state.projetsGlobaux) {
-      if (!map.has(pg.client)) map.set(pg.client, [])
-      map.get(pg.client)?.push(...pg.projets)
+    try {
+      const map = new Map<number, Sous_Projet[]>()
+      const validProjetsGlobaux = state.projetsGlobaux.filter(isValidProjetGlobal)
+      
+      for (const pg of validProjetsGlobaux) {
+        if (typeof pg.client === 'number') {
+          if (!map.has(pg.client)) map.set(pg.client, [])
+          const validProjets = pg.projets?.filter(isValidProjet) || []
+          map.get(pg.client)?.push(...validProjets)
+        }
+      }
+      return map
+    } catch (error) {
+      console.error('Error in projetsParClient computed:', error)
+      return new Map()
     }
-    return map
   })
 
-  const projetsByStatus = computed(() => ({
-    complets: allProjets.value.filter(p => p.complet),
-    enCours: allProjets.value.filter(p => !p.complet),
-    total: allProjets.value.length
-  }))
+  const projetsByStatus = computed(() => {
+    try {
+      const projets = allProjets.value
+      return {
+        complets: projets.filter(p => isValidProjet(p) && p.complet === true),
+        enCours: projets.filter(p => isValidProjet(p) && p.complet === false),
+        total: projets.length
+      }
+    } catch (error) {
+      console.error('Error in projetsByStatus computed:', error)
+      return {
+        complets: [],
+        enCours: [],
+        total: 0
+      }
+    }
+  })
 
   const globalStats = computed(() => {
-    const stats = {
-      nb_projets_globaux: state.projetsGlobaux.length,
-      nb_projets_total: allProjets.value.length,
-      nb_projets_complets: 0,
-      progression_moyenne: 0
-    }
+    try {
+      const validProjetsGlobaux = state.projetsGlobaux.filter(isValidProjetGlobal)
+      const projets = allProjets.value
+      
+      const stats = {
+        nb_projets_globaux: validProjetsGlobaux.length,
+        nb_projets_total: projets.length,
+        nb_projets_complets: 0,
+        progression_moyenne: 0
+      }
 
-    if (allProjets.value.length > 0) {
-      stats.nb_projets_complets = allProjets.value.filter(p => p.complet).length
-      const totalProgression = allProjets.value.reduce((sum, p) => sum + p.progression_percent, 0)
-      stats.progression_moyenne = Math.round(totalProgression / allProjets.value.length)
-    }
+      if (projets.length > 0) {
+        stats.nb_projets_complets = projets.filter(p => 
+          isValidProjet(p) && p.complet === true
+        ).length
+        
+        const totalProgression = projets.reduce((sum, p) => {
+          if (isValidProjet(p) && typeof p.progression_percent === 'number') {
+            return sum + p.progression_percent
+          }
+          return sum
+        }, 0)
+        
+        stats.progression_moyenne = Math.round(totalProgression / projets.length)
+      }
 
-    return stats
+      return stats
+    } catch (error) {
+      console.error('Error in globalStats computed:', error)
+      return {
+        nb_projets_globaux: 0,
+        nb_projets_total: 0,
+        nb_projets_complets: 0,
+        progression_moyenne: 0
+      }
+    }
   })
-
 
   const updateLoadingState = async <T>(operation: () => Promise<T>): Promise<T> => {
     state.loading = true
@@ -133,13 +205,15 @@ export function useProjets() {
       state.lastFetch = new Date()
       return result
     } catch (error: any) {
+      state.error = error?.message || 'Une erreur est survenue'
+      console.error('Operation error:', error)
       throw error
     } finally {
       state.loading = false
     }
   }
 
-  // === Actions principales ===
+  // === Actions principales avec validation ===
   async function fetchProjetsGlobaux(force = false) {
     // Cache simple : ne recharge que si nécessaire
     if (!force && state.lastFetch && (Date.now() - state.lastFetch.getTime()) < 30000) {
@@ -147,9 +221,43 @@ export function useProjets() {
     }
 
     return updateLoadingState(async () => {
-      const response = await axios.get(`${baseUrl}/projets/tree`)
-      state.projetsGlobaux = response.data.projets_global
-      return state.projetsGlobaux
+      try {
+        const response = await axios.get(`${baseUrl}/sous_projets/tree`)
+        const projetsGlobauxData = response.data?.projets_global
+        
+        if (!Array.isArray(projetsGlobauxData)) {
+          console.warn('Invalid data structure received:', response.data)
+          state.projetsGlobaux = []
+          return []
+        }
+
+        // Normalisation backend → frontend
+        const cleanedData = projetsGlobauxData.map((pg: any) => ({
+          ...pg,
+          projets: Array.isArray(pg.sous_projets)
+            ? pg.sous_projets.map((sp: any) => ({
+                id: sp.id,
+                nom: sp.nom,
+                fpack_id: sp.fpack_id,
+                id_global: sp.id_global,
+                fpack_nom: sp.fpack_nom,
+                client_nom: sp.client_nom,
+                complet: sp.complet,
+                nb_selections: sp.nb_selections,
+                nb_groupes_attendus: sp.nb_groupes_attendus,
+                progression_percent: sp.nb_groupes_attendus
+                  ? Math.round((sp.nb_selections / sp.nb_groupes_attendus) * 100)
+                  : 0
+              }))
+            : []
+        }))
+
+        state.projetsGlobaux = cleanedData.filter(isValidProjetGlobal)
+        return state.projetsGlobaux
+      } catch (error) {
+        console.error('Error fetching projets globaux:', error)
+        throw error
+      }
     })
   }
 
@@ -172,7 +280,7 @@ export function useProjets() {
     id_global?: number | null
   }) {
     return updateLoadingState(async () => {
-      const response = await axios.post(`${baseUrl}/projets`, data)
+      const response = await axios.post(`${baseUrl}/sous_projets`, data)
       showToast('Projet créé avec succès', '#10b981')
       await fetchProjetsGlobaux(true)
       return response.data
@@ -194,7 +302,7 @@ export function useProjets() {
 
   async function deleteProjetGlobal(id: number) {
     return updateLoadingState(async () => {
-      const projetGlobal = state.projetsGlobaux.find(pg => pg.id === id)
+      const projetGlobal = state.projetsGlobaux.find(pg => pg?.id === id)
       const nom = projetGlobal?.projet || `Projet ${id}`
       
       await axios.delete(`${baseUrl}/projets-global/${id}`)
@@ -208,17 +316,15 @@ export function useProjets() {
       const projet = getProjetById(id)
       const nom = projet?.nom || `Projet ${id}`
       
-      const response = await axios.delete(`${baseUrl}/projets/${id}`)
+      const response = await axios.delete(`${baseUrl}/sous_projets/${id}`)
       
-      // Message personnalisé avec info sur les sélections supprimées
-      const selectionsMsg = response.data.selections_supprimees > 0 
+      const selectionsMsg = response.data?.selections_supprimees > 0 
         ? ` (${response.data.selections_supprimees} sélections supprimées)` 
         : ''
       
       showToast(`Projet "${nom}" supprimé${selectionsMsg}`, '#10b981')
       await fetchProjetsGlobaux(true)
       
-      // Si c'était le projet courant, le déselectionner
       if (state.currentProjetId === id) {
         state.currentProjetId = null
       }
@@ -229,23 +335,22 @@ export function useProjets() {
 
   async function getProjetDetails(id: number): Promise<ProjetDetails> {
     return updateLoadingState(async () => {
-      const response = await axios.get(`${baseUrl}/projets/${id}/details`)
+      const response = await axios.get(`${baseUrl}/sous_projets/${id}/details`)
       return response.data
     })
   }
 
   async function saveProjetSelections(id: number, selections: any[]) {
     return updateLoadingState(async () => {
-      const response = await axios.put(`${baseUrl}/projets/${id}/selections`, {
+      const response = await axios.put(`${baseUrl}/sous_projets/${id}/selections`, {
         selections
       })
       
       showToast(
-        `${response.data.nouveau_nombre} sélections enregistrées`, 
+        `${response.data?.nouveau_nombre || 0} sélections enregistrées`, 
         '#10b981'
       )
       
-      // Rafraîchir les données pour mettre à jour les stats
       await fetchProjetsGlobaux(true)
       return response.data
     })
@@ -253,56 +358,85 @@ export function useProjets() {
 
   async function getProjetFacture(id: number) {
     return updateLoadingState(async () => {
-      const response = await axios.get(`${baseUrl}/projets/${id}/facture`)
+      const response = await axios.get(`${baseUrl}/sous_projets/${id}/facture`)
       return response.data
     })
   }
 
-  // === Actions utilitaires ===
   function setCurrentProjet(id: number | null) {
     state.currentProjetId = id
   }
 
-  function getProjetById(id: number): Projet | undefined {
-    return allProjets.value.find(p => p.id === id)
+  function getProjetById(id: number): Sous_Projet | undefined {
+    try {
+      return allProjets.value.find(p => isValidProjet(p) && p.id === id)
+    } catch (error) {
+      console.error('Error in getProjetById:', error)
+      return undefined
+    }
   }
 
   function getProjetGlobalById(id: number): ProjetGlobal | undefined {
-    return state.projetsGlobaux.find(pg => pg.id === id)
+    try {
+      return state.projetsGlobaux.find(pg => isValidProjetGlobal(pg) && pg.id === id)
+    } catch (error) {
+      console.error('Error in getProjetGlobalById:', error)
+      return undefined
+    }
   }
 
-  function getProjetsOfGlobal(globalId: number): Projet[] {
-    const projetGlobal = getProjetGlobalById(globalId)
-    return projetGlobal?.projets || []
+  function getProjetsOfGlobal(globalId: number): Sous_Projet[] {
+    try {
+      const projetGlobal = getProjetGlobalById(globalId)
+      return projetGlobal?.projets?.filter(isValidProjet) || []
+    } catch (error) {
+      console.error('Error in getProjetsOfGlobal:', error)
+      return []
+    }
   }
 
-  function searchProjets(query: string): Projet[] {
-    if (!query.trim()) return allProjets.value
-    
-    const searchLower = query.toLowerCase()
-    return allProjets.value.filter(projet => 
-      projet.nom.toLowerCase().includes(searchLower) ||
-      projet.fpack_nom?.toLowerCase().includes(searchLower) ||
-      projet.client_nom?.toLowerCase().includes(searchLower)
-    )
+  function searchProjets(query: string): Sous_Projet[] {
+    try {
+      if (!query?.trim()) return allProjets.value
+      
+      const searchLower = query.toLowerCase()
+      return allProjets.value.filter(projet => {
+        if (!isValidProjet(projet)) return false
+        
+        return projet.nom?.toLowerCase().includes(searchLower) ||
+               projet.fpack_nom?.toLowerCase().includes(searchLower) ||
+               projet.client_nom?.toLowerCase().includes(searchLower)
+      })
+    } catch (error) {
+      console.error('Error in searchProjets:', error)
+      return []
+    }
   }
 
   function searchProjetsGlobaux(query: string): ProjetGlobal[] {
-    if (!query.trim()) return state.projetsGlobaux
-    
-    const searchLower = query.toLowerCase()
-    return state.projetsGlobaux.filter(pg => 
-      pg.projet.toLowerCase().includes(searchLower) ||
-      pg.sous_projet?.toLowerCase().includes(searchLower) ||
-      pg.client_nom.toLowerCase().includes(searchLower) ||
-      pg.projets.some(p => 
-        p.nom.toLowerCase().includes(searchLower) ||
-        p.fpack_nom?.toLowerCase().includes(searchLower)
-      )
-    )
+    try {
+      if (!query?.trim()) return state.projetsGlobaux
+      
+      const searchLower = query.toLowerCase()
+      return state.projetsGlobaux.filter(pg => {
+        if (!isValidProjetGlobal(pg)) return false
+        
+        return pg.projet?.toLowerCase().includes(searchLower) ||
+               pg.sous_projet?.toLowerCase().includes(searchLower) ||
+               pg.client_nom?.toLowerCase().includes(searchLower) ||
+               pg.projets?.some(p => 
+                 isValidProjet(p) && (
+                   p.nom?.toLowerCase().includes(searchLower) ||
+                   p.fpack_nom?.toLowerCase().includes(searchLower)
+                 )
+               )
+      })
+    } catch (error) {
+      console.error('Error in searchProjetsGlobaux:', error)
+      return []
+    }
   }
 
-  // Reset des données (utile pour les tests ou déconnexion)
   function resetState() {
     state.projetsGlobaux = []
     state.currentProjetId = null
@@ -312,20 +446,15 @@ export function useProjets() {
   }
 
   return {
-    // État
     projetsGlobaux: computed(() => state.projetsGlobaux),
     loading: computed(() => state.loading),
     error: computed(() => state.error),
     lastFetch: computed(() => state.lastFetch),
-    
-    // Computed
     allProjets,
     projetsParClient,
     currentProjet,
     projetsByStatus,
     globalStats,
-    
-    // Actions principales
     fetchProjetsGlobaux,
     createProjetGlobal,
     createProjet,
@@ -335,8 +464,6 @@ export function useProjets() {
     getProjetDetails,
     saveProjetSelections,
     getProjetFacture,
-    
-    // Actions utilitaires
     setCurrentProjet,
     getProjetById,
     getProjetGlobalById,
@@ -346,5 +473,3 @@ export function useProjets() {
     resetState
   }
 }
-
-

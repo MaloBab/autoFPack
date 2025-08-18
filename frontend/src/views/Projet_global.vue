@@ -9,6 +9,14 @@ import { showToast } from '../composables/useToast'
 import { useLoading } from '../composables/useLoading'
 import axios from 'axios'
 
+// Types pour les sous-projets
+interface SousProjet {
+  id: number
+  nom: string
+  description?: string
+  id_global: number
+}
+
 const { startLoading, stopLoading } = useLoading()
 const router = useRouter()
 
@@ -26,13 +34,47 @@ const {
   updateProjetGlobal
 } = useProjets()
 
-// État local pour les modales et formulaires
+// Fonctions pour les sous-projets (à ajouter si elles n'existent pas dans le composable)
+async function createSousProjet(sousProjetData: { nom: string; description: string; id_global?: number | null }) {
+  try {
+    const response = await axios.post('http://localhost:8000/sous_projets', sousProjetData)
+    showToast('Sous-projet créé avec succès', '#10b981')
+    await fetchProjetsGlobaux(true)
+    return response.data
+  } catch (error: any) {
+    throw error
+  }
+}
+
+async function deleteSousProjet(sousProjetId: number) {
+  try {
+    await axios.delete(`http://localhost:8000/sous_projets/${sousProjetId}`)
+    showToast('Sous-projet supprimé avec succès', '#10b981')
+    await fetchProjetsGlobaux(true)
+  } catch (error: any) {
+    throw error
+  }
+}
+
+async function updateSousProjet(sousProjetId: number, updateData: { nom: string; description?: string }) {
+  try {
+    const response = await axios.put(`http://localhost:8000/sous_projets/${sousProjetId}`, updateData)
+    showToast('Sous-projet modifié avec succès', '#10b981')
+    await fetchProjetsGlobaux(true)
+    return response.data
+  } catch (error: any) {
+    throw error
+  }
+}
+
 const searchTerm = ref('')
 const showAddGlobalModal = ref(false)
 const showAddProjetModal = ref(false)
+const showAddSousProjetModal = ref(false)
 const showDeleteConfirmModal = ref(false)
 const selectedGlobalId = ref<number | null>(null)
-const itemToDelete = ref<{ type: 'global' | 'projet', id: number, nom: string } | null>(null)
+const selectedSousProjetId = ref<number | null>(null)
+const itemToDelete = ref<{ type: 'global' | 'projet' | 'sous-projet', id: number, nom: string } | null>(null)
 const allCardsExpanded = ref(true)
 
 const newGlobal = ref({
@@ -44,11 +86,19 @@ const newGlobal = ref({
 const newProjet = ref({
   nom: '',
   fpack_id: null as number | null,
+  id_global: null as number | null,
+  id_sous_projet: null as number | null
+})
+
+const newSousProjet = ref({
+  nom: '',
+  description: '',
   id_global: null as number | null
 })
 
 const globalErrors = ref<Record<string, string>>({})
 const projetErrors = ref<Record<string, string>>({})
+const sousProjetErrors = ref<Record<string, string>>({})
 
 const clients = ref<Array<{ id: number, nom: string }>>([])
 const fpacks = ref<Array<{ id: number, nom: string, client: number }>>([])
@@ -89,6 +139,16 @@ const validateProjetForm = (): boolean => {
   }
   
   return Object.keys(projetErrors.value).length === 0
+}
+
+const validateSousProjetForm = (): boolean => {
+  sousProjetErrors.value = {}
+  
+  if (!newSousProjet.value.nom.trim()) {
+    sousProjetErrors.value.nom = 'Le nom du sous-projet est requis'
+  }
+  
+  return Object.keys(sousProjetErrors.value).length === 0
 }
 
 // Actions principales
@@ -137,9 +197,21 @@ async function handleCreateProjet() {
   }
 }
 
-function onDeleteItem(type: 'global' | 'projet', id: number, nom: string) {
+async function handleCreateSousProjet() {
+  if (!validateSousProjetForm()) return
+  
+  try {
+    await createSousProjet(newSousProjet.value)
+    closeSousProjetModal()
+  } catch (error: any) {
+    const message = error.response?.data?.detail || 'Erreur lors de la création'
+    showToast(message, '#e71717ff')
+  }
+}
+
+function onDeleteItem(type: 'global' | 'projet' | 'sous-projet', id: number, nom: string) {
   itemToDelete.value = { type, id, nom }
-  confirmDelete()
+  showDeleteConfirmModal.value = true
 }
 
 async function confirmDelete() {
@@ -148,8 +220,10 @@ async function confirmDelete() {
   try {
     if (itemToDelete.value.type === 'global') {
       await deleteProjetGlobal(itemToDelete.value.id)
-    } else {
+    } else if (itemToDelete.value.type === 'projet') {
       await deleteProjet(itemToDelete.value.id)
+    } else if (itemToDelete.value.type === 'sous-projet') {
+      await deleteSousProjet(itemToDelete.value.id)
     }
     showDeleteConfirmModal.value = false
     itemToDelete.value = null
@@ -169,10 +243,12 @@ function openAddGlobalModal() {
   showAddGlobalModal.value = true
 }
 
-function openAddProjetModal(globalId: number) {
+function openAddProjetModal(globalId: number, sousProjetId?: number) {
   selectedGlobalId.value = globalId
+  selectedSousProjetId.value = sousProjetId || null
   resetProjetForm()
   newProjet.value.id_global = globalId
+  newProjet.value.id_sous_projet = sousProjetId || null
   
   // Pré-sélectionner le premier FPack disponible
   const availableFpacks = fpacksForProjet.value
@@ -181,6 +257,13 @@ function openAddProjetModal(globalId: number) {
   }
   
   showAddProjetModal.value = true
+}
+
+function openAddSousProjetModal(globalId: number) {
+  selectedGlobalId.value = globalId
+  resetSousProjetForm()
+  newSousProjet.value.id_global = globalId
+  showAddSousProjetModal.value = true
 }
 
 function closeGlobalModal() {
@@ -192,6 +275,13 @@ function closeProjetModal() {
   showAddProjetModal.value = false
   resetProjetForm()
   selectedGlobalId.value = null
+  selectedSousProjetId.value = null
+}
+
+function closeSousProjetModal() {
+  showAddSousProjetModal.value = false
+  resetSousProjetForm()
+  selectedGlobalId.value = null
 }
 
 function resetGlobalForm() {
@@ -200,8 +290,13 @@ function resetGlobalForm() {
 }
 
 function resetProjetForm() {
-  newProjet.value = { nom: '', fpack_id: null, id_global: null }
+  newProjet.value = { nom: '', fpack_id: null, id_global: null, id_sous_projet: null }
   projetErrors.value = {}
+}
+
+function resetSousProjetForm() {
+  newSousProjet.value = { nom: '', description: '', id_global: null }
+  sousProjetErrors.value = {}
 }
 
 // Navigation
@@ -209,15 +304,6 @@ function navigateToComplete(projetId: number) {
   console.log(`/complete/projets/${projetId}`)
   router.push(`/complete/projets/${projetId}`)
 }
-
-watch(
-  () => router.currentRoute.value.path,
-  async () => {
-    if (router.currentRoute.value.path === '/projet_global') {
-      await fetchData()
-    }
-  }
-)
 
 function navigateToFacture(projetId: number) {
   router.push(`/facture/${projetId}`)
@@ -227,15 +313,21 @@ function navigateToDetails(projetId: number) {
   router.push(`/projets/${projetId}/details`)
 }
 
+// Édition
 const showEditGlobalModal = ref(false)
+const showEditSousProjetModal = ref(false)
 const editingGlobal = ref({
   id: null as number | null,
   projet: '',
   sous_projet: '',
   client: null as number | null
 })
+const editingSousProjet = ref({
+  id: null as number | null,
+  nom: '',
+  description: ''
+})
 
-// 2. Remplacez la fonction navigateToEdit
 function openEditGlobalModal(globalId: number) {
   const projetGlobal = projetsGlobaux.value.find(pg => pg.id === globalId)
   if (projetGlobal) {
@@ -249,12 +341,37 @@ function openEditGlobalModal(globalId: number) {
   }
 }
 
+function openEditSousProjetModal(sousProjetId: number) {
+  // Chercher le sous-projet dans tous les projets globaux
+  let targetSousProjet: SousProjet | null = null
+  for (const pg of projetsGlobaux.value) {
+    const sousProjet = pg.projets?.find((sp: SousProjet) => sp.id === sousProjetId)
+    if (sousProjet) {
+      targetSousProjet = sousProjet
+      break
+    }
+  }
+  
+  if (targetSousProjet) {
+    editingSousProjet.value = {
+      id: targetSousProjet.id,
+      nom: targetSousProjet.nom,
+      description: targetSousProjet.description || ''
+    }
+    showEditSousProjetModal.value = true
+  }
+}
+
 function closeEditModal() {
   showEditGlobalModal.value = false
   editingGlobal.value = { id: null, projet: '', sous_projet: '', client: null }
 }
 
-// 3. Ajoutez une fonction de sauvegarde
+function closeEditSousProjetModal() {
+  showEditSousProjetModal.value = false
+  editingSousProjet.value = { id: null, nom: '', description: '' }
+}
+
 async function handleUpdateProjetGlobal() {
   if (!editingGlobal.value.id) return
   
@@ -272,6 +389,23 @@ async function handleUpdateProjetGlobal() {
   }
 }
 
+async function handleUpdateSousProjet() {
+  if (!editingSousProjet.value.id) return
+  
+  try {
+    await updateSousProjet(editingSousProjet.value.id, {
+      nom: editingSousProjet.value.nom,
+      description: editingSousProjet.value.description
+    })
+    closeEditSousProjetModal()
+    showToast('Sous-projet modifié avec succès', '#10b981')
+  } catch (error: any) {
+    const message = error.response?.data?.detail || 'Erreur lors de la modification'
+    showToast(message, '#e71717ff')
+  }
+}
+
+// Watchers
 watch(
   () => router.currentRoute.value.path,
   async (newPath, oldPath) => {
@@ -301,6 +435,10 @@ watch(() => newProjet.value.nom, () => {
 
 watch(() => newProjet.value.fpack_id, () => {
   if (projetErrors.value.fpack_id) delete projetErrors.value.fpack_id
+})
+
+watch(() => newSousProjet.value.nom, () => {
+  if (sousProjetErrors.value.nom) delete sousProjetErrors.value.nom
 })
 
 onMounted(() => {
@@ -365,8 +503,11 @@ onMounted(() => {
           :projet-global="projetGlobal"
           :force-expanded="allCardsExpanded"
           @add-projet="openAddProjetModal"
-          @edit-global="openEditGlobalModal(projetGlobal.id)"
+          @add-sous-projet="openAddSousProjetModal"
+          @edit-global="openEditGlobalModal"
+          @edit-sous-projet="openEditSousProjetModal"
           @delete-global="(id, nom) => onDeleteItem('global', id, nom)"
+          @delete-sous-projet="(id, nom) => onDeleteItem('sous-projet', id, nom)"
           @delete-projet="(id, nom) => onDeleteItem('projet', id, nom)"
           @complete-projet="navigateToComplete"
           @view-facture="navigateToFacture"
@@ -406,13 +547,6 @@ onMounted(() => {
               </div>
               
               <div class="form-group">
-                <label>Sous-projet</label>
-                <input 
-                  v-model="newGlobal.sous_projet"
-                />
-              </div>
-              
-              <div class="form-group">
                 <label>Client</label>
                 <select 
                   v-model="newGlobal.client" 
@@ -446,7 +580,7 @@ onMounted(() => {
         <div v-if="showEditGlobalModal" class="modal-overlay" @click="closeEditModal">
           <div class="modal enhanced-modal" @click.stop>
             <div class="modal-header">
-              <h3>✏️ Modifier le Projet Global</h3>
+              <h3>✏️ Modifier le Projet</h3>
               <button @click="closeEditModal" class="close-button">&times;</button>
             </div>
             
@@ -456,13 +590,6 @@ onMounted(() => {
                 <input 
                   v-model="editingGlobal.projet" 
                   required
-                />
-              </div>
-              
-              <div class="form-group">
-                <label>Sous-projet</label>
-                <input 
-                  v-model="editingGlobal.sous_projet"
                 />
               </div>
               
@@ -481,6 +608,89 @@ onMounted(() => {
               
               <div class="modal-actions">
                 <button type="button" @click="closeEditModal" class="btn-cancel">
+                  Annuler
+                </button>
+                <button type="submit" class="btn-primary">
+                  💾 Sauvegarder
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      </Transition>
+    </Teleport>
+
+    <!-- Modal Nouveau Sous-Projet -->
+    <Teleport to="body">
+      <Transition name="modal">
+        <div v-if="showAddSousProjetModal" class="modal-overlay" @click="closeSousProjetModal">
+          <div class="modal enhanced-modal" @click.stop>
+            <div class="modal-header">
+              <h3>📁 Nouveau Sous-Projet</h3>
+              <button @click="closeSousProjetModal" class="close-button">&times;</button>
+            </div>
+            
+            <form @submit.prevent="handleCreateSousProjet" class="enhanced-form">
+              <div class="form-group">
+                <label>Nom du Sous-Projet</label>
+                <input 
+                  v-model="newSousProjet.nom" 
+                  :class="{ 'error': sousProjetErrors.nom }"
+                />
+                <span v-if="sousProjetErrors.nom" class="error-message">{{ sousProjetErrors.nom }}</span>
+              </div>
+              
+              <div class="form-group">
+                <label>Description</label>
+                <textarea 
+                  v-model="newSousProjet.description"
+                  rows="3"
+                ></textarea>
+              </div>
+              
+              <div class="modal-actions">
+                <button type="button" @click="closeSousProjetModal" class="btn-cancel">
+                  Annuler
+                </button>
+                <button type="submit" class="btn-primary">
+                  📁 Créer le sous-projet
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      </Transition>
+    </Teleport>
+
+    <!-- Modal Édition Sous-Projet -->
+    <Teleport to="body">
+      <Transition name="modal">
+        <div v-if="showEditSousProjetModal" class="modal-overlay" @click="closeEditSousProjetModal">
+          <div class="modal enhanced-modal" @click.stop>
+            <div class="modal-header">
+              <h3>✏️ Modifier le Sous-Projet</h3>
+              <button @click="closeEditSousProjetModal" class="close-button">&times;</button>
+            </div>
+            
+            <form @submit.prevent="handleUpdateSousProjet" class="enhanced-form">
+              <div class="form-group">
+                <label>Nom du Sous-Projet</label>
+                <input 
+                  v-model="editingSousProjet.nom" 
+                  required
+                />
+              </div>
+              
+              <div class="form-group">
+                <label>Description</label>
+                <textarea 
+                  v-model="editingSousProjet.description"
+                  rows="3"
+                ></textarea>
+              </div>
+              
+              <div class="modal-actions">
+                <button type="button" @click="closeEditSousProjetModal" class="btn-cancel">
                   Annuler
                 </button>
                 <button type="submit" class="btn-primary">
@@ -543,7 +753,7 @@ onMounted(() => {
                   class="btn-primary"
                   :disabled="fpacksForProjet.length === 0"
                 >
-                  🎯 Créer le projet
+                  🎯 Créer le F-Pack
                 </button>
               </div>
             </form>
@@ -551,18 +761,58 @@ onMounted(() => {
         </div>
       </Transition>
     </Teleport>
+
+    <!-- Modal de Confirmation de Suppression -->
+    <Teleport to="body">
+      <Transition name="modal">
+        <div v-if="showDeleteConfirmModal" class="modal-overlay" @click="showDeleteConfirmModal = false">
+          <div class="modal danger-modal" @click.stop>
+            <div class="modal-header danger">
+              <h3>🗑️ Confirmer la suppression</h3>
+              <button @click="showDeleteConfirmModal = false" class="close-button">&times;</button>
+            </div>
+            
+            <div class="modal-body">
+              <div v-if="itemToDelete" class="item-to-delete">
+                <p class="warning-text">
+                  Êtes-vous sûr de vouloir supprimer 
+                  <strong>{{ itemToDelete.type === 'global' ? 'le projet' : itemToDelete.type === 'sous-projet' ? 'le sous-projet' : 'le F-Pack' }}</strong>
+                  "{{ itemToDelete.nom }}" ?
+                </p>
+                <p v-if="itemToDelete.type === 'global'" class="warning-text">
+                  Cette action supprimera également tous les sous-projets et F-Packs associés.
+                </p>
+                <p v-else-if="itemToDelete.type === 'sous-projet'" class="warning-text">
+                  Cette action supprimera également tous les F-Packs associés à ce sous-projet.
+                </p>
+              </div>
+              
+              <div class="modal-actions">
+                <button @click="showDeleteConfirmModal = false" class="btn-cancel">
+                  Annuler
+                </button>
+                <button @click="confirmDelete" class="btn-danger">
+                  🗑️ Supprimer
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      </Transition>
+    </Teleport>
   </div>
-      <!-- Barre de recherche améliorée -->
-    <div class="search-section">
-      <TextSearch 
-        v-model="searchTerm" 
-        placeholder="Rechercher par nom de projet, client, FPack..." 
-        class="enhanced-search"
-      />
-      <div v-if="searchTerm" class="search-results-info">
-        {{ filteredProjetsTree.length }} résultat(s) trouvé(s)
-      </div>
+  
+  <!-- Barre de recherche améliorée -->
+  <div class="search-section">
+    <TextSearch 
+      v-model="searchTerm" 
+      placeholder="Rechercher par nom de projet, client, FPack..." 
+      class="enhanced-search"
+    />
+    <div v-if="searchTerm" class="search-results-info">
+      {{ filteredProjetsTree.length }} résultat(s) trouvé(s)
     </div>
+  </div>
 </template>
 
 <style scoped>
@@ -607,13 +857,13 @@ onMounted(() => {
   justify-content: space-between;
   gap: 1.5rem;
   margin-top: 2rem;
-  flex-wrap: nowrap;  /* Empêche le retour à la ligne */
+  flex-wrap: nowrap;
   width: 100%;
 }
 
 .stat-card {
-  flex: 1 1 0;  /* Répartition égale de l'espace */
-  min-width: 180px;  /* Taille minimum */
+  flex: 1 1 0;
+  min-width: 180px;
   background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);
   color: white;
   padding: 0.8rem;
@@ -658,7 +908,6 @@ onMounted(() => {
 .search-section {
   display: flex;
   gap: 1rem;
-
 }
 
 .search-results-info {
@@ -673,7 +922,6 @@ onMounted(() => {
   position: relative;
   min-height: 200px;
   max-height: calc(100vh - 450px);
-  
   padding-right: 1rem;
 }
 
@@ -856,17 +1104,21 @@ onMounted(() => {
 }
 
 .form-group input,
-.form-group select {
+.form-group select,
+.form-group textarea {
   width: 100%;
   padding: 0.875rem;
   border: 2px solid #e5e7eb;
   border-radius: 8px;
   font-size: 1rem;
   transition: border-color 0.2s, box-shadow 0.2s;
+  font-family: inherit;
+  resize: vertical;
 }
 
 .form-group input:focus,
-.form-group select:focus {
+.form-group select:focus,
+.form-group textarea:focus {
   outline: none;
   border-color: #3b82f6;
   box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
@@ -905,6 +1157,7 @@ onMounted(() => {
   color: #ef4444;
   font-size: 0.9rem;
   font-weight: 500;
+  margin: 0.5rem 0;
 }
 
 .modal-actions {

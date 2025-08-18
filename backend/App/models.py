@@ -154,16 +154,15 @@ class ProjetGlobal(Base):
 
     id = Column(Integer, primary_key=True, autoincrement=True)
     projet = Column(String(255))
-    sous_projet = Column(String(255))
     client = Column(Integer, ForeignKey("dbo.FPM_clients.id", ondelete="CASCADE"), nullable=False)
 
-    projets = relationship("Projet", back_populates="global_rel", cascade="all, delete-orphan")
+    projets = relationship("SousProjet", back_populates="global_rel", cascade="all, delete-orphan")
     client_rel = relationship("Client", passive_deletes=True)
 
 #PROJET
 
-class Projet(Base):
-    __tablename__ = "FPM_projets"
+class SousProjet(Base):
+    __tablename__ = "FPM_sous_projets"
     __table_args__ = {'schema': 'dbo'}
 
     id = Column(Integer, primary_key=True, autoincrement=True)
@@ -175,7 +174,7 @@ class Projet(Base):
 
     global_rel = relationship("ProjetGlobal", back_populates="projets", passive_deletes=True)
     fpack_rel = relationship("FPack", passive_deletes=True)  
-    selections = relationship("ProjetSelection", back_populates="projet", cascade="all, delete-orphan")
+    selections = relationship("ProjetSelection", back_populates="sous_projet", cascade="all, delete-orphan")
 
 
 
@@ -184,9 +183,9 @@ class ProjetSelection(Base):
     __table_args__ =  {'schema': 'dbo'}
 
 
-    projet_id = Column(Integer, ForeignKey("dbo.FPM_projets.id", ondelete="CASCADE"), primary_key=True)
+    projet_id = Column(Integer, ForeignKey("dbo.FPM_sous_projets.id", ondelete="CASCADE"), primary_key=True)
     groupe_id = Column(Integer, ForeignKey("dbo.FPM_groupes.id", ondelete="CASCADE"), primary_key=True)
     type_item = Column(String(50), nullable=False)
     ref_id = Column(Integer, nullable=False)
 
-    projet = relationship("Projet", back_populates="selections")
+    sous_projet = relationship("SousProjet", back_populates="selections")

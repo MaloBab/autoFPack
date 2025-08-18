@@ -18,7 +18,7 @@ const totalGlobal = computed(() => facture.value?.totaux?.global ?? 0)
 const exportFactureExcel = async () => {
   try {
     const projetId = route.params.id
-    const response = await axios.get(`http://localhost:8000/projets/${projetId}/facture-excel`, {
+    const response = await axios.get(`http://localhost:8000/sous_projets/${projetId}/facture-excel`, {
       responseType: 'blob'
     })
 
@@ -42,7 +42,7 @@ const exportFactureExcel = async () => {
 const exportFacturePDF = async () => {
   const projetId = route.params.id
   try {
-    const response = await axios.get(`http://localhost:8000/projets/${projetId}/facture-pdf`, {
+    const response = await axios.get(`http://localhost:8000/sous_projets/${projetId}/facture-pdf`, {
       responseType: 'blob'
     })
 
@@ -66,7 +66,7 @@ async function fetchFacture() {
   loading.value = true
   try {
     const id = route.params.id
-    const res = await axios.get(`http://localhost:8000/projets/${id}/facture`)
+    const res = await axios.get(`http://localhost:8000/sous_projets/${id}/facture`)
     facture.value = res.data
     console.log("Facture lignes", facture.value)
   } catch (err) {

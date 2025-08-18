@@ -1,9 +1,9 @@
-from fastapi import APIRouter, Depends, HTTPException, Body
-from sqlalchemy.orm import Session, joinedload
-from sqlalchemy import func
+from fastapi import APIRouter, Depends, HTTPException, Body # type: ignore
+from sqlalchemy.orm import Session, joinedload # type: ignore
+from sqlalchemy import func # type: ignore
 from App.database import SessionLocal
 from App import models, schemas
-from typing import Dict, Any, List
+from typing import Dict, List
 
 router = APIRouter()
 
@@ -54,18 +54,16 @@ class ProjetDetailService:
         item = db.query(model_class).get(ref_id)
         return item.nom if item else f"{prefix} {ref_id}"
 
-@router.get("/projets/tree", response_model=schemas.ProjetTree)
+@router.get("/sous_projets/tree", response_model=schemas.ProjetTree)
 def get_projets_tree(db: Session = Depends(get_db)):
     """Arbre complet optimisé des projets par projet global"""
     projets_global = db.query(models.ProjetGlobal)\
         .options(joinedload(models.ProjetGlobal.projets))\
         .all()
     
-    # Pré-chargement des données de référence
     clients_map = {c.id: c.nom for c in db.query(models.Client).all()}
     fpacks_map = {f.id: f for f in db.query(models.FPack).all()}
     
-    # Calcul des statistiques en une seule requête
     selections_stats = db.query(
         models.ProjetSelection.projet_id,
         func.count(models.ProjetSelection.groupe_id).label('nb_selections')
@@ -97,7 +95,6 @@ def get_projets_tree(db: Session = Depends(get_db)):
                 "fpack_nom": fpack.nom if fpack else None,
                 "client_nom": clients_map.get(fpack.client) if fpack else None,
                 "projet_global_nom": pg.projet,
-                "sous_projet_nom": pg.sous_projet,
                 "complet": nb_selections >= nb_groupes_attendus if nb_groupes_attendus > 0 else False,
                 "nb_selections": nb_selections,
                 "nb_groupes_attendus": nb_groupes_attendus,
@@ -107,15 +104,14 @@ def get_projets_tree(db: Session = Depends(get_db)):
         result.append({
             "id": pg.id,
             "projet": pg.projet,
-            "sous_projet": pg.sous_projet,
             "client": pg.client,
             "client_nom": clients_map.get(pg.client),
-            "projets": projets_details
+            "sous_projets": projets_details
         })
     
     return {"projets_global": result}
 
-@router.get("/projets-global/{global_id}/projets", response_model=list[schemas.ProjetReadWithDetails])
+@router.get("/projets-global/{global_id}/sous_projets", response_model=list[schemas.SousProjetReadWithDetails])
 def get_projets_by_global(global_id: int, db: Session = Depends(get_db)):
     """Projets d'un projet global avec validation"""
     # Vérifier que le projet global existe
@@ -123,7 +119,7 @@ def get_projets_by_global(global_id: int, db: Session = Depends(get_db)):
     if not projet_global:
         raise HTTPException(status_code=404, detail="Projet global non trouvé")
     
-    projets = db.query(models.Projet).filter_by(id_global=global_id).all()
+    projets = db.query(models.SousProjet).filter_by(id_global=global_id).all()
     
     clients_map = {c.id: c.nom for c in db.query(models.Client).all()}
     fpacks_map = {f.id: f for f in db.query(models.FPack).all()}
@@ -154,8 +150,8 @@ def get_projets_by_global(global_id: int, db: Session = Depends(get_db)):
     
     return result
 
-@router.post("/projets", response_model=schemas.ProjetRead)
-def create_projet(projet: schemas.ProjetCreate, db: Session = Depends(get_db)):
+@router.post("/sous_projets", response_model=schemas.SousProjetRead)
+def create_projet(projet: schemas.SousProjetCreate, db: Session = Depends(get_db)):
     """Crée un projet avec validations complètes"""
     projet_global = db.query(models.ProjetGlobal).get(projet.id_global)
     if not projet_global:
@@ -172,7 +168,7 @@ def create_projet(projet: schemas.ProjetCreate, db: Session = Depends(get_db)):
         )
     
     # Vérifier l'unicité du nom dans le projet global
-    existing = db.query(models.Projet)\
+    existing = db.query(models.SousProjet)\
         .filter_by(id_global=projet.id_global, nom=projet.nom)\
         .first()
     
@@ -182,16 +178,16 @@ def create_projet(projet: schemas.ProjetCreate, db: Session = Depends(get_db)):
             detail="Un projet avec ce nom existe déjà dans ce projet global"
         )
     
-    db_projet = models.Projet(**projet.dict())
+    db_projet = models.SousProjet(**projet.dict())
     db.add(db_projet)
     db.commit()
     db.refresh(db_projet)
     return db_projet
 
-@router.delete("/projets/{id}")
+@router.delete("/sous_projets/{id}")
 def delete_projet(id: int, db: Session = Depends(get_db)):
     """Supprime un projet avec nettoyage des sélections"""
-    projet = db.query(models.Projet).get(id)
+    projet = db.query(models.SousProjet).get(id)
     if not projet:
         raise HTTPException(status_code=404, detail="Projet non trouvé")
     
@@ -214,10 +210,10 @@ def delete_projet(id: int, db: Session = Depends(get_db)):
         "selections_supprimees": nb_selections
     }
 
-@router.get("/projets/{id}/details")
+@router.get("/sous_projets/{id}/details")
 def get_projet_details(id: int, db: Session = Depends(get_db)):
     """Détails complets optimisés d'un projet"""
-    projet = db.query(models.Projet).get(id)
+    projet = db.query(models.SousProjet).get(id)
     if not projet:
         raise HTTPException(status_code=404, detail="Projet non trouvé")
     
@@ -247,7 +243,6 @@ def get_projet_details(id: int, db: Session = Depends(get_db)):
         "projet_global": {
             "id": projet_global.id,
             "projet": projet_global.projet,
-            "sous_projet": projet_global.sous_projet,
             "client": projet_global.client
         } if projet_global else None,
         "fpack": {
@@ -266,10 +261,10 @@ def get_projet_details(id: int, db: Session = Depends(get_db)):
         "progression_percent": round((len(selections_enriched) / nb_groupes_config) * 100, 1) if nb_groupes_config > 0 else 0
     }
 
-@router.get("/projets", response_model=list[schemas.ProjetReadExtended])
+@router.get("/sous_projets", response_model=list[schemas.SousProjetReadExtended])
 def list_projets(db: Session = Depends(get_db)):
     """Liste tous les projets avec stats optimisées"""
-    projets = db.query(models.Projet).all()
+    projets = db.query(models.SousProjet).all()
     
     # Optimisation : une seule requête pour toutes les sélections
     selections_stats = db.query(
@@ -307,18 +302,18 @@ def list_projets(db: Session = Depends(get_db)):
     
     return result
 
-@router.get("/projets/{id}", response_model=schemas.ProjetRead)
+@router.get("/sous_projets/{id}", response_model=schemas.SousProjetRead)
 def get_projet(id: int, db: Session = Depends(get_db)):
     """Récupère un projet par ID"""
-    projet = db.query(models.Projet).get(id)
+    projet = db.query(models.SousProjet).get(id)
     if not projet:
         raise HTTPException(status_code=404, detail="Projet non trouvé")
     return projet
 
-@router.put("/projets/{id}", response_model=schemas.ProjetRead)
-def update_projet(id: int, projet_data: schemas.ProjetCreate, db: Session = Depends(get_db)):
+@router.put("/sous_projets/{id}", response_model=schemas.SousProjetRead)
+def update_projet(id: int, projet_data: schemas.SousProjetCreate, db: Session = Depends(get_db)):
     """Met à jour un projet avec validations"""
-    projet = db.query(models.Projet).get(id)
+    projet = db.query(models.SousProjet).get(id)
     if not projet:
         raise HTTPException(status_code=404, detail="Projet non trouvé")
     
@@ -340,9 +335,9 @@ def update_projet(id: int, projet_data: schemas.ProjetCreate, db: Session = Depe
     
     # Vérifier l'unicité du nom si changement
     if projet_data.nom != projet.nom:
-        existing = db.query(models.Projet)\
+        existing = db.query(models.SousProjet)\
             .filter_by(id_global=projet_data.id_global, nom=projet_data.nom)\
-            .filter(models.Projet.id != id)\
+            .filter(models.SousProjet.id != id)\
             .first()
         
         if existing:
@@ -358,22 +353,22 @@ def update_projet(id: int, projet_data: schemas.ProjetCreate, db: Session = Depe
     db.refresh(projet)
     return projet
 
-@router.get("/projets/{id}/selections", response_model=list[schemas.ProjetSelectionRead])
+@router.get("/sous_projets/{id}/selections", response_model=list[schemas.ProjetSelectionRead])
 def get_projet_selections(id: int, db: Session = Depends(get_db)):
     """Récupère les sélections d'un projet"""
-    if not db.query(models.Projet).get(id):
+    if not db.query(models.SousProjet).get(id):
         raise HTTPException(status_code=404, detail="Projet non trouvé")
     
     return db.query(models.ProjetSelection).filter_by(projet_id=id).all()
 
-@router.put("/projets/{id}/selections", response_model=dict)
+@router.put("/sous_projets/{id}/selections", response_model=dict)
 def save_projet_selections(
     id: int,
     data: dict = Body(...),
     db: Session = Depends(get_db)
 ):
     """Sauvegarde les sélections d'un projet avec validation"""
-    if not db.query(models.Projet).get(id):
+    if not db.query(models.SousProjet).get(id):
         raise HTTPException(status_code=404, detail="Projet non trouvé")
     
     # Supprimer les anciennes sélections
@@ -401,12 +396,12 @@ def save_projet_selections(
         "nouveau_nombre": len(valid_selections)
     }
 
-@router.get("/projets/{id}/facture")
+@router.get("/sous_projets/{id}/facture")
 def get_projet_facture(id: int, db: Session = Depends(get_db)):
     """Génère la facture d'un projet (optimisé)"""
     from collections import defaultdict
 
-    projet = db.query(models.Projet).get(id)
+    projet = db.query(models.SousProjet).get(id)
     if not projet:
         raise HTTPException(status_code=404, detail="Projet non trouvé")
 
@@ -551,7 +546,6 @@ def get_projet_facture(id: int, db: Session = Depends(get_db)):
         "nom_projet": projet.nom,
         "projet_global": {
             "nom": projet_global.projet,
-            "sous_projet": projet_global.sous_projet
         } if projet_global else None,
         "client_id": client_id,
         "fpack": {

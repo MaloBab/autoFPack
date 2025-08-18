@@ -34,7 +34,7 @@ def get_table_columns(table_name: str, db: Session = Depends(get_db)):
             "fpacks": "FPM_fpacks",
             "prix": "FPM_prix",
             "prix_robot": "FPM_prix_robot",
-            "projets": "FPM_projets",
+            "sous_projets": "FPM_sous_projets",
             "projets_global": "FPM_projets_global",
         }
 
@@ -66,7 +66,7 @@ def dashboard_stats(db: Session = Depends(get_db)):
         "clients": db.query(models.Client).count(),
         "fournisseurs": db.query(models.Fournisseur).count(),
         "fpacks": db.query(models.FPack).count(),
-        "projets": db.query(models.Projet).count(),
+        "projets": db.query(models.SousProjet).count(),
     }
 
 
