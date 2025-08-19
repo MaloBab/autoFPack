@@ -13,7 +13,7 @@ import FpackList from '../views/ConfigureFPackListe.vue'
 import Prix from '../views/Prix.vue'
 import Projet_global from '../views/Projet_global.vue'
 import ProjetDetails from '../views/ProjetDetails.vue'
-import CompProjet from '../views/CompleteProjet.vue'
+import CompleteProjet from '../views/CompleteProjet.vue'
 import FactureProjet from '../views/FactureProjet.vue'
 import PrixRobot from '../views/PrixRobot.vue'
 
@@ -34,7 +34,7 @@ const routes = [
   
   { path: '/projet_global', name: 'Projet_global', component: Projet_global},
   { path: '/projets/:id/details', name: 'ProjetDetails', component: ProjetDetails},
-  { path: '/complete/:tableName/:id', name: 'CompleteProjet', component: CompProjet},
+  {path: '/complete-projet/:sous_projet_id/:fpack_id', name: 'CompleteProjet', component: CompleteProjet},
   { path: '/facture/:id', name: 'FactureProjet', component: FactureProjet },
 ]
 

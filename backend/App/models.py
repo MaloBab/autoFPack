@@ -88,6 +88,7 @@ class Equipements(Base):
     __table_args__ = {'schema': 'dbo'}
     
     id = Column(Integer, primary_key=True, index=True)
+    reference = Column(String(60), nullable=True)
     nom = Column(String(255), nullable=False)
     
     equipement_produit = relationship("Equipement_Produit", back_populates="equipements", cascade="all, delete-orphan", passive_deletes=True)
@@ -194,29 +195,29 @@ class SousProjet(Base):
 
     global_rel = relationship("ProjetGlobal", back_populates="projets", passive_deletes=True)
     fpacks = relationship("SousProjetFpack", back_populates="sous_projet", cascade="all, delete-orphan", passive_deletes=True)
-    selections = relationship("ProjetSelection", back_populates="sous_projet", cascade="all, delete-orphan", passive_deletes=True)
 
 class SousProjetFpack(Base):
     __tablename__ = "FPM_sous_projet_fpack"
     __table_args__ = {'schema': 'dbo'}
 
-    sous_projet_id = Column(Integer, ForeignKey("dbo.FPM_sous_projets.id", ondelete="CASCADE"), primary_key=True)
-    fpack_id = Column(Integer, ForeignKey("dbo.FPM_fpacks.id", ondelete="CASCADE"), primary_key=True)
+    id = Column(Integer, primary_key=True, autoincrement=True)
+    sous_projet_id = Column(Integer, ForeignKey("dbo.FPM_sous_projets.id", ondelete="CASCADE"))
+    fpack_id = Column(Integer, ForeignKey("dbo.FPM_fpacks.id", ondelete="CASCADE"))
     FPack_number = Column(String(255), nullable=True)
     Robot_Location_Code = Column(String(255), nullable=True)
 
     sous_projet = relationship("SousProjet", back_populates="fpacks", passive_deletes=True)
     fpack = relationship("FPack", back_populates="sous_projets", passive_deletes=True)
-
+    selections = relationship("ProjetSelection", back_populates="sous_projet_fpack", cascade="all, delete-orphan", passive_deletes=True)
+    
 class ProjetSelection(Base):
     __tablename__ = "FPM_projet_selection"
     __table_args__ = {'schema': 'dbo'}
 
-    projet_id = Column(Integer, ForeignKey("dbo.FPM_sous_projets.id", ondelete="CASCADE"), primary_key=True)
-    fpack_id = Column(Integer, ForeignKey("dbo.FPM_fpacks.id", ondelete="CASCADE"), primary_key=True)  # Ajouté selon la doc
+    sous_projet_fpack_id = Column(Integer, ForeignKey("dbo.FPM_sous_projet_fpack.id", ondelete="CASCADE"), primary_key=True)
     groupe_id = Column(Integer, ForeignKey("dbo.FPM_groupes.id", ondelete="CASCADE"), primary_key=True)
     type_item = Column(String(50), nullable=False)
     ref_id = Column(Integer, nullable=False)
 
-    sous_projet = relationship("SousProjet", back_populates="selections", passive_deletes=True)
+    sous_projet_fpack = relationship("SousProjetFpack", back_populates="selections", passive_deletes=True)
     groupe = relationship("Groupes", back_populates="projet_selections", passive_deletes=True)

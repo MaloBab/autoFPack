@@ -10,8 +10,10 @@ const { startLoading, stopLoading } = useLoading()
 const route = useRoute()
 const router = useRouter()
 
-const projet = ref<any>(null)
+const sousProjet = ref<any>(null)
+const fpackData = ref<any>(null) // Données de l'association sous-projet/fpack
 const configColumns = ref<any[]>([])
+const allConfig = ref<any>(null)
 const produits = ref<any[]>([])
 const robots = ref<any[]>([])
 const produitsSeuls = ref<any[]>([])
@@ -22,12 +24,15 @@ const loading = ref(true)
 const saving = ref(false)
 const expandedGroups = ref<Set<number>>(new Set())
 const groupesRefs = ref<Record<number, HTMLElement | null>>({})
+const hasSelections = ref(false)
 
 const equipementProduitsMap = ref<Record<number, number[]>>({})
 const produitIncompatibilites = ref<{produit_id_1: number, produit_id_2: number}[]>([])
 const robotProduitCompatibilites = ref<{robot_id: number, produit_id: number}[]>([])
 
-
+// Les paramètres de route contiennent maintenant sous_projet_id et fpack_id
+const sousProjetId = computed(() => parseInt(route.params.sous_projet_id as string))
+const fpackId = computed(() => parseInt(route.params.fpack_id as string))
 
 const groupesRemplis = computed(() =>
   groupes.value.filter(g => selections.value[g.ref_id])
@@ -86,27 +91,31 @@ function isItemIncompatible(groupe: any, item: any): boolean {
     }
   })
   for (const sel of selectedItems) {
+    // Cas produit-produit
     if (item.type === 'produit' && sel.type === 'produit') {
       if (areProduitsIncompatible(item.ref_id, sel.ref_id)) return true
     }
+    // Cas équipement-produit (un équipement est incompatible si un de ses produits est incompatible)
     if (item.type === 'equipement' && sel.type === 'produit') {
       const produits = equipementProduitsMap.value[item.ref_id] || []
       if (produits.some(pid => areProduitsIncompatible(pid, sel.ref_id))) return true
     }
+    // Cas produit-équipement (inverse)
     if (item.type === 'produit' && sel.type === 'equipement') {
       const produits = equipementProduitsMap.value[sel.ref_id] || []
       if (produits.some(pid => areProduitsIncompatible(item.ref_id, pid))) return true
     }
+    // Cas robot-produit
     if (item.type === 'robot' && sel.type === 'produit') {
       if (!isRobotcompatibleWithProduit(item.ref_id, sel.ref_id)) return true
     }
+    // Cas produit-robot (inverse)
     if (item.type === 'produit' && sel.type === 'robot') {
       if (!isRobotcompatibleWithProduit(sel.ref_id, item.ref_id)) return true
     }
   }
   return false
 }
-
 
 function onEnter(el: Element, done: () => void) {
   const htmlEl = el as HTMLElement
@@ -176,37 +185,50 @@ function goToNextUnfilled() {
 async function fetchData() {
   loading.value = true
   try {
-
+    // Récupérer les données de base
     const resProduits = await axios.get('http://localhost:8000/produits')
     produits.value = resProduits.data
-    console.log("OK produit")
 
     const resRobots = await axios.get('http://localhost:8000/robots')
     robots.value = resRobots.data
-    console.log("OK robot")
 
-    const projetId = route.params.id
-    const resProjet = await axios.get(`http://localhost:8000/sous_projets/${projetId}`)
-    projet.value = resProjet.data
-    console.log("OK sous_projet")
-    console.log(projet.value)
+    // Récupérer le sous-projet
+    const resSousProjet = await axios.get(`http://localhost:8000/sous_projets/${sousProjetId.value}`)
+    sousProjet.value = resSousProjet.data
 
-    const resConfig = await axios.get(`http://localhost:8000/fpack_config_columns/${projet.value.fpack_id}`)
-    configColumns.value = resConfig.data
-    console.log("OK fpack config columns")
+    // Récupérer les FPacks associés au sous-projet
+    const resFpacks = await axios.get(`http://localhost:8000/sous_projets/${sousProjetId.value}/fpacks`)
+    const currentFpack = resFpacks.data.find((fp: any) => fp.fpack_id === fpackId.value)
+    
+    if (!currentFpack) {
+      throw new Error('FPack non trouvé pour ce sous-projet')
+    }
+    fpackData.value = currentFpack
 
+    // Récupérer la configuration du FPack
+    const resConfig = await axios.get(`http://localhost:8000/fpack_config_columns/${fpackId.value}`)
+    configColumns.value = resConfig.data.columns ?? []
+    allConfig.value = resConfig.data
+    console.log('Configuration des colonnes:', allConfig.value)
 
+    // Séparer les différents types d'éléments
     produitsSeuls.value = configColumns.value.filter(c => c.type === 'produit' && !c.group_items)
     equipementsSeuls.value = configColumns.value.filter(c => c.type === 'equipement' && !c.group_items)
     groupes.value = configColumns.value.filter(c => c.type === 'group')
 
-    const resSelections = await axios.get(`http://localhost:8000/sous_projets/${projetId}/selections`)
+    // Récupérer les sélections existantes pour cette association sous-projet/fpack
+    const resSelections = await axios.get(
+      `http://localhost:8000/sous_projets/${sousProjetId.value}/fpacks/${fpackId.value}/selections`
+    )
+    hasSelections.value = Array.isArray(resSelections.data) && resSelections.data.length > 0
+    console.log('Sélection existante ? ', hasSelections.value)
+    
     for (const sel of resSelections.data) {
       if (sel.groupe_id && groupes.value.find(g => g.ref_id === sel.groupe_id)) {
         selections.value[sel.groupe_id] = sel.ref_id
       }
     }
-    console.log("OK selections")
+    
     if (groupesRestants.value.length) {
       expandedGroups.value.add(groupesRestants.value[0].ref_id)
     }
@@ -217,11 +239,10 @@ async function fetchData() {
       const arr = produitsArr as Array<{ equipement_id: number, produit_id: number }>
       equipementProduitsMap.value[Number(eqId)] = arr.map(ep => ep.produit_id)
     }
-    console.log("OK equipementProduit")
-
 
   } catch (err) {
-    showToast('Erreur lors du chargement du projet ou de la configuration', '#EE1111')
+    console.error('Erreur lors du chargement:', err)
+    showToast('Erreur lors du chargement du sous-projet ou de la configuration', '#EE1111')
   } finally {
     loading.value = false
     stopLoading()
@@ -229,44 +250,83 @@ async function fetchData() {
 }
 
 function handleExport() {
-  // TODO : logique d’export
   showToast("Fonction Export en cours de développement", "#2563eb")
 }
 
 function handleShowBill() {
-  if (!projet.value) return
+  if (!sousProjet.value) return
   saveSelections(false)
-  router.push({ name: 'FactureProjet', params: { id: projet.value.id } })
+  router.push({ 
+    name: 'FactureSousProjet', 
+    params: { id: sousProjet.value.id } 
+  })
 }
 
 onMounted(async () => {
   startLoading()
-  const resProdInc = await axios.get('http://localhost:8000/produit-incompatibilites')
-  produitIncompatibilites.value = resProdInc.data
-  const resRobotInc = await axios.get('http://localhost:8000/robot-produit-compatibilites')
-  robotProduitCompatibilites.value = resRobotInc.data
-  fetchData()
+  try {
+    // Récupérer les incompatibilités et compatibilités
+    const resProdInc = await axios.get('http://localhost:8000/produit-incompatibilites')
+    produitIncompatibilites.value = resProdInc.data
+    
+    const resRobotInc = await axios.get('http://localhost:8000/robot-produit-compatibilites')
+    robotProduitCompatibilites.value = resRobotInc.data
+    
+    await fetchData()
+  } catch (err) {
+    console.error('Erreur lors de l\'initialisation:', err)
+    showToast('Erreur lors de l\'initialisation', '#EE1111')
+  }
 })
 
 async function saveSelections(goBack = true) {
   saving.value = true
   try {
-    const payload = groupes.value.map(groupe => {
+    // Traiter les sélections une par une
+    const promises = groupes.value.map(async (groupe) => {
       const selectedRefId = selections.value[groupe.ref_id]
       const selectedItem = groupe.group_items.find((item: any) => item.ref_id === selectedRefId)
-      return {
-        groupe_id: groupe.ref_id,
-        ref_id: selectedRefId ?? null,
-        type_item: selectedItem?.type ?? null
+      
+      if (selectedRefId && selectedItem) {
+        // Créer ou mettre à jour la sélection
+        const selectionData = {
+          groupe_id: groupe.ref_id,
+          type_item: selectedItem.type,
+          ref_id: selectedRefId
+        }
+        
+
+        if (!hasSelections.value) {
+          // Si aucune sélection n'existe, créer une nouvelle sélection
+          await axios.post(
+            `http://localhost:8000/sous_projets/${sousProjetId.value}/fpacks/${fpackId.value}/selections`,
+            selectionData
+          )
+        } else {
+          // Si des sélections existent, essayer de mettre à jour
+          await axios.put(
+            `http://localhost:8000/sous_projets/${sousProjetId.value}/fpacks/${fpackId.value}/selections/${groupe.ref_id}`,
+            selectionData
+          )
+      }
+      } else {
+        // Supprimer la sélection si elle existe mais n'est plus sélectionnée
+        if (selections.value[groupe.ref_id]) {
+          await axios.delete(`http://localhost:8000/sous_projets/${sousProjetId.value}/fpacks/${fpackId.value}/selections/${groupe.ref_id}`)
+        }
       }
     })
-    await axios.put(`http://localhost:8000/sous_projets/${projet.value.id}/selections`, { selections: payload })
-    showToast('Sélection enregistrée', "#059669")
+
+    await Promise.all(promises)
+    showToast('Sélections enregistrées avec succès', "#059669")
+    
   } catch (err) {
-    showToast("Erreur lors de l'enregistrement","#EE1111")
+    console.error('Erreur lors de l\'enregistrement:', err)
+    showToast("Erreur lors de l'enregistrement", "#EE1111")
   } finally {
     saving.value = false
   }
+  
   if (goBack) {
     router.back()
   }
@@ -277,8 +337,15 @@ async function saveSelections(goBack = true) {
   <div class="complete-projet-container">
     <header class="sticky-header">
       <h1>
-        Compléter le projet : <span class="projet-nom">{{ projet?.nom }}</span>
+        Compléter le sous-projet : <span class="projet-nom">{{ sousProjet?.nom }}</span>
       </h1>
+      <div v-if="fpackData" class="fpack-info">
+        <span class="fpack-details">
+          📦 FPack: {{ allConfig?.fpack_nom || 'Sans nom' }}
+          <span v-if="fpackData?.FPack_number"> - N° {{ fpackData.FPack_number }}</span>
+          <span v-if="fpackData?.Robot_Location_Code"> - Code: {{ fpackData.Robot_Location_Code }}</span>
+        </span>
+      </div>
       <div class="progress-bar">
         <span>
           Groupes remplis : <b>{{ groupesRemplis.length }}</b> / {{ groupes.length }}
@@ -358,31 +425,26 @@ async function saveSelections(goBack = true) {
       </section>
     </div>
     <div class="actions">
-
       <button @click="saveSelections(true)" :disabled="saving" class="btn-save">
         💾 Enregistrer
       </button>
       <button @click="resetSelections" class="btn-reset">
         🔄 Réinitialiser
       </button>
-
       <button @click="handleExport" class="btn-export">
         📤 Exporter
       </button>
       <button @click="handleShowBill" class="btn-bill">
         🪙 Voir la facture
       </button>
-
       <button @click="router.back()" class="btn-back">
         Retour
       </button>
     </div>
   </div>
-
 </template>
 
 <style scoped>
-
 .complete-projet-container {
   max-width: 900px;
   margin: 0 auto;
@@ -398,6 +460,7 @@ async function saveSelections(goBack = true) {
   display: flex;
   flex-direction: column;        
 }
+
 .sticky-header {
   position: sticky;
   top: 0;
@@ -408,19 +471,36 @@ async function saveSelections(goBack = true) {
   box-shadow: 0 2px 12px rgba(0,0,0,0.03);
   flex-shrink: 0;
 }
+
 h1 {
   font-size: 1.7rem;
-  margin-bottom: 0.7rem;
+  margin-bottom: 0.5rem;
 }
+
 .projet-nom {
   color: #2563eb;
 }
+
+.fpack-info {
+  margin-bottom: 0.7rem;
+  padding: 0.5rem 1rem;
+  background: #e0f2fe;
+  border-radius: 8px;
+  font-size: 0.95rem;
+  color: #0369a1;
+}
+
+.fpack-details {
+  font-weight: 500;
+}
+
 .progress-bar {
   display: flex;
   align-items: center;
   gap: 1.2rem;
   margin-bottom: 0.7rem;
 }
+
 .progress-track {
   flex: 1;
   height: 10px;
@@ -428,16 +508,19 @@ h1 {
   border-radius: 6px;
   overflow: hidden;
 }
+
 .progress-fill {
   height: 100%;
   background: linear-gradient(90deg, #38bdf8, #059669);
   transition: width 0.3s;
 }
+
 .header-actions {
   display: flex;
   gap: 1rem;
   margin-bottom: 0.5rem;
 }
+
 .btn-next, .btn-expand, .btn-collapse {
   background: #f1f5f9;
   color: #2563eb;
@@ -448,35 +531,43 @@ h1 {
   cursor: pointer;
   transition: background 0.2s;
 }
+
 .option-incompatible {
   background: #fee2e2 !important;
   color: #991b1b !important;
 }
+
 .btn-next:disabled {
   background: #e0e7ef;
   color: #94a3b8;
   cursor: not-allowed;
 }
+
 .btn-expand, .btn-collapse {
   background: #e0e7ef;
   color: #334155;
 }
+
 .btn-expand:hover, .btn-collapse:hover {
   background: #cbd5e1;
 }
+
 .content-scroll {
   overflow-y: auto;
   flex: 1 1 0;
   padding: 0 2.5rem;
 }
+
 .section {
   margin-bottom: 1rem;
 }
+
 .section h2 {
   font-size: 1.2rem;
   color: #334155;
   margin-bottom: 0.7rem;
 }
+
 .chips-list {
   display: flex;
   flex-wrap: wrap;
@@ -484,6 +575,7 @@ h1 {
   padding: 0;
   margin: 0;
 }
+
 .chip {
   display: flex;
   align-items: center;
@@ -494,11 +586,14 @@ h1 {
   font-size: 1rem;
   font-weight: 500;
 }
+
 .chip-produit { background: #dbeafe; color: #2563eb; }
 .chip-equipement { background: #fef3c7; color: #b45309; }
+
 .groupes-section {
   margin-bottom: 2.5rem;
 }
+
 .groupes-list {
   display: flex;
   flex-direction: column;
@@ -507,6 +602,7 @@ h1 {
   background: #f1f5f9;
   padding: 1rem;
 }
+
 .groupe-accordion {
   background: white;
   border-radius: 10px;
@@ -515,12 +611,15 @@ h1 {
   border-left: 6px solid #e0e7ef;
   margin-bottom: 1rem ;
 }
+
 .groupe-accordion.rempli {
   border-left: 6px solid #059669;
 }
+
 .groupe-accordion.non-rempli {
   border-left: 6px solid #f59e0b;
 }
+
 .groupe-header {
   display: flex;
   align-items: center;
@@ -533,30 +632,37 @@ h1 {
   background: #f8fafc;
   user-select: none;
 }
+
 .groupe-title {
   display: flex;
   align-items: center;
   gap: 0.7rem;
 }
+
 .checkmark {
   color: #059669;
   font-size: 1.2rem;
 }
+
 .warning {
   color: #f59e0b;
   font-size: 1.2rem;
 }
+
 .arrow {
   transition: transform 0.2s;
   font-size: 1.2rem;
 }
+
 .arrow.open {
   transform: rotate(180deg);
 }
+
 .groupe-body {
   padding: 1rem 1.2rem 1.2rem 1.2rem;
   background: #f1f5f9;
 }
+
 .groupe-select {
   width: 100%;
   padding: 0.6rem 0.8rem;
@@ -566,6 +672,7 @@ h1 {
   margin-top: 0.2rem;
   background: white;
 }
+
 .actions {
   display: flex;
   gap: 1rem;
@@ -573,6 +680,7 @@ h1 {
   justify-content: flex-end;
   padding: 0 2.5rem;
 }
+
 .btn-save {
   background: #059669;
   color: white;
@@ -584,6 +692,7 @@ h1 {
   cursor: pointer;
   transition: background 0.2s;
 }
+
 .btn-save:disabled {
   background: #a7f3d0;
   cursor: not-allowed;
@@ -604,6 +713,7 @@ h1 {
   cursor: pointer;
   transition: background 0.2s;
 }
+
 .btn-back:hover {
   background: #cbd5e1;
 }
@@ -619,6 +729,7 @@ h1 {
   cursor: pointer;
   transition: background 0.2s;
 }
+
 .btn-reset:hover {
   background: #3f87d4;
 }
@@ -634,6 +745,7 @@ h1 {
   cursor: pointer;
   transition: background 0.2s;
 }
+
 .btn-export:hover, .btn-bill:hover {
   background: #c7d2fe;
 }
@@ -648,9 +760,9 @@ h1 {
 .accordion-enter-active, .accordion-leave-active {
   transition: height 0.3s;
 }
+
 .accordion-enter-from, .accordion-leave-to {
   height: 0;
   overflow: hidden;
 }
-
 </style>

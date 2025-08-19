@@ -13,7 +13,6 @@ from reportlab.lib.pagesizes import A4 # type: ignore
 from reportlab.platypus import SimpleDocTemplate, Table, TableStyle, Image, Paragraph, Spacer # type: ignore
 from reportlab.lib import colors # type: ignore
 from reportlab.lib.styles import getSampleStyleSheet # type: ignore
-from App.routes.sous_projets import get_projet_facture
 import openpyxl # type: ignore
 from openpyxl.worksheet.datavalidation import DataValidation # type: ignore
 from openpyxl.utils import get_column_letter # type: ignore

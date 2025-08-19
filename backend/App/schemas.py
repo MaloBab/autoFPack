@@ -102,7 +102,9 @@ class PrixRobotRead(PrixRobotBase):
 
 # EQUIPEMENTS
 class EquipementBase(BaseModel):
+    reference: str
     nom: str 
+    
 
 class EquipementCreate(EquipementBase):
     pass
@@ -249,7 +251,6 @@ class SousProjetReadExtended(SousProjetRead):
 
 # SOUS-PROJET FPACK (table de liaison)
 class SousProjetFpackBase(BaseModel):
-    sous_projet_id: int
     fpack_id: int
     FPack_number: Optional[str] = None
     Robot_Location_Code: Optional[str] = None
@@ -258,19 +259,24 @@ class SousProjetFpackCreate(SousProjetFpackBase):
     pass
 
 class SousProjetFpackRead(SousProjetFpackBase):
+    id: int
+    sous_projet_id: int
     class Config:
         from_attributes = True
 
 # SÉLECTIONS DE PROJET
 class ProjetSelectionBase(BaseModel):
-    projet_id: int  
-    fpack_id: int  
+    sous_projet_fpack_id: int 
     groupe_id: int
     type_item: str 
     ref_id: int
 
-class ProjetSelectionCreate(ProjetSelectionBase):
-    pass
+class ProjetSelectionCreate(BaseModel):
+    # Ne pas hériter de Base pour éviter d'exiger sous_projet_fpack_id
+    groupe_id: int
+    type_item: str 
+    ref_id: int
+
 
 class ProjetSelectionRead(ProjetSelectionBase):
     class Config:
@@ -287,6 +293,7 @@ class SousProjetReadWithDetails(SousProjetRead):
     nb_selections: int = 0
     nb_groupes_attendus: int = 0
     # Ajout des détails FPack
+    fpack_id: Optional[int] = None
     FPack_number: Optional[str] = None
     Robot_Location_Code: Optional[str] = None
 
@@ -328,3 +335,14 @@ class GroupesReadWithItems(GroupesRead):
 class FPackReadWithConfig(FPackRead):
     """FPack avec sa configuration"""
     config_columns: List[FPackConfigColumnRead] = []
+    
+class ProjetParClient(BaseModel):
+    client: str
+    count: int
+
+class ProjetStats(BaseModel):
+    nb_projets_globaux: int
+    nb_sous_projets: int
+    projets_par_client: List[ProjetParClient]
+    sous_projets_complets: int
+    sous_projets_incomplets: int
