@@ -26,10 +26,6 @@ const menuItems = [
         </router-link>
       </li>
     </ul>
-    <router-link to="/parametres" class="menu-link param-link" :title="state === 1 ? 'Paramètres' : ''">
-      <span class="iconfooter">⚙️</span>
-      <span class="label" v-if="state === 2">Paramètres</span>
-    </router-link>
   </nav>
 </template>
 

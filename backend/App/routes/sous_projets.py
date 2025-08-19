@@ -29,6 +29,7 @@ class ProjetDetailService:
             
             enriched.append({
                 "projet_id": sel.projet_id,
+                "fpack_id": sel.fpack_id,  # Ajout du fpack_id manquant
                 "groupe_id": sel.groupe_id,
                 "type_item": sel.type_item,
                 "ref_id": sel.ref_id,
@@ -64,6 +65,11 @@ def get_projets_tree(db: Session = Depends(get_db)):
     clients_map = {c.id: c.nom for c in db.query(models.Client).all()}
     fpacks_map = {f.id: f for f in db.query(models.FPack).all()}
     
+    # Récupérer les relations SousProjetFpack pour avoir les détails FPack
+    sous_projet_fpack_map = {}
+    for sp_fp in db.query(models.SousProjetFpack).all():
+        sous_projet_fpack_map[sp_fp.sous_projet_id] = sp_fp
+    
     selections_stats = db.query(
         models.ProjetSelection.projet_id,
         func.count(models.ProjetSelection.groupe_id).label('nb_selections')
@@ -83,22 +89,28 @@ def get_projets_tree(db: Session = Depends(get_db)):
     for pg in projets_global:
         projets_details = []
         for projet in pg.projets:
+            # Récupérer les détails FPack depuis la table de liaison
+            sp_fpack = sous_projet_fpack_map.get(projet.id)
+            fpack_id = sp_fpack.fpack_id if sp_fpack else None
+            fpack = fpacks_map.get(fpack_id) if fpack_id else None
+            
             nb_selections = selections_map.get(projet.id, 0)
-            nb_groupes_attendus = config_map.get(projet.fpack_id, 0)
-            fpack = fpacks_map.get(projet.fpack_id)
+            nb_groupes_attendus = config_map.get(fpack_id, 0) if fpack_id else 0
             
             projets_details.append({
                 "id": projet.id,
                 "nom": projet.nom,
-                "fpack_id": projet.fpack_id,
                 "id_global": projet.id_global,
                 "fpack_nom": fpack.nom if fpack else None,
                 "client_nom": clients_map.get(fpack.client) if fpack else None,
                 "projet_global_nom": pg.projet,
+                "sous_projet_nom": projet.nom,
                 "complet": nb_selections >= nb_groupes_attendus if nb_groupes_attendus > 0 else False,
                 "nb_selections": nb_selections,
                 "nb_groupes_attendus": nb_groupes_attendus,
-                "progression_percent": round((nb_selections / nb_groupes_attendus) * 100, 1) if nb_groupes_attendus > 0 else 0
+                # Ajout des détails FPack manquants dans le schéma
+                "FPack_number": sp_fpack.FPack_number if sp_fpack else None,
+                "Robot_Location_Code": sp_fpack.Robot_Location_Code if sp_fpack else None
             })
         
         result.append({
@@ -124,28 +136,41 @@ def get_projets_by_global(global_id: int, db: Session = Depends(get_db)):
     clients_map = {c.id: c.nom for c in db.query(models.Client).all()}
     fpacks_map = {f.id: f for f in db.query(models.FPack).all()}
     
+    # Récupérer les relations SousProjetFpack
+    sous_projet_fpack_map = {}
+    for sp_fp in db.query(models.SousProjetFpack).filter(
+        models.SousProjetFpack.sous_projet_id.in_([p.id for p in projets])
+    ).all():
+        sous_projet_fpack_map[sp_fp.sous_projet_id] = sp_fp
+    
     result = []
     for projet in projets:
         nb_selections = db.query(models.ProjetSelection)\
             .filter_by(projet_id=projet.id).count()
         
-        nb_groupes_attendus = db.query(models.FPackConfigColumn)\
-            .filter_by(fpack_id=projet.fpack_id, type='group').count()
+        # Utiliser l'ID du FPack depuis la table de liaison
+        sp_fpack = sous_projet_fpack_map.get(projet.id)
+        fpack_id = sp_fpack.fpack_id if sp_fpack else None
+        fpack = fpacks_map.get(fpack_id) if fpack_id else None
         
-        fpack = fpacks_map.get(projet.fpack_id)
+        nb_groupes_attendus = db.query(models.FPackConfigColumn)\
+            .filter_by(fpack_id=fpack_id, type='group').count() if fpack_id else 0
+        
         client_nom = clients_map.get(fpack.client) if fpack else None
         
         result.append({
             "id": projet.id,
             "nom": projet.nom,
-            "fpack_id": projet.fpack_id,
             "id_global": projet.id_global,
             "fpack_nom": fpack.nom if fpack else None,
             "client_nom": client_nom,
+            "projet_global_nom": projet_global.projet,
+            "sous_projet_nom": projet.nom,
             "complet": nb_selections >= nb_groupes_attendus if nb_groupes_attendus > 0 else False,
             "nb_selections": nb_selections,
             "nb_groupes_attendus": nb_groupes_attendus,
-            "progression_percent": round((nb_selections / nb_groupes_attendus) * 100, 1) if nb_groupes_attendus > 0 else 0
+            "FPack_number": sp_fpack.FPack_number if sp_fpack else None,
+            "Robot_Location_Code": sp_fpack.Robot_Location_Code if sp_fpack else None
         })
     
     return result
@@ -156,16 +181,6 @@ def create_projet(projet: schemas.SousProjetCreate, db: Session = Depends(get_db
     projet_global = db.query(models.ProjetGlobal).get(projet.id_global)
     if not projet_global:
         raise HTTPException(status_code=404, detail="Projet global non trouvé")
-    
-    fpack = db.query(models.FPack).get(projet.fpack_id)
-    if not fpack:
-        raise HTTPException(status_code=404, detail="FPack non trouvé")
-    
-    if fpack.client != projet_global.client:
-        raise HTTPException(
-            status_code=400, 
-            detail="Le client du FPack doit correspondre au client du projet global"
-        )
     
     # Vérifier l'unicité du nom dans le projet global
     existing = db.query(models.SousProjet)\
@@ -184,9 +199,55 @@ def create_projet(projet: schemas.SousProjetCreate, db: Session = Depends(get_db
     db.refresh(db_projet)
     return db_projet
 
+@router.post("/sous_projets/{projet_id}/fpack", response_model=schemas.SousProjetFpackRead)
+def associate_fpack_to_projet(
+    projet_id: int, 
+    fpack_data: schemas.SousProjetFpackCreate, 
+    db: Session = Depends(get_db)
+):
+    """Associe un FPack à un sous-projet"""
+    # Vérifier que le sous-projet existe
+    sous_projet = db.query(models.SousProjet).get(projet_id)
+    if not sous_projet:
+        raise HTTPException(status_code=404, detail="Sous-projet non trouvé")
+    
+    # Vérifier que le FPack existe
+    fpack = db.query(models.FPack).get(fpack_data.fpack_id)
+    if not fpack:
+        raise HTTPException(status_code=404, detail="FPack non trouvé")
+    
+    # Vérifier la cohérence client
+    projet_global = db.query(models.ProjetGlobal).get(sous_projet.id_global)
+    if projet_global and fpack.client != projet_global.client:
+        raise HTTPException(
+            status_code=400,
+            detail="Le client du FPack doit correspondre au client du projet global"
+        )
+    
+    # Vérifier si une association existe déjà
+    existing = db.query(models.SousProjetFpack)\
+        .filter_by(sous_projet_id=projet_id)\
+        .first()
+    
+    if existing:
+        raise HTTPException(
+            status_code=400,
+            detail="Ce sous-projet est déjà associé à un FPack"
+        )
+    
+    # Créer l'association
+    db_association = models.SousProjetFpack(
+        sous_projet_id=projet_id,
+        **fpack_data.dict()
+    )
+    db.add(db_association)
+    db.commit()
+    db.refresh(db_association)
+    return db_association
+
 @router.delete("/sous_projets/{id}")
 def delete_projet(id: int, db: Session = Depends(get_db)):
-    """Supprime un projet avec nettoyage des sélections"""
+    """Supprime un projet avec nettoyage des sélections et associations"""
     projet = db.query(models.SousProjet).get(id)
     if not projet:
         raise HTTPException(status_code=404, detail="Projet non trouvé")
@@ -198,6 +259,11 @@ def delete_projet(id: int, db: Session = Depends(get_db)):
     # Supprimer les sélections associées
     db.query(models.ProjetSelection)\
         .filter_by(projet_id=id)\
+        .delete()
+    
+    # Supprimer l'association FPack si elle existe
+    db.query(models.SousProjetFpack)\
+        .filter_by(sous_projet_id=id)\
         .delete()
     
     # Supprimer le projet
@@ -219,25 +285,31 @@ def get_projet_details(id: int, db: Session = Depends(get_db)):
     
     # Chargement des entités liées
     projet_global = db.query(models.ProjetGlobal).get(projet.id_global)
-    fpack = db.query(models.FPack).get(projet.fpack_id)
     client = db.query(models.Client).get(projet_global.client) if projet_global else None
     
+    # Récupérer l'association FPack
+    sp_fpack = db.query(models.SousProjetFpack)\
+        .filter_by(sous_projet_id=id)\
+        .first()
+    
+    fpack = db.query(models.FPack).get(sp_fpack.fpack_id) if sp_fpack else None
+    
     # Configuration et sélections
-    config_columns = db.query(models.FPackConfigColumn)\
-        .filter_by(fpack_id=projet.fpack_id)\
-        .order_by(models.FPackConfigColumn.ordre)\
-        .all()
+    config_columns = []
+    nb_groupes_config = 0
+    if fpack:
+        config_columns = db.query(models.FPackConfigColumn)\
+            .filter_by(fpack_id=fpack.id)\
+            .order_by(models.FPackConfigColumn.ordre)\
+            .all()
+        nb_groupes_config = len([c for c in config_columns if c.type == 'group'])
     
     selections_enriched = ProjetDetailService.get_enriched_selections(db, id)
-    nb_groupes_config = len([c for c in config_columns if c.type == 'group'])
     
     return {
         "projet": {
             "id": projet.id,
             "nom": projet.nom,
-            "fpack_id": projet.fpack_id,
-            "FPack_number": projet.FPack_number,
-            "Robot_Location_Code": projet.Robot_Location_Code,
             "id_global": projet.id_global
         },
         "projet_global": {
@@ -251,6 +323,10 @@ def get_projet_details(id: int, db: Session = Depends(get_db)):
             "fpack_abbr": fpack.fpack_abbr,
             "client": fpack.client
         } if fpack else None,
+        "fpack_association": {
+            "FPack_number": sp_fpack.FPack_number,
+            "Robot_Location_Code": sp_fpack.Robot_Location_Code
+        } if sp_fpack else None,
         "client": {
             "id": client.id,
             "nom": client.nom
@@ -265,6 +341,10 @@ def get_projet_details(id: int, db: Session = Depends(get_db)):
 def list_projets(db: Session = Depends(get_db)):
     """Liste tous les projets avec stats optimisées"""
     projets = db.query(models.SousProjet).all()
+    
+    # Récupérer les associations FPack
+    fpack_associations = db.query(models.SousProjetFpack).all()
+    fpack_map = {assoc.sous_projet_id: assoc.fpack_id for assoc in fpack_associations}
     
     # Optimisation : une seule requête pour toutes les sélections
     selections_stats = db.query(
@@ -285,19 +365,16 @@ def list_projets(db: Session = Depends(get_db)):
     
     result = []
     for projet in projets:
+        fpack_id = fpack_map.get(projet.id)
         nb_selections = selections_map.get(projet.id, 0)
-        nb_groupes_attendus = config_map.get(projet.fpack_id, 0)
+        nb_groupes_attendus = config_map.get(fpack_id, 0) if fpack_id else 0
         complet = nb_selections >= nb_groupes_attendus if nb_groupes_attendus > 0 else False
         
         result.append({
             "id": projet.id,
             "nom": projet.nom,
-            "fpack_id": projet.fpack_id,
             "id_global": projet.id_global,
-            "complet": complet,
-            "nb_selections": nb_selections,
-            "nb_groupes_attendus": nb_groupes_attendus,
-            "progression_percent": round((nb_selections / nb_groupes_attendus) * 100, 1) if nb_groupes_attendus > 0 else 0
+            "complet": complet
         })
     
     return result
@@ -317,21 +394,11 @@ def update_projet(id: int, projet_data: schemas.SousProjetCreate, db: Session = 
     if not projet:
         raise HTTPException(status_code=404, detail="Projet non trouvé")
     
-    # Vérifications si changement de fpack_id ou id_global
-    if projet_data.fpack_id != projet.fpack_id or projet_data.id_global != projet.id_global:
+    # Vérifications si changement d'id_global
+    if projet_data.id_global != projet.id_global:
         projet_global = db.query(models.ProjetGlobal).get(projet_data.id_global)
         if not projet_global:
             raise HTTPException(status_code=404, detail="Projet global non trouvé")
-        
-        fpack = db.query(models.FPack).get(projet_data.fpack_id)
-        if not fpack:
-            raise HTTPException(status_code=404, detail="FPack non trouvé")
-        
-        if fpack.client != projet_global.client:
-            raise HTTPException(
-                status_code=400,
-                detail="Le client du FPack doit correspondre au client du projet global"
-            )
     
     # Vérifier l'unicité du nom si changement
     if projet_data.nom != projet.nom:
@@ -353,13 +420,31 @@ def update_projet(id: int, projet_data: schemas.SousProjetCreate, db: Session = 
     db.refresh(projet)
     return projet
 
-@router.get("/sous_projets/{id}/selections", response_model=list[schemas.ProjetSelectionRead])
+@router.get("/sous_projets/{id}/selections", response_model=list[schemas.ProjetSelectionReadWithDetails])
 def get_projet_selections(id: int, db: Session = Depends(get_db)):
-    """Récupère les sélections d'un projet"""
+    """Récupère les sélections d'un projet avec détails"""
     if not db.query(models.SousProjet).get(id):
         raise HTTPException(status_code=404, detail="Projet non trouvé")
     
-    return db.query(models.ProjetSelection).filter_by(projet_id=id).all()
+    selections = db.query(models.ProjetSelection).filter_by(projet_id=id).all()
+    
+    # Enrichir avec les noms
+    result = []
+    for sel in selections:
+        groupe = db.query(models.Groupes).get(sel.groupe_id)
+        item_nom = ProjetDetailService._get_item_name(db, sel.type_item, sel.ref_id)
+        
+        result.append({
+            "projet_id": sel.projet_id,
+            "fpack_id": sel.fpack_id,
+            "groupe_id": sel.groupe_id,
+            "type_item": sel.type_item,
+            "ref_id": sel.ref_id,
+            "groupe_nom": groupe.nom if groupe else None,
+            "item_nom": item_nom
+        })
+    
+    return result
 
 @router.put("/sous_projets/{id}/selections", response_model=dict)
 def save_projet_selections(
@@ -368,8 +453,17 @@ def save_projet_selections(
     db: Session = Depends(get_db)
 ):
     """Sauvegarde les sélections d'un projet avec validation"""
-    if not db.query(models.SousProjet).get(id):
+    projet = db.query(models.SousProjet).get(id)
+    if not projet:
         raise HTTPException(status_code=404, detail="Projet non trouvé")
+    
+    # Récupérer l'ID du FPack associé
+    sp_fpack = db.query(models.SousProjetFpack)\
+        .filter_by(sous_projet_id=id)\
+        .first()
+    
+    if not sp_fpack:
+        raise HTTPException(status_code=400, detail="Aucun FPack associé à ce projet")
     
     # Supprimer les anciennes sélections
     old_count = db.query(models.ProjetSelection).filter_by(projet_id=id).count()
@@ -381,6 +475,7 @@ def save_projet_selections(
         if sel.get("ref_id") is not None and sel.get("type_item"):
             selection = models.ProjetSelection(
                 projet_id=id,
+                fpack_id=sp_fpack.fpack_id,  # Utiliser l'ID du FPack associé
                 groupe_id=sel.get("groupe_id"),
                 ref_id=sel.get("ref_id"),
                 type_item=sel.get("type_item", "produit")
@@ -407,15 +502,24 @@ def get_projet_facture(id: int, db: Session = Depends(get_db)):
 
     # Récupérer les informations de base
     projet_global = db.query(models.ProjetGlobal).get(projet.id_global)
-    fpack = db.query(models.FPack).get(projet.fpack_id)
     client_id = projet_global.client if projet_global else None
     
     if not client_id:
         raise HTTPException(status_code=400, detail="Client non trouvé pour ce projet")
 
+    # Récupérer l'association FPack
+    sp_fpack = db.query(models.SousProjetFpack)\
+        .filter_by(sous_projet_id=id)\
+        .first()
+    
+    if not sp_fpack:
+        raise HTTPException(status_code=400, detail="Aucun FPack associé à ce projet")
+    
+    fpack = db.query(models.FPack).get(sp_fpack.fpack_id)
+
     # Configuration et sélections
     config_cols = db.query(models.FPackConfigColumn)\
-        .filter_by(fpack_id=projet.fpack_id)\
+        .filter_by(fpack_id=sp_fpack.fpack_id)\
         .order_by(models.FPackConfigColumn.ordre)\
         .all()
     
@@ -551,7 +655,9 @@ def get_projet_facture(id: int, db: Session = Depends(get_db)):
         "fpack": {
             "id": fpack.id,
             "nom": fpack.nom,
-            "abbr": fpack.fpack_abbr
+            "abbr": fpack.fpack_abbr,
+            "FPack_number": sp_fpack.FPack_number,
+            "Robot_Location_Code": sp_fpack.Robot_Location_Code
         } if fpack else None,
         "currency": "EUR",
         "lines": lines,

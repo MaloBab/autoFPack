@@ -46,12 +46,12 @@ def delete_robot(id: int, db: Session = Depends(get_db)):
     return {"ok": True}
 
 
-@router.get("/prix_robot", response_model=list[schemas.PrixRobotOut])
+@router.get("/prix_robot", response_model=list[schemas.PrixRobotRead])
 def get_all_prices(db: Session = Depends(get_db)):
     return db.query(models.PrixRobot).all()
 
 
-@router.post("/prix_robot", response_model=schemas.PrixRobotOut)
+@router.post("/prix_robot", response_model=schemas.PrixRobotRead)
 def create_prix(prixRobot: schemas.PrixRobotCreate, db: Session = Depends(get_db)):
     existing = db.query(models.PrixRobot).filter(
         models.PrixRobot.id == prixRobot.id,
@@ -67,7 +67,7 @@ def create_prix(prixRobot: schemas.PrixRobotCreate, db: Session = Depends(get_db
 
 
 # PUT
-@router.put("/prix_robot/{id}", response_model=schemas.PrixRobotOut)
+@router.put("/prix_robot/{id}", response_model=schemas.PrixRobotRead)
 def update_price(id: int, data: schemas.PrixRobotUpdate, db: Session = Depends(get_db)):
     prix = db.query(models.PrixRobot).filter(models.PrixRobot.id == id).first()
     if not prix:

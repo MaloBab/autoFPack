@@ -179,16 +179,21 @@ async function fetchData() {
 
     const resProduits = await axios.get('http://localhost:8000/produits')
     produits.value = resProduits.data
+    console.log("OK produit")
 
     const resRobots = await axios.get('http://localhost:8000/robots')
     robots.value = resRobots.data
+    console.log("OK robot")
 
     const projetId = route.params.id
     const resProjet = await axios.get(`http://localhost:8000/sous_projets/${projetId}`)
     projet.value = resProjet.data
+    console.log("OK sous_projet")
+    console.log(projet.value)
 
     const resConfig = await axios.get(`http://localhost:8000/fpack_config_columns/${projet.value.fpack_id}`)
     configColumns.value = resConfig.data
+    console.log("OK fpack config columns")
 
 
     produitsSeuls.value = configColumns.value.filter(c => c.type === 'produit' && !c.group_items)
@@ -201,6 +206,7 @@ async function fetchData() {
         selections.value[sel.groupe_id] = sel.ref_id
       }
     }
+    console.log("OK selections")
     if (groupesRestants.value.length) {
       expandedGroups.value.add(groupesRestants.value[0].ref_id)
     }
@@ -210,7 +216,9 @@ async function fetchData() {
     for (const [eqId, produitsArr] of Object.entries(resEqProd.data)) {
       const arr = produitsArr as Array<{ equipement_id: number, produit_id: number }>
       equipementProduitsMap.value[Number(eqId)] = arr.map(ep => ep.produit_id)
-}
+    }
+    console.log("OK equipementProduit")
+
 
   } catch (err) {
     showToast('Erreur lors du chargement du projet ou de la configuration', '#EE1111')

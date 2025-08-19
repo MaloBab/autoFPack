@@ -36,6 +36,7 @@ def get_table_columns(table_name: str, db: Session = Depends(get_db)):
             "prix_robot": "FPM_prix_robot",
             "sous_projets": "FPM_sous_projets",
             "projets_global": "FPM_projets_global",
+            "sous_projet_fpack": "FPM_sous_projet_fpack"
         }
 
         actual_name = table_mapping.get(table_name)

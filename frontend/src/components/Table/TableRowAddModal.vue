@@ -471,9 +471,22 @@ onMounted(async () => {
 
             <Transition name="success">
               <div v-if="showSuccess" class="success-overlay">
-                <div class="success-content">
-                  <div class="success-icon">✅</div>
-                  <h3>Créé avec succès !</h3>
+                <div class="success-card">
+                  <div class="success-icon-container">
+                    <div class="success-circle">
+                      <svg class="success-tick" viewBox="0 0 24 24" fill="none">
+                        <path 
+                          class="tick-path" 
+                          d="M9 12l2 2 4-4" 
+                          stroke="#fff" 
+                          stroke-width="2" 
+                          stroke-linecap="round" 
+                          stroke-linejoin="round"
+                        />
+                      </svg>
+                    </div>
+                  </div>
+                  <h3 class="success-title">Créé avec succès !</h3>
                 </div>
               </div>
             </Transition>
@@ -1017,28 +1030,7 @@ onMounted(async () => {
   100% { transform: rotate(360deg); }
 }
 
-.success-overlay {
-  position: absolute;
-  inset: 0;
-  background: rgba(255, 255, 255, 0.9);
-  padding: 20%;
-  backdrop-filter: blur(4px);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  z-index: 100;
-}
 
-.success-content {
-  text-align: center;
-  padding: 40px;
-}
-
-.success-icon {
-  font-size: 64px;
-  margin-bottom: 20px;
-  animation: bounce 0.6s ease;
-}
 
 @keyframes bounce {
   0%, 20%, 53%, 80%, 100% { transform: translate3d(0,0,0); }
@@ -1047,16 +1039,6 @@ onMounted(async () => {
   90% { transform: translate3d(0,-4px,0); }
 }
 
-.success-content h3 {
-  color: #22c55e;
-  font-size: 24px;
-  margin-bottom: 10px;
-}
-
-.success-content p {
-  color: #64748b;
-  font-size: 16px;
-}
 
 .modal-body {
   flex: 1;
@@ -1600,15 +1582,6 @@ onMounted(async () => {
   transform: translateX(20px);
 }
 
-.success-enter-active, .success-leave-active {
-  transition: all 0.4s ease;
-}
-
-.success-enter-from, .success-leave-to {
-  opacity: 0;
-  transform: scale(0.9);
-}
-
 .error-enter-active, .error-leave-active {
   transition: all 0.3s ease;
 }
@@ -1676,4 +1649,181 @@ onMounted(async () => {
     transform: translateX(0);
   }
 }
+
+
+.success-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 9999;
+  pointer-events: none;
+}
+
+.success-card {
+  background: #fff;
+  border-radius: 20px;
+  padding: 32px 28px;
+  text-align: center;
+  box-shadow: 
+    0 20px 40px -12px rgba(34, 197, 94, 0.25),
+    0 8px 20px -8px rgba(0, 0, 0, 0.15);
+  border: 1px solid rgba(34, 197, 94, 0.1);
+  max-width: 320px;
+  pointer-events: auto;
+  position: relative;
+  overflow: hidden;
+}
+
+.success-card::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: -100%;
+  width: 100%;
+  height: 2px;
+  background: linear-gradient(90deg, transparent, #22c55e, transparent);
+  animation: shimmer 2s ease-in-out;
+}
+
+.success-icon-container {
+  margin-bottom: 20px;
+  display: flex;
+  justify-content: center;
+}
+
+.success-circle {
+  width: 64px;
+  height: 64px;
+  background: linear-gradient(135deg, #22c55e 0%, #16a34a 100%);
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  position: relative;
+  animation: successPulse 0.6s ease-out;
+  box-shadow: 
+    0 0 0 0 rgba(34, 197, 94, 0.4),
+    0 4px 15px rgba(34, 197, 94, 0.3);
+}
+
+.success-circle::before {
+  content: '';
+  position: absolute;
+  inset: -4px;
+  border: 2px solid #22c55e;
+  border-radius: 50%;
+  opacity: 0;
+  animation: ripple 0.8s ease-out 0.2s;
+}
+
+.success-tick {
+  width: 28px;
+  height: 28px;
+  opacity: 0;
+  animation: tickDraw 0.8s ease-out 0.3s forwards;
+}
+
+.tick-path {
+  stroke-dasharray: 12;
+  stroke-dashoffset: 12;
+  animation: drawTick 0.6s ease-out 0.4s forwards;
+}
+
+.success-title {
+  font-size: 22px;
+  font-weight: 700;
+  color: #1e293b;
+  margin: 0 0 8px 0;
+  animation: slideUp 0.4s ease-out 0.6s both;
+}
+
+
+@keyframes successPulse {
+  0% {
+    transform: scale(0) rotate(-180deg);
+    opacity: 0;
+  }
+  50% {
+    transform: scale(1.15) rotate(-10deg);
+  }
+  100% {
+    transform: scale(1) rotate(0deg);
+    opacity: 1;
+  }
+}
+
+@keyframes ripple {
+  0% {
+    transform: scale(1);
+    opacity: 0.8;
+  }
+  100% {
+    transform: scale(1.5);
+    opacity: 0;
+  }
+}
+
+@keyframes tickDraw {
+  to {
+    opacity: 1;
+  }
+}
+
+@keyframes drawTick {
+  to {
+    stroke-dashoffset: 0;
+  }
+}
+
+@keyframes slideUp {
+  from {
+    opacity: 0;
+    transform: translateY(20px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes shimmer {
+  0% {
+    left: -100%;
+  }
+  100% {
+    left: 100%;
+  }
+}
+
+.success-enter-active {
+  transition: all 0.4s cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+
+.success-leave-active {
+  transition: all 0.3s ease-in;
+}
+
+.success-enter-from {
+  opacity: 0;
+}
+
+.success-enter-from .success-card {
+  opacity: 0;
+  transform: scale(0.7) translateY(30px);
+}
+
+.success-leave-to {
+  opacity: 0;
+}
+
+.success-leave-to .success-card {
+  opacity: 0;
+  transform: scale(0.9) translateY(-20px);
+}
+
 </style>

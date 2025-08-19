@@ -242,6 +242,7 @@ function valider() {
     display_name: nomGroupe.value,
     group_items: [...selectedItems.value]
   })
+  iscreating.value = false
 }
 </script>
 
