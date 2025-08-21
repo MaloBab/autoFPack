@@ -209,7 +209,6 @@ async function fetchData() {
     const resConfig = await axios.get(`http://localhost:8000/fpack_config_columns/${fpackId.value}`)
     configColumns.value = resConfig.data.columns ?? []
     allConfig.value = resConfig.data
-    console.log('Configuration des colonnes:', allConfig.value)
 
     // Séparer les différents types d'éléments
     produitsSeuls.value = configColumns.value.filter(c => c.type === 'produit' && !c.group_items)
@@ -221,7 +220,6 @@ async function fetchData() {
       `http://localhost:8000/sous_projets/${sousProjetId.value}/fpacks/${fpackId.value}/selections`
     )
     hasSelections.value = Array.isArray(resSelections.data) && resSelections.data.length > 0
-    console.log('Sélection existante ? ', hasSelections.value)
     
     for (const sel of resSelections.data) {
       if (sel.groupe_id && groupes.value.find(g => g.ref_id === sel.groupe_id)) {
@@ -282,42 +280,60 @@ onMounted(async () => {
 async function saveSelections(goBack = true) {
   saving.value = true
   try {
-    // Traiter les sélections une par une
+    // Récupérer toutes les sélections existantes d'un coup
+    let existingSelectionsMap: Record<number, any> = {}
+    try {
+      const response = await axios.get(
+        `http://localhost:8000/sous_projets/${sousProjetId.value}/fpacks/${fpackId.value}/selections`
+      )
+      existingSelectionsMap = response.data.reduce((acc: Record<number, any>, sel: any) => {
+        acc[sel.groupe_id] = sel
+        return acc
+      }, {})
+    } catch (err: any) {
+      console.log('Aucune sélection existante trouvée ou erreur:', err.message)
+    }
+
     const promises = groupes.value.map(async (groupe) => {
       const selectedRefId = selections.value[groupe.ref_id]
-      const selectedItem = groupe.group_items.find((item: any) => item.ref_id === selectedRefId)
+      const selectedItem = selectedRefId ? groupe.group_items.find((item: any) => item.ref_id === selectedRefId) : null
+      const existingSelection = existingSelectionsMap[groupe.ref_id]
       
       if (selectedRefId && selectedItem) {
-        // Créer ou mettre à jour la sélection
+        // Il y a une sélection à enregistrer
         const selectionData = {
           groupe_id: groupe.ref_id,
           type_item: selectedItem.type,
           ref_id: selectedRefId
         }
         
-
-        if (!hasSelections.value) {
-          // Si aucune sélection n'existe, créer une nouvelle sélection
-          await axios.post(
+        if (existingSelection) {
+          // Vérifier si la sélection a changé
+          if (existingSelection.ref_id !== selectedRefId || existingSelection.type_item !== selectedItem.type) {
+            await axios.put(
+              `http://localhost:8000/sous_projets/${sousProjetId.value}/fpacks/${fpackId.value}/selections/${groupe.ref_id}`,
+              selectionData
+            )
+          }
+        } else {
+            await axios.post(
             `http://localhost:8000/sous_projets/${sousProjetId.value}/fpacks/${fpackId.value}/selections`,
             selectionData
           )
-        } else {
-          // Si des sélections existent, essayer de mettre à jour
-          await axios.put(
-            `http://localhost:8000/sous_projets/${sousProjetId.value}/fpacks/${fpackId.value}/selections/${groupe.ref_id}`,
-            selectionData
-          )
-      }
-      } else {
-        // Supprimer la sélection si elle existe mais n'est plus sélectionnée
-        if (selections.value[groupe.ref_id]) {
-          await axios.delete(`http://localhost:8000/sous_projets/${sousProjetId.value}/fpacks/${fpackId.value}/selections/${groupe.ref_id}`)
         }
+      } else if (existingSelection) {
+        await axios.delete(
+          `http://localhost:8000/sous_projets/${sousProjetId.value}/fpacks/${fpackId.value}/selections/${groupe.ref_id}`
+        )
       }
     })
 
     await Promise.all(promises)
+    
+    // Mettre à jour hasSelections après la sauvegarde
+    const finalSelections = Object.values(selections.value).filter(Boolean)
+    hasSelections.value = finalSelections.length > 0
+    
     showToast('Sélections enregistrées avec succès', "#059669")
     
   } catch (err) {

@@ -66,7 +66,7 @@ def list_projets_globaux(
 ):
     """Liste tous les projets globaux avec leurs sous-projets"""
     query = db.query(models.ProjetGlobal).options(
-        joinedload(models.ProjetGlobal.projets),
+        joinedload(models.ProjetGlobal.projets).joinedload(models.SousProjet.fpacks).joinedload(models.SousProjetFpack.fpack),
         joinedload(models.ProjetGlobal.client_rel)
     )
     
@@ -80,47 +80,85 @@ def list_projets_globaux(
         # Construire les sous-projets avec détails
         sous_projets_details = []
         for sp in projet.projets:
-            # Récupérer les détails FPack
-            sp_fpack = db.query(models.SousProjetFpack).filter_by(sous_projet_id=sp.id).first()
-            fpack_nom = None
-            fpack_number = None
-            robot_location_code = None
+            # Utiliser la relation pour récupérer tous les FPacks
+            sp_fpacks = sp.fpacks  # Utilise la relation définie dans le modèle
             
-            if sp_fpack:
-                fpack = db.query(models.FPack).get(sp_fpack.fpack_id)
-                fpack_nom = fpack.nom if fpack else None
-                fpack_number = sp_fpack.FPack_number
-                robot_location_code = sp_fpack.Robot_Location_Code
-            
-            # Compter les sélections
-            nb_selections = db.query(models.ProjetSelection).join(
-                models.SousProjetFpack, 
-                models.ProjetSelection.sous_projet_fpack_id == models.SousProjetFpack.id
-            ).filter(models.SousProjetFpack.sous_projet_id == sp.id).count()
-            
-            # Compter les groupes attendus (basé sur la config FPack)
-            nb_groupes_attendus = 0
-            if sp_fpack:
-                nb_groupes_attendus = db.query(models.FPackConfigColumn).filter(
-                    models.FPackConfigColumn.fpack_id == sp_fpack.fpack_id,
-                    models.FPackConfigColumn.type == "group"
-                ).count()
-            
-            sous_projets_details.append({
-                "id": sp.id,
-                "nom": sp.nom,
-                "id_global": sp.id_global,
-                "fpack_id": sp_fpack.fpack_id if sp_fpack else None,
-                "fpack_nom": fpack_nom,
-                "client_nom": projet.client_rel.nom if projet.client_rel else None,
-                "projet_global_nom": projet.projet,
-                "sous_projet_nom": sp.nom,
-                "complet": nb_selections >= nb_groupes_attendus if nb_groupes_attendus > 0 else False,
-                "nb_selections": nb_selections,
-                "nb_groupes_attendus": nb_groupes_attendus,
-                "FPack_number": fpack_number,
-                "Robot_Location_Code": robot_location_code
-            })
+            if sp_fpacks:
+                # Créer un tableau fpacks pour le nouveau format
+                fpacks_array = []
+                
+                # Calculer les stats globales du sous-projet
+                total_selections = 0
+                total_groupes_attendus = 0
+                
+                for sp_fpack in sp_fpacks:
+                    fpack_nom = sp_fpack.fpack.nom if sp_fpack.fpack else None
+                    
+                    # Compter les sélections pour ce FPack spécifique
+                    nb_selections_fpack = db.query(models.ProjetSelection).filter(
+                        models.ProjetSelection.sous_projet_fpack_id == sp_fpack.id
+                    ).count()
+                    
+                    # Compter les groupes attendus pour ce FPack
+                    nb_groupes_attendus_fpack = db.query(models.FPackConfigColumn).filter(
+                        models.FPackConfigColumn.fpack_id == sp_fpack.fpack_id,
+                        models.FPackConfigColumn.type == "group"
+                    ).count()
+                    
+                    # Ajouter aux totaux
+                    total_selections += nb_selections_fpack
+                    total_groupes_attendus += nb_groupes_attendus_fpack
+                    
+                    # Ajouter ce FPack au tableau
+                    fpacks_array.append({
+                        "id": sp_fpack.id,  # ID de l'enregistrement SousProjetFpack
+                        "fpack_id": sp_fpack.fpack_id,  # ID du template FPack
+                        "fpack_nom": fpack_nom,
+                        "FPack_number": sp_fpack.FPack_number,
+                        "Robot_Location_Code": sp_fpack.Robot_Location_Code,
+                        "nb_selections": nb_selections_fpack,
+                        "nb_groupes_attendus": nb_groupes_attendus_fpack,
+                        "complet": nb_selections_fpack >= nb_groupes_attendus_fpack if nb_groupes_attendus_fpack > 0 else False
+                    })
+                
+                # Déterminer si le sous-projet est complet (tous les FPacks terminés)
+                complet = all(fpack["complet"] for fpack in fpacks_array) if fpacks_array else False
+                
+                sous_projets_details.append({
+                    "id": sp.id,
+                    "nom": sp.nom,
+                    "id_global": sp.id_global,
+                    "client_nom": projet.client_rel.nom if projet.client_rel else None,
+                    "projet_global_nom": projet.projet,
+                    "sous_projet_nom": sp.nom,
+                    "complet": complet,
+                    "nb_selections": total_selections,
+                    "nb_groupes_attendus": total_groupes_attendus,
+                    "fpacks": fpacks_array,  # Nouveau format avec tous les FPacks
+                    # Garder l'ancien format pour compatibilité (utilise le premier FPack)
+                    "fpack_id": fpacks_array[0]["fpack_id"] if fpacks_array else None,
+                    "fpack_nom": fpacks_array[0]["fpack_nom"] if fpacks_array else None,
+                    "FPack_number": fpacks_array[0]["FPack_number"] if fpacks_array else None,
+                    "Robot_Location_Code": fpacks_array[0]["Robot_Location_Code"] if fpacks_array else None
+                })
+            else:
+                # Aucun FPack associé
+                sous_projets_details.append({
+                    "id": sp.id,
+                    "nom": sp.nom,
+                    "id_global": sp.id_global,
+                    "client_nom": projet.client_rel.nom if projet.client_rel else None,
+                    "projet_global_nom": projet.projet,
+                    "sous_projet_nom": sp.nom,
+                    "complet": False,
+                    "nb_selections": 0,
+                    "nb_groupes_attendus": 0,
+                    "fpacks": [],  # Tableau vide
+                    "fpack_id": None,
+                    "fpack_nom": None,
+                    "FPack_number": None,
+                    "Robot_Location_Code": None
+                })
         
         result.append({
             "id": projet.id,

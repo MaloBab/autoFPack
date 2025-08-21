@@ -1,6 +1,6 @@
 from __future__ import annotations
 from pydantic import BaseModel  # type: ignore
-from typing import List, Optional
+from typing import List, Optional, Dict
 
 
 class ProduitBase(BaseModel):
@@ -292,10 +292,12 @@ class SousProjetReadWithDetails(SousProjetRead):
     complet: bool = False
     nb_selections: int = 0
     nb_groupes_attendus: int = 0
-    # Ajout des détails FPack
+    # Ajout des détails FPack (ancien format)
     fpack_id: Optional[int] = None
     FPack_number: Optional[str] = None
     Robot_Location_Code: Optional[str] = None
+    # Nouveau format avec tableau
+    fpacks: List[Dict] = []
 
 class ProjetGlobalReadWithSousProjets(ProjetGlobalRead):
     """Schema pour afficher un projet global avec ses projets"""

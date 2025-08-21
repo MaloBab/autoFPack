@@ -113,8 +113,7 @@ function formatCellValue(value: any, type: string) {
         v-if="getCellType(getDisplayValue(props.row, col, props.tableName, props.tableData)) !== 'text'" 
         class="cell-type-indicator"
       >
-        <span v-if="getCellType(getDisplayValue(props.row, col, props.tableName, props.tableData)) === 'number'">🔢</span>
-        <span v-else-if="getCellType(getDisplayValue(props.row, col, props.tableName, props.tableData)) === 'currency'">💰</span>
+        <span v-if="getCellType(getDisplayValue(props.row, col, props.tableName, props.tableData)) === 'currency'">💰</span>
         <span v-else-if="getCellType(getDisplayValue(props.row, col, props.tableName, props.tableData)) === 'date'">📅</span>
         <span v-else-if="getCellType(getDisplayValue(props.row, col, props.tableName, props.tableData)) === 'email'">📧</span>
         <span v-else-if="getCellType(getDisplayValue(props.row, col, props.tableName, props.tableData)) === 'url'">🔗</span>
