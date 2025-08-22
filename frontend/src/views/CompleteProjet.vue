@@ -11,7 +11,7 @@ const route = useRoute()
 const router = useRouter()
 
 const sousProjet = ref<any>(null)
-const fpackData = ref<any>(null) // Données de l'association sous-projet/fpack
+const fpackData = ref<any>(null)
 const configColumns = ref<any[]>([])
 const allConfig = ref<any>(null)
 const produits = ref<any[]>([])
@@ -30,9 +30,7 @@ const equipementProduitsMap = ref<Record<number, number[]>>({})
 const produitIncompatibilites = ref<{produit_id_1: number, produit_id_2: number}[]>([])
 const robotProduitCompatibilites = ref<{robot_id: number, produit_id: number}[]>([])
 
-// Les paramètres de route contiennent maintenant sous_projet_id et fpack_id
-const sousProjetId = computed(() => parseInt(route.params.sous_projet_id as string))
-const fpackId = computed(() => parseInt(route.params.fpack_id as string))
+const sousProjetFpackId = computed(() => parseInt(route.params.sous_projet_fpack_id as string))
 
 const groupesRemplis = computed(() =>
   groupes.value.filter(g => selections.value[g.ref_id])
@@ -192,21 +190,20 @@ async function fetchData() {
     const resRobots = await axios.get('http://localhost:8000/robots')
     robots.value = resRobots.data
 
-    // Récupérer le sous-projet
-    const resSousProjet = await axios.get(`http://localhost:8000/sous_projets/${sousProjetId.value}`)
+    // NOUVEAU: Récupérer les données de l'association sous_projet_fpack
+    const resFpackAssoc = await axios.get(`http://localhost:8000/sous_projet_fpack/${sousProjetFpackId.value}`)
+    fpackData.value = resFpackAssoc.data
+    
+    if (!fpackData.value) {
+      throw new Error('Association sous-projet/FPack non trouvée')
+    }
+
+    // Récupérer le sous-projet via l'association
+    const resSousProjet = await axios.get(`http://localhost:8000/sous_projets/${fpackData.value.sous_projet_id}`)
     sousProjet.value = resSousProjet.data
 
-    // Récupérer les FPacks associés au sous-projet
-    const resFpacks = await axios.get(`http://localhost:8000/sous_projets/${sousProjetId.value}/fpacks`)
-    const currentFpack = resFpacks.data.find((fp: any) => fp.fpack_id === fpackId.value)
-    
-    if (!currentFpack) {
-      throw new Error('FPack non trouvé pour ce sous-projet')
-    }
-    fpackData.value = currentFpack
-
-    // Récupérer la configuration du FPack
-    const resConfig = await axios.get(`http://localhost:8000/fpack_config_columns/${fpackId.value}`)
+    // Récupérer la configuration du FPack basée sur le fpack_id
+    const resConfig = await axios.get(`http://localhost:8000/fpack_config_columns/${fpackData.value.fpack_id}`)
     configColumns.value = resConfig.data.columns ?? []
     allConfig.value = resConfig.data
 
@@ -215,9 +212,9 @@ async function fetchData() {
     equipementsSeuls.value = configColumns.value.filter(c => c.type === 'equipement' && !c.group_items)
     groupes.value = configColumns.value.filter(c => c.type === 'group')
 
-    // Récupérer les sélections existantes pour cette association sous-projet/fpack
+    // NOUVEAU: Récupérer les sélections basées sur l'ID unique de l'association
     const resSelections = await axios.get(
-      `http://localhost:8000/sous_projets/${sousProjetId.value}/fpacks/${fpackId.value}/selections`
+      `http://localhost:8000/sous_projet_fpack/${sousProjetFpackId.value}/selections`
     )
     hasSelections.value = Array.isArray(resSelections.data) && resSelections.data.length > 0
     
@@ -231,6 +228,7 @@ async function fetchData() {
       expandedGroups.value.add(groupesRestants.value[0].ref_id)
     }
 
+    // Récupérer la carte équipement-produits
     const resEqProd = await axios.get('http://localhost:8000/equipementproduits')
     equipementProduitsMap.value = {}
     for (const [eqId, produitsArr] of Object.entries(resEqProd.data)) {
@@ -251,12 +249,15 @@ function handleExport() {
   showToast("Fonction Export en cours de développement", "#2563eb")
 }
 
-function handleShowBill() {
-  if (!sousProjet.value) return
-  saveSelections(false)
+async function handleShowBill() {
+  if (!sousProjetFpackId.value) {
+    showToast("ID de l'association manquant", "#EE1111")
+    return
+  }
+  await saveSelections(false)
   router.push({ 
-    name: 'FactureSousProjet', 
-    params: { id: sousProjet.value.id } 
+    name: 'FactureSousProjetFpack',
+    params: { sous_projet_fpack_id: sousProjetFpackId.value } 
   })
 }
 
@@ -280,27 +281,25 @@ onMounted(async () => {
 async function saveSelections(goBack = true) {
   saving.value = true
   try {
-    // Récupérer toutes les sélections existantes d'un coup
     let existingSelectionsMap: Record<number, any> = {}
     try {
       const response = await axios.get(
-        `http://localhost:8000/sous_projets/${sousProjetId.value}/fpacks/${fpackId.value}/selections`
+        `http://localhost:8000/sous_projet_fpack/${sousProjetFpackId.value}/selections`
       )
-      existingSelectionsMap = response.data.reduce((acc: Record<number, any>, sel: any) => {
+      existingSelectionsMap = response.data.reduce((acc:any, sel:any) => {
         acc[sel.groupe_id] = sel
         return acc
       }, {})
-    } catch (err: any) {
+    } catch (err:any) {
       console.log('Aucune sélection existante trouvée ou erreur:', err.message)
     }
 
     const promises = groupes.value.map(async (groupe) => {
       const selectedRefId = selections.value[groupe.ref_id]
-      const selectedItem = selectedRefId ? groupe.group_items.find((item: any) => item.ref_id === selectedRefId) : null
+      const selectedItem = selectedRefId ? groupe.group_items.find((item:any) => item.ref_id === selectedRefId) : null
       const existingSelection = existingSelectionsMap[groupe.ref_id]
       
       if (selectedRefId && selectedItem) {
-        // Il y a une sélection à enregistrer
         const selectionData = {
           groupe_id: groupe.ref_id,
           type_item: selectedItem.type,
@@ -308,29 +307,27 @@ async function saveSelections(goBack = true) {
         }
         
         if (existingSelection) {
-          // Vérifier si la sélection a changé
           if (existingSelection.ref_id !== selectedRefId || existingSelection.type_item !== selectedItem.type) {
             await axios.put(
-              `http://localhost:8000/sous_projets/${sousProjetId.value}/fpacks/${fpackId.value}/selections/${groupe.ref_id}`,
+              `http://localhost:8000/sous_projet_fpack/${sousProjetFpackId.value}/selections/${groupe.ref_id}`,
               selectionData
             )
           }
         } else {
-            await axios.post(
-            `http://localhost:8000/sous_projets/${sousProjetId.value}/fpacks/${fpackId.value}/selections`,
+          await axios.post(
+            `http://localhost:8000/sous_projet_fpack/${sousProjetFpackId.value}/selections`,
             selectionData
           )
         }
       } else if (existingSelection) {
         await axios.delete(
-          `http://localhost:8000/sous_projets/${sousProjetId.value}/fpacks/${fpackId.value}/selections/${groupe.ref_id}`
+          `http://localhost:8000/sous_projet_fpack/${sousProjetFpackId.value}/selections/${groupe.ref_id}`
         )
       }
     })
 
     await Promise.all(promises)
     
-    // Mettre à jour hasSelections après la sauvegarde
     const finalSelections = Object.values(selections.value).filter(Boolean)
     hasSelections.value = finalSelections.length > 0
     

@@ -12,7 +12,6 @@ import Incompatibilites from '../views/Incompatibilites.vue'
 import FpackList from '../views/ConfigureFPackListe.vue'
 import Prix from '../views/Prix.vue'
 import Projet_global from '../views/Projets.vue'
-import ProjetDetails from '../views/ProjetDetails.vue'
 import CompleteProjet from '../views/CompleteProjet.vue'
 import FactureProjet from '../views/FactureProjet.vue'
 import PrixRobot from '../views/PrixRobot.vue'
@@ -33,9 +32,10 @@ const routes = [
   { path: '/prix_robot', name: 'Prix-Robot', component: PrixRobot},
   
   { path: '/projet_global', name: 'Projet_global', component: Projet_global},
-  { path: '/projets/:id/details', name: 'ProjetDetails', component: ProjetDetails},
-  {path: '/complete-projet/:sous_projet_id/:fpack_id', name: 'CompleteProjet', component: CompleteProjet},
+  {path: '/complete-projet/:sous_projet_fpack_id', name: 'CompleteProjet', component: CompleteProjet},
   { path: '/facture/:id', name: 'FactureProjet', component: FactureProjet },
+  { path: '/facture/sous-projet-fpack/:sous_projet_fpack_id', name: 'FactureSousProjetFpack', component: FactureProjet },
+
 ]
 
 const router = createRouter({

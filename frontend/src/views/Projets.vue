@@ -160,15 +160,9 @@ const handleAssociateFpack = (subproject) => {
 
 const handleRemoveFpack = async (subprojectId) => {
   try {
-    const subproject = projetsGlobaux.value
-      .flatMap(p => p.sous_projets)
-      .find(sp => sp.id === subprojectId)
-    
-    if (subproject && subproject.fpack_id) {
-      await api.delete(`/sous_projets/${subprojectId}/fpacks/${subproject.fpack_id}`)
-      await fetchProjetsGlobaux()
-      showNotification('FPack retiré avec succès', 'success')
-    }
+    await api.delete(`/sous_projet_fpack/${subprojectId}`)
+    await fetchProjetsGlobaux()
+    showNotification('FPack retiré avec succès', 'success')
   } catch (error) {
     showNotification('Erreur lors de la suppression du FPack', 'error')
   }
@@ -228,24 +222,17 @@ const handleFpackSubmit = async (fpackData) => {
   }
 }
 
-const remplirFpack = (sousProjetId, fpackId) => {
-
-  // Validation des paramètres
-  if (!sousProjetId) {
-    showNotification('ID du sous-projet manquant', 'error')
-    return
-  }
-  
-  if (!fpackId) {
-    showNotification('ID du FPack manquant', 'error')
+const remplirFpack = (sousProjetFpackId) => {
+  // Validation du paramètre
+  if (!sousProjetFpackId) {
+    showNotification('ID de l\'association sous-projet/FPack manquant', 'error')
     return
   }
   
   router.push({ 
     name: 'CompleteProjet', 
     params: { 
-      sous_projet_id: sousProjetId,
-      fpack_id: fpackId
+      sous_projet_fpack_id: sousProjetFpackId
     } 
   })
 }

@@ -17,8 +17,24 @@ const totalGlobal = computed(() => facture.value?.totaux?.global ?? 0)
 
 const exportFactureExcel = async () => {
   try {
-    const projetId = route.params.id
-    const response = await axios.get(`http://localhost:8000/sous_projets/${projetId}/facture-excel`, {
+    const projetId = route.params.id || route.params.sous_projet_fpack_id
+    
+    if (!projetId) {
+      showToast("Aucun ID de projet trouvé", "#EE1111")
+      return
+    }
+    
+    // Choisir l'endpoint selon le type de route
+    let endpoint
+    if (route.params.sous_projet_fpack_id) {
+      // Pour sous-projet-fpack, utiliser l'endpoint sous-projets
+      // Note: L'API n'a peut-être pas d'endpoint Excel pour sous_projet_fpack
+      endpoint = `http://localhost:8000/sous_projet_fpack/${projetId}/facture-excel`
+    } else {
+      endpoint = `http://localhost:8000/sous_projets/${projetId}/facture-excel`
+    }
+    
+    const response = await axios.get(endpoint, {
       responseType: 'blob'
     })
 
@@ -36,13 +52,30 @@ const exportFactureExcel = async () => {
     URL.revokeObjectURL(url)
   } catch (error) {
     console.error("Erreur export Excel :", error)
+    showToast("Erreur lors de l'export Excel - Fonctionnalité peut-être non disponible", "#EE1111")
   }
 }
 
 const exportFacturePDF = async () => {
-  const projetId = route.params.id
   try {
-    const response = await axios.get(`http://localhost:8000/sous_projets/${projetId}/facture-pdf`, {
+    const projetId = route.params.id || route.params.sous_projet_fpack_id
+    
+    if (!projetId) {
+      showToast("Aucun ID de projet trouvé", "#EE1111")
+      return
+    }
+    
+    // Choisir l'endpoint selon le type de route
+    let endpoint
+    if (route.params.sous_projet_fpack_id) {
+      // Pour sous-projet-fpack, utiliser l'endpoint sous-projets
+      // Note: L'API n'a peut-être pas d'endpoint PDF pour sous_projet_fpack
+      endpoint = `http://localhost:8000/sous_projet_fpack/${projetId}/facture-pdf`
+    } else {
+      endpoint = `http://localhost:8000/sous_projets/${projetId}/facture-pdf`
+    }
+    
+    const response = await axios.get(endpoint, {
       responseType: 'blob'
     })
 
@@ -58,6 +91,7 @@ const exportFacturePDF = async () => {
     URL.revokeObjectURL(url)
   } catch (error) {
     console.error("Erreur export PDF :", error)
+    showToast("Erreur lors de l'export PDF - Fonctionnalité peut-être non disponible", "#EE1111")
   }
 }
 
@@ -65,13 +99,34 @@ const exportFacturePDF = async () => {
 async function fetchFacture() {
   loading.value = true
   try {
-    const id = route.params.id
-    const res = await axios.get(`http://localhost:8000/sous_projets/${id}/facture`)
-    facture.value = res.data
-    console.log("Facture lignes", facture.value)
+    // Handle both route parameter names
+    const id = route.params.id || route.params.sous_projet_fpack_id
+    
+    if (!id) {
+      throw new Error('Aucun ID de projet trouvé dans la route')
+    }
+    
+    // Choisir l'endpoint selon le type de route
+    let endpoint
+    if (route.params.sous_projet_fpack_id) {
+      // Route /facture/sous-projet-fpack/:sous_projet_fpack_id
+      endpoint = `http://localhost:8000/sous_projet_fpack/${id}/facture`
+    } else {
+      // Route /facture/:id (sous-projet)
+      endpoint = `http://localhost:8000/sous_projets/${id}/facture`
+    }
+    
+    const res = await axios.get(endpoint)
+    if (res.data) {
+      facture.value = res.data
+      console.log("Facture lignes", facture.value)
+    } else {
+      showToast("Aucune donnée de facture trouvée", "#EE1111")
+    }
   } catch (err) {
     console.error(err)
     showToast("Erreur lors du chargement de la facture", "#EE1111")
+    facture.value = null
   } finally {
     loading.value = false
   }
@@ -87,30 +142,30 @@ onMounted(fetchFacture)
 <template>
   <div class="facture-container">
     <div class="facture-header">
-      <h1>🧾 Facture du Projet <span class="page-title"> {{facture?.nom_projet || '#' + route.params.id }}</span></h1>
+      <h1>🧾 Facture du Projet <span class="page-title"> {{facture?.nom_projet || '#' + (route.params.id || route.params.sous_projet_fpack_id) }}</span></h1>
       <button @click="revenir" class="btn btn-secondary">Retour</button>
     </div>
 
     <div v-if="loading" class="facture-loading">Chargement de la facture...</div>
 
-    <div v-else class="facture-card">
+    <div v-else-if="facture" class="facture-card">
       <table class="facture-table">
         <thead>
           <tr>
             <th>Produit</th>
             <th>Qté</th>
-            <th>Prix €</th>
-            <th>Transport €</th>
+            <th>Prix unitaire €</th>
+            <th>Transport unitaire €</th>
             <th>Total €</th>
             <th>Commentaire</th>
           </tr>
         </thead>
         <tbody class="scrollable-tbody">
-          <tr v-for="l in facture.lines" :key="l.produit_id" :class="l.prix_unitaire === 0 ? 'warning-row' : ''">
+          <tr v-for="l in facture.lines || []" :key="l.produit_id" :class="l.prix_unitaire === 0 ? 'warning-row' : ''">
             <td>{{ l.nom }}</td>
             <td>{{ l.qte }}</td>
-            <td>{{ l.prix_unitaire.toFixed(2) ?? '0.00'}}</td>
-            <td>{{ l.prix_transport.toFixed(2) ?? '0.00' }}</td>
+            <td>{{ l.prix_unitaire?.toFixed(2) ?? '0.00'}}</td>
+            <td>{{ l.prix_transport?.toFixed(2) ?? '0.00' }}</td>
             <td><strong>{{ l.total_ligne?.toFixed(2) ?? '0.00' }}</strong></td>
             <td>{{ l.commentaire || (l.prix_unitaire === 0 ? '⚠️ Aucun prix disponible' : '-') }}</td>
           </tr>
@@ -131,6 +186,10 @@ onMounted(fetchFacture)
         <button @click="exportFacturePDF" class="btn btn-green">Exporter en PDF</button>
         <button @click="exportFactureExcel" class="btn btn-blue">Télécharger Excel</button>
       </div>
+    </div>
+    
+    <div v-else class="facture-error">
+      <p>Aucune facture trouvée ou erreur de chargement.</p>
     </div>
   </div>
 </template>
@@ -170,6 +229,13 @@ onMounted(fetchFacture)
   animation: pulse 1s infinite;
 }
 
+.facture-error {
+  text-align: center;
+  font-size: 1.2rem;
+  color: #dc2626;
+  padding: 2rem 0;
+}
+
 .facture-card {
   background: white;
   border-radius: 16px;
@@ -197,7 +263,7 @@ onMounted(fetchFacture)
   background: linear-gradient(to right, #3b82f6, #6366f1);
   color: white;
   padding: 0.75rem;
-  text-align: left;
+  text-align: center;
   font-size: 0.95rem;
 }
 

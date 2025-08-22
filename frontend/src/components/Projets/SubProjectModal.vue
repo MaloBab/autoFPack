@@ -1,89 +1,3 @@
-<template>
-  <Teleport to="body">
-    <Transition name="modal" appear>
-      <div v-if="show" class="modal-overlay" @click="handleOverlayClick">
-        <div class="modal-container" @click.stop>
-          <!-- Header avec design moderne -->
-          <div class="modal-header">
-            <div class="header-content">
-              <div class="modal-icon">
-                <div class="icon-wrapper">
-                  {{ subproject ? '✏️' : '📋' }}
-                </div>
-              </div>
-              <div class="header-text">
-                <h2 class="modal-title">
-                  {{ subproject ? 'Modifier le sous-projet' : 'Nouveau sous-projet' }}
-                </h2>
-                <p class="modal-subtitle">
-                  {{ project ? `Pour le projet "${project.projet}"` : 'Organisez votre travail en sous-projets' }}
-                </p>
-              </div>
-            </div>
-            <button @click="$emit('close')" class="close-btn">
-              <svg width="24" height="24" viewBox="0 0 24 24" fill="none">
-                <path d="M18 6L6 18M6 6L18 18" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
-              </svg>
-            </button>
-          </div>
-
-          <!-- Formulaire -->
-          <form @submit.prevent="handleSubmit" class="modal-form">
-            <div class="form-content">
-              <!-- Preview des actions possibles -->
-              <div v-if="!subproject" class="actions-preview">
-                <div class="preview-header">
-                  <span class="preview-title">🚀 Après création</span>
-                </div>
-                <div class="preview-items">
-                  <div class="preview-item">
-                    <div class="preview-icon">📦</div>
-                    <span>Associer un FPack</span>
-                  </div>
-                  <div class="preview-item">
-                    <div class="preview-icon">🎯</div>
-                    <span>Définir les objectifs</span>
-                  </div>
-                  <div class="preview-item">
-                    <div class="preview-icon">✅</div>
-                    <span>Suivre la progression</span>
-                  </div>
-                </div>
-              </div>
-            </div>
-
-            <!-- Footer avec actions -->
-            <div class="modal-footer">
-              <button 
-                type="button" 
-                @click="$emit('close')" 
-                class="btn btn-secondary"
-                :disabled="loading"
-              >
-                <span>Annuler</span>
-              </button>
-              <button 
-                type="submit" 
-                class="btn btn-primary"
-                :disabled="loading || !isFormValid"
-              >
-                <div v-if="loading" class="btn-spinner">
-                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none">
-                    <circle cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4" opacity="0.25"/>
-                    <path d="M12 2a10 10 0 0110 10" stroke="currentColor" stroke-width="4"/>
-                  </svg>
-                </div>
-                <span v-else>
-                  {{ subproject ? 'Modifier' : 'Créer' }} le sous-projet
-                </span>
-              </button>
-            </div>
-          </form>
-        </div>
-      </div>
-    </Transition>
-  </Teleport>
-</template>
 <script setup>
 import { ref, computed, watch, onMounted, nextTick, onUnmounted } from 'vue'
 
@@ -115,13 +29,7 @@ const nameSuggestions = computed(() => {
   if (!props.project) return []
   
   const existingNames = props.project.sous_projets?.map(sp => sp.nom.toLowerCase()) || []
-  const suggestions = [
-    'Phase 1', 'Phase 2', 'Phase 3',
-    'Module A', 'Module B', 'Module C',
-    'Sprint 1', 'Sprint 2', 'Sprint 3',
-    'Étape initiale', 'Développement', 'Tests',
-    'Conception', 'Implémentation', 'Validation'
-  ]
+
   
   return suggestions.filter(suggestion => 
     !existingNames.includes(suggestion.toLowerCase())
@@ -146,7 +54,6 @@ watch(() => props.show, (newValue) => {
       formData.value.id_global = props.project.id
     }
     
-    // Focus sur le premier champ après ouverture
     nextTick(() => {
       if (subprojectNameInput.value) {
         subprojectNameInput.value.focus()
@@ -166,46 +73,15 @@ const resetForm = () => {
   }
 }
 
-const validateForm = () => {
-  errors.value = {
-    nom: ''
-  }
-
-  if (!formData.value.nom.trim()) {
-    errors.value.nom = 'Le nom du sous-projet est requis'
-  } else if (formData.value.nom.trim().length < 2) {
-    errors.value.nom = 'Le nom doit contenir au moins 2 caractères'
-  } else if (formData.value.nom.trim().length > 100) {
-    errors.value.nom = 'Le nom ne peut pas dépasser 100 caractères'
-  }
-
-  // Vérifier les doublons si on est en création
-  if (!props.subproject && props.project) {
-    const existingNames = props.project.sous_projets?.map(sp => sp.nom.toLowerCase()) || []
-    if (existingNames.includes(formData.value.nom.toLowerCase())) {
-      errors.value.nom = 'Un sous-projet avec ce nom existe déjà'
-    }
-  }
-
-  return !Object.values(errors.value).some(error => error)
-}
 
 const handleSubmit = () => {
-  if (validateForm()) {
-    emit('save', { ...formData.value })
-  }
+  emit('save', { ...formData.value })
 }
 
 const handleOverlayClick = (e) => {
   if (e.target === e.currentTarget) {
     emit('close')
   }
-}
-
-const getClientName = (clientId) => {
-  // Cette fonction devrait idéalement recevoir la liste des clients via props
-  // Pour l'instant, on retourne juste l'ID
-  return `Client ${clientId}`
 }
 
 // Gérer la fermeture avec Escape
@@ -227,6 +103,149 @@ onUnmounted(() => {
   document.body.style.overflow = ''
 })
 </script>
+
+<template>
+  <Teleport to="body">
+    <Transition name="modal" appear>
+      <div v-if="show" style="position: fixed; inset: 0; background: rgba(0, 0, 0, 0.6); backdrop-filter: blur(10px); display: flex; align-items: center; justify-content: center; z-index: 1000; padding: 20px;" @click="handleOverlayClick">
+        <div style="background: white; border-radius: 24px; width: 100%; max-width: 580px; max-height: 90vh; overflow: hidden; box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.25), 0 0 0 1px rgba(255, 255, 255, 0.1);" @click.stop>
+          <!-- Header avec design moderne -->
+          <div style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); padding: 32px; position: relative; color: white;">
+            <div style="display: flex; align-items: flex-start; gap: 16px;">
+              <div style="flex-shrink: 0;">
+                <div style="width: 48px; height: 48px; background: rgba(255, 255, 255, 0.2); border-radius: 12px; display: flex; align-items: center; justify-content: center; font-size: 20px; backdrop-filter: blur(10px);">
+                  {{ subproject ? '✏️' : '📋' }}
+                </div>
+              </div>
+              <div style="flex: 1;">
+                <h2 style="font-size: 24px; font-weight: 700; margin: 0 0 8px 0; color: white;">
+                  {{ subproject ? 'Modifier le sous-projet' : 'Nouveau sous-projet' }}
+                </h2>
+                <p style="font-size: 16px; opacity: 0.9; margin: 0; line-height: 1.5;">
+                  {{ project ? `Pour le projet "${project.projet}"` : 'Organisez votre travail en sous-projets' }}
+                </p>
+              </div>
+            </div>
+            <button @click="$emit('close')" style="position: absolute; top: 24px; right: 24px; width: 40px; height: 40px; border: none; background: rgba(255, 255, 255, 0.2); border-radius: 10px; color: white; cursor: pointer; transition: all 0.2s ease; display: flex; align-items: center; justify-content: center;">
+              <svg width="24" height="24" viewBox="0 0 24 24" fill="none">
+                <path d="M18 6L6 18M6 6L18 18" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+              </svg>
+            </button>
+          </div>
+
+          <!-- Formulaire -->
+          <form @submit.prevent="handleSubmit" style="display: flex; flex-direction: column; height: calc(100% - 120px);">
+            <div style="flex: 1; padding: 32px; overflow-y: auto;">
+              <!-- Contexte du projet -->
+              <div v-if="project" style="background: linear-gradient(135deg, #f8fafc 0%, #e2e8f0 100%); border-radius: 16px; padding: 20px; margin-bottom: 24px; border: 1px solid #e2e8f0;">
+                <div style="display: flex; align-items: center; gap: 16px;">
+                  <div style="font-size: 24px; filter: grayscale(0.2);">🎯</div>
+                  <div style="flex: 1;">
+                    <h3 style="font-size: 18px; font-weight: 700; color: #1f2937; margin: 0 0 4px 0;">{{ project.projet }}</h3>
+                  </div>
+                  <div style="display: flex; align-items: center;">
+                    <div style="text-align: center;">
+                      <span style="display: block; font-size: 20px; font-weight: 700; color: #667eea;">{{ project.sous_projets?.length || 0 }}</span>
+                      <span style="font-size: 12px; color: #6b7280; text-transform: uppercase; letter-spacing: 0.5px;">Sous-projets</span>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              <!-- Nom du sous-projet -->
+              <div style="margin-bottom: 24px;">
+                <label style="display: flex; align-items: center; gap: 4px; margin-bottom: 8px; font-weight: 600; color: #374151;">
+                  <span style="font-size: 14px;">Nom du sous-projet</span>
+                </label>
+                <div style="position: relative; display: flex; align-items: center;">
+                  <div style="position: absolute; left: 16px; z-index: 1; color: #9ca3af; transition: color 0.2s ease;">
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none">
+                      <path d="M9 12l2 2 4-4M7.835 4.697a3.42 3.42 0 001.946-.806 3.42 3.42 0 014.438 0 3.42 3.42 0 001.946.806 3.42 3.42 0 013.138 3.138 3.42 3.42 0 00.806 1.946 3.42 3.42 0 010 4.438 3.42 3.42 0 00-.806 1.946 3.42 3.42 0 01-3.138 3.138 3.42 3.42 0 00-1.946.806 3.42 3.42 0 01-4.438 0 3.42 3.42 0 00-1.946-.806 3.42 3.42 0 01-3.138-3.138 3.42 3.42 0 00-.806-1.946 3.42 3.42 0 010-4.438 3.42 3.42 0 00.806-1.946 3.42 3.42 0 013.138-3.138z" stroke="currentColor" stroke-width="1.5"/>
+                    </svg>
+                  </div>
+                  <input
+                    ref="subprojectNameInput"
+                    v-model="formData.nom"
+                    type="text"
+                    style="width: 100%; padding: 16px 16px 16px 48px; border: 2px solid #e5e7eb; border-radius: 12px; font-size: 16px; background: #f9fafb; transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1); outline: none;"
+                    :style="errors.nom ? 'border-color: #ef4444; background: #fef2f2;' : ''"
+                    placeholder="Entrez le nom de votre sous-projet..."
+                    required
+                  >
+                </div>
+                <div v-if="errors.nom" style="color: #ef4444; font-size: 14px; margin-top: 8px; display: flex; align-items: center; gap: 4px;">
+                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none">
+                    <circle cx="12" cy="12" r="10" stroke="currentColor" stroke-width="2"/>
+                    <line x1="12" y1="8" x2="12" y2="12" stroke="currentColor" stroke-width="2"/>
+                    <line x1="12" y1="16" x2="12.01" y2="16" stroke="currentColor" stroke-width="2"/>
+                  </svg>
+                  {{ errors.nom }}
+                </div>
+              </div>
+
+
+              <!-- Informations supplémentaires si édition -->
+              <div v-if="subproject" style="background: #f8fafc; border-radius: 16px; padding: 24px; margin-bottom: 24px;">
+                <div style="margin-bottom: 16px;">
+                  <h3 style="font-size: 16px; font-weight: 600; color: #374151; margin: 0;">Informations du sous-projet</h3>
+                </div>
+                <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); gap: 12px;">
+                  <div :style="`background: white; border-radius: 12px; padding: 16px; border: 1px solid #e5e7eb; transition: all 0.2s ease; display: flex; align-items: center; gap: 12px; ${subproject.complet ? 'background: rgba(16, 185, 129, 0.05); border-color: rgba(16, 185, 129, 0.2);' : 'background: rgba(251, 146, 60, 0.05); border-color: rgba(251, 146, 60, 0.2);'}`">
+                    <div style="font-size: 20px; flex-shrink: 0;">
+                      {{ subproject.complet ? '✅' : '⏳' }}
+                    </div>
+                    <div style="flex: 1;">
+                      <div style="font-size: 18px; font-weight: 700; color: #374151; margin-bottom: 2px;">
+                        {{ subproject.complet ? 'Terminé' : 'En cours' }}
+                      </div>
+                      <div style="font-size: 12px; color: #6b7280; text-transform: uppercase; letter-spacing: 0.5px;">Status</div>
+                    </div>
+                  </div>
+                  <div style="background: white; border-radius: 12px; padding: 16px; border: 1px solid #e5e7eb; transition: all 0.2s ease; display: flex; align-items: center; gap: 12px;">
+                    <div style="font-size: 20px; flex-shrink: 0;">📅</div>
+                    <div style="flex: 1;">
+                      <div style="font-size: 18px; font-weight: 700; color: #374151; margin-bottom: 2px;">{{ subproject.id || 'Auto' }}</div>
+                      <div style="font-size: 12px; color: #6b7280; text-transform: uppercase; letter-spacing: 0.5px;">ID</div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <!-- Footer avec actions -->
+            <div style="padding: 24px 32px; background: #f9fafb; border-top: 1px solid #e5e7eb; display: flex; gap: 12px; justify-content: flex-end;">
+              <button 
+                type="button" 
+                @click="$emit('close')" 
+                style="padding: 12px 24px; border-radius: 12px; font-weight: 600; font-size: 14px; cursor: pointer; transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1); display: flex; align-items: center; justify-content: center; gap: 8px; border: 1px solid #d1d5db; min-width: 120px; background: white; color: #6b7280;"
+                :disabled="loading"
+                :style="loading ? 'cursor: not-allowed; opacity: 0.6;' : ''"
+              >
+                <span>Annuler</span>
+              </button>
+              <button 
+                type="submit" 
+                style="padding: 12px 24px; border-radius: 12px; font-weight: 600; font-size: 14px; cursor: pointer; transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1); display: flex; align-items: center; justify-content: center; gap: 8px; border: none; min-width: 120px; background: linear-gradient(135deg, #667eea, #764ba2); color: white; box-shadow: 0 4px 14px rgba(102, 126, 234, 0.3);"
+                :disabled="loading || !isFormValid"
+                :style="(loading || !isFormValid) ? 'cursor: not-allowed; opacity: 0.6;' : ''"
+              >
+                <div v-if="loading" style="animation: spin 1s linear infinite;">
+                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none">
+                    <circle cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4" opacity="0.25"/>
+                    <path d="M12 2a10 10 0 0110 10" stroke="currentColor" stroke-width="4"/>
+                  </svg>
+                </div>
+                <span v-else>
+                  {{ subproject ? 'Modifier' : 'Créer' }} le sous-projet
+                </span>
+              </button>
+            </div>
+          </form>
+        </div>
+      </div>
+    </Transition>
+  </Teleport>
+</template>
 
 <style scoped>
 .modal-overlay {
@@ -485,6 +504,7 @@ onUnmounted(() => {
   font-size: 14px;
   font-weight: 600;
   color: #374151;
+  margin: 0;
 }
 
 .suggestions-grid {
@@ -619,6 +639,7 @@ onUnmounted(() => {
   font-size: 14px;
   font-weight: 600;
   color: #374151;
+  margin: 0;
 }
 
 .preview-items {
@@ -722,42 +743,4 @@ onUnmounted(() => {
   transform: scale(0.95) translateY(20px);
 }
 
-/* Responsive */
-@media (max-width: 640px) {
-  .modal-container {
-    margin: 20px;
-    max-width: calc(100vw - 40px);
-  }
-  
-  .modal-header {
-    padding: 24px;
-  }
-  
-  .form-content {
-    padding: 24px;
-  }
-  
-  .modal-footer {
-    padding: 20px 24px;
-    flex-direction: column;
-  }
-  
-  .btn {
-    width: 100%;
-  }
-  
-  .info-grid {
-    grid-template-columns: 1fr;
-  }
-  
-  .context-header {
-    flex-direction: column;
-    gap: 12px;
-    text-align: center;
-  }
-  
-  .suggestions-grid {
-    justify-content: center;
-  }
-}
 </style>

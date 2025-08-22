@@ -136,23 +136,45 @@ onUnmounted(() => {
             <div class="header-content">
               <div class="modal-icon">
                 <div class="icon-wrapper">
-                  {{ project ? '✏️' : '➕' }}
+                  <svg viewBox="0 0 64 64" fill="none" xmlns="http://www.w3.org/2000/svg">
+                    <circle cx="32" cy="32" r="24" fill="url(#grad1)" stroke="url(#grad2)" stroke-width="3"/>
+                    <defs>
+                      <radialGradient id="grad1" cx="32" cy="32" r="24" gradientUnits="userSpaceOnUse">
+                        <stop offset="0.2" stop-color="#f3f4f6"/>
+                        <stop offset="0.7" stop-color="#a5b4fc"/>
+                        <stop offset="1" stop-color="#7c3aed"/>
+                      </radialGradient>
+                      <linearGradient id="grad2" x1="8" y1="8" x2="56" y2="56" gradientUnits="userSpaceOnUse">
+                        <stop stop-color="#6366f1"/>
+                        <stop offset="1" stop-color="#a5b4fc"/>
+                      </linearGradient>
+                    </defs>
+                    <!-- Reflet verre flottant -->
+                    <ellipse cx="32" cy="22" rx="14" ry="6" fill="#fff" opacity="0.18"/>
+                    <ellipse cx="40" cy="38" rx="6" ry="2" fill="#fff" opacity="0.12"/>
+                    <!-- Plus stylisé, effet 3D -->
+                    <g filter="url(#plusShadow)">
+                      <rect x="29" y="18" width="6" height="28" rx="3" fill="#fff"/>
+                      <rect x="18" y="29" width="28" height="6" rx="3" fill="#fff"/>
+                    </g>
+                    <filter id="plusShadow" x="0" y="0" width="64" height="64" filterUnits="userSpaceOnUse">
+                      <feDropShadow dx="0" dy="2" stdDeviation="2" flood-color="#6366f1" flood-opacity="0.15"/>
+                    </filter>
+                    <!-- Glow et sparkles -->
+                    <circle cx="32" cy="32" r="13" fill="#a5b4fc" opacity="0.12"/>
+                    <circle cx="44" cy="20" r="2" fill="#fff" opacity="0.7"/>
+                    <circle cx="20" cy="44" r="1.5" fill="#fff" opacity="0.5"/>
+                    <circle cx="50" cy="32" r="1.2" fill="#fff" opacity="0.4"/>
+                  </svg>
                 </div>
               </div>
               <div class="header-text">
                 <h2 class="modal-title">
                   {{ project ? 'Modifier le projet' : 'Nouveau projet' }}
                 </h2>
-                <p class="modal-subtitle">
-                  {{ project ? 'Modifiez les informations du projet' : 'Créez un nouveau projet pour votre équipe' }}
-                </p>
               </div>
             </div>
-            <button @click="$emit('close')" class="close-btn">
-              <svg width="24" height="24" viewBox="0 0 24 24" fill="none">
-                <path d="M18 6L6 18M6 6L18 18" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
-              </svg>
-            </button>
+            <button @click="$emit('close')" class="close-btn">X</button>
           </div>
 
           <!-- Formulaire -->
@@ -162,7 +184,6 @@ onUnmounted(() => {
               <div class="form-group">
                 <label class="form-label">
                   <span class="label-text">Nom du projet</span>
-                  <span class="label-required">*</span>
                 </label>
                 <div class="input-wrapper">
                   <div class="input-icon">
@@ -189,7 +210,6 @@ onUnmounted(() => {
               <div class="form-group">
                 <label class="form-label">
                   <span class="label-text">Client</span>
-                  <span class="label-required">*</span>
                 </label>
                 <div class="select-wrapper">
                   <div class="select-icon">
@@ -322,7 +342,7 @@ onUnmounted(() => {
 .icon-wrapper {
   width: 48px;
   height: 48px;
-  background: rgba(255, 255, 255, 0.2);
+  background: rgba(0, 0, 0, 0.418);
   border-radius: 12px;
   display: flex;
   align-items: center;
@@ -340,13 +360,6 @@ onUnmounted(() => {
   font-weight: 700;
   margin: 0 0 8px 0;
   color: white;
-}
-
-.modal-subtitle {
-  font-size: 16px;
-  opacity: 0.9;
-  margin: 0;
-  line-height: 1.5;
 }
 
 .close-btn {

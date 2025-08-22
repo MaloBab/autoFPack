@@ -33,8 +33,8 @@ const hasChildren = computed(() => {
     return props.item.data.sous_projets && props.item.data.sous_projets.length > 0
   }
   if (props.item.type === 'subproject') {
-    // Maintenant toujours via tableau "fpacks"
-    return props.item.data.fpacks && props.item.data.fpacks.length > 0
+    // Vérifier le nouveau format avec tableau fpacks
+    return props.item.data.fpacks && Array.isArray(props.item.data.fpacks) && props.item.data.fpacks.length > 0
   }
   return false
 })
@@ -44,9 +44,9 @@ const itemTitle = computed(() => {
     case 'project':
       return props.item.data.projet
     case 'subproject':
-      return props.item.data.nom   // 👈 nouveau champ principal
+      return props.item.data.nom
     case 'fpack':
-      return props.item.data.FPack_number
+      return props.item.data.FPack_number || 'FPack sans numéro'
     default:
       return ''
   }
@@ -59,7 +59,7 @@ const itemSubtitle = computed(() => {
     case 'subproject':
       return `${props.item.data.nb_selections || 0}/${props.item.data.nb_groupes_attendus || 0} sélections`
     case 'fpack':
-      return props.item.data.fpack_nom || ''  
+      return props.item.data.fpack_nom || ''
     default:
       return ''
   }
@@ -68,15 +68,38 @@ const itemSubtitle = computed(() => {
 const progressValue = computed(() => {
   if (props.item.type === 'project') {
     const sousProjects = props.item.data.sous_projets
-    if (!sousProjects.length) return 0
-    const completed = sousProjects.filter(sp => sp.complet).length
-    return Math.round((completed / sousProjects.length) * 100)
+    if (!sousProjects || !sousProjects.length) return 0
+    
+    // Calcul de la progression moyenne de tous les sous-projets
+    let totalProgress = 0
+    
+    sousProjects.forEach(sousProject => {
+      if (sousProject.complet) {
+        // Si le sous-projet est marqué comme complet, il vaut 100%
+        totalProgress += 100
+      } else {
+        // Sinon, calculer sa progression basée sur les groupes/sélections
+        const total = sousProject.nb_groupes_attendus || 1
+        const current = sousProject.nb_selections || 0
+        const subProgress = Math.round((current / total) * 100)
+        totalProgress += Math.min(subProgress, 100) // Plafonner à 100%
+      }
+    })
+    
+    // Moyenne de la progression de tous les sous-projets
+    return Math.round(totalProgress / sousProjects.length)
   }
   
   if (props.item.type === 'subproject') {
     const total = props.item.data.nb_groupes_attendus || 1
     const current = props.item.data.nb_selections || 0
-    return Math.round((current / total) * 100)
+    return Math.min(Math.round((current / total) * 100), 100)
+  }
+
+  if (props.item.type === 'fpack') {
+    const total = props.item.data.nb_groupes_attendus || 1
+    const current = props.item.data.nb_selections || 0
+    return Math.min(Math.round((current / total) * 100), 100)
   }
   
   return 0
@@ -99,6 +122,9 @@ const isComplete = computed(() => {
   if (props.item.type === 'subproject') {
     return props.item.data.complet
   }
+  if (props.item.type === 'fpack') {
+    return props.item.data.complet
+  }
   return false
 })
 
@@ -108,7 +134,10 @@ const isInProgress = computed(() => {
     return sousProjects.some(sp => sp.complet) && !sousProjects.every(sp => sp.complet)
   }
   if (props.item.type === 'subproject') {
-    return !props.item.data.complet
+    return (props.item.data.fpacks && props.item.data.fpacks.length > 0) && !props.item.data.complet
+  }
+  if (props.item.type === 'fpack') {
+    return (props.item.data.nb_selections || 0) > 0 && !props.item.data.complet
   }
   return false
 })
@@ -160,14 +189,13 @@ const handleAssociateFpack = () => {
 
 const handleRemoveFpack = () => {
   showActions.value = false
-  emit('remove-fpack', props.item.data.id)
+  emit('remove-fpack', props.item.data.id) 
 }
 
 const handleCompleteFpack = () => {
-  
-  showActions.value = false  
-  console.log('Completing FPack:', props.item.data)
-  emit('complete-fpack', props.item.data.sous_projet_id, props.item.data.id)
+  showActions.value = false
+  console.log('-- Completing FPack:', props.item.data.id, 'for Sous-Projet:', props.item.data.sous_projet_id)
+  emit('complete-fpack', props.item.data.id) 
 }
 
 const closeActions = (event) => {
@@ -278,8 +306,15 @@ onUnmounted(() => {
               {{ item.data.nb_selections || 0 }}/{{ item.data.nb_groupes_attendus || 0 }}
             </span>
 
+            <span v-if="item.type === 'subproject' && item.data.fpacks" class="badge badge-count">
+              <svg class="badge-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor">
+                <path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"/>
+              </svg>
+              {{ item.data.fpacks.length }} FPacks
+            </span>
+
             <span v-if="item.type === 'fpack' && item.data.FPack_number" class="badge badge-number">
-              # F-Number : {{ item.data.FPack_number }}
+              # {{ item.data.FPack_number }}
             </span>
 
             <span v-if="item.type === 'fpack' && item.data.Robot_Location_Code" class="badge badge-location">
@@ -287,12 +322,20 @@ onUnmounted(() => {
                 <path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/>
                 <circle cx="12" cy="10" r="3"/>
               </svg>
-              Robot Location Code : {{ item.data.Robot_Location_Code }}
+              {{ item.data.Robot_Location_Code }}
+            </span>
+
+            <span v-if="item.type === 'fpack'" class="badge badge-progress">
+              <svg class="badge-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor">
+                <circle cx="12" cy="12" r="10"/>
+                <path d="M12 6v6l4 2"/>
+              </svg>
+              {{ item.data.nb_selections || 0 }}/{{ item.data.nb_groupes_attendus || 0 }}
             </span>
           </div>
 
           <!-- Indicateur de progression -->
-          <div v-if="item.type !== 'fpack'" class="progress-indicator">
+          <div v-if="item.type !== 'fpack' || (item.type === 'fpack' && (item.data.nb_groupes_attendus > 0))" class="progress-indicator">
             <div class="progress-ring" :class="progressClass">
               <svg viewBox="0 0 36 36">
                 <path 
@@ -941,5 +984,4 @@ onUnmounted(() => {
   opacity: 0;
   transform: translateY(-8px) scale(0.95);
 }
-
 </style>

@@ -66,7 +66,7 @@ onMounted(async () => {
   produits.value = prodRes.data
   fournisseurs.value = fournRes.data
 
-  const enriched = await Promise.all(colRes.data.map(async (col: any) => {
+  const enriched = await Promise.all(colRes.data.columns.map(async (col: any) => {
     if (col.type === 'produit') {
       const produit = produits.value.find(p => p.id === col.ref_id)
       const fournisseur = fournisseurs.value.find(f => f.id === produit?.fournisseur_id)

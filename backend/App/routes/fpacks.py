@@ -43,7 +43,7 @@ def delete_fpack(id: int, db: Session = Depends(get_db)):
     if not db_fpack:
         raise HTTPException(status_code=404, detail="FPack non trouvé")
     
-    linked_projects = db.query(models.SousProjet).filter(models.SousProjet.fpack_id == id).count()
+    linked_projects = db.query(models.SousProjetFpack).filter(models.SousProjetFpack.fpack_id == id).count()
     if linked_projects > 0:
         raise HTTPException(
             status_code=400,

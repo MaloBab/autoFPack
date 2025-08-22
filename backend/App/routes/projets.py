@@ -24,6 +24,8 @@ def get_projets_stats(db: Session = Depends(get_db)):
     """Statistiques sur les projets globaux"""
     nb_projets_globaux = db.query(models.ProjetGlobal).count()
     nb_sous_projets = db.query(models.SousProjet).count()
+    
+    # Projets par client
     projets_par_client_raw = db.query(
         models.Client.nom,
         func.count(models.ProjetGlobal.id).label('count')
@@ -31,22 +33,41 @@ def get_projets_stats(db: Session = Depends(get_db)):
         models.ProjetGlobal, models.Client.id == models.ProjetGlobal.client
     ).group_by(models.Client.nom).all()
     projets_par_client = [schemas.ProjetParClient(client=nom, count=count) for nom, count in projets_par_client_raw]
+    
     sous_projets_complets = 0
     sous_projets_incomplets = 0
 
     sous_projets = db.query(models.SousProjet).all()
     for sp in sous_projets:
-        sp_fpack = db.query(models.SousProjetFpack).filter_by(sous_projet_id=sp.id).first()
-        if sp_fpack:
-            nb_selections = db.query(models.ProjetSelection).filter_by(sous_projet_fpack_id=sp_fpack.id).count()
+        # Récupérer tous les fpacks du sous-projet
+        sp_fpacks = db.query(models.SousProjetFpack).filter_by(sous_projet_id=sp.id).all()
+        
+        if not sp_fpacks:
+            # Aucun fpack associé = incomplet
+            sous_projets_incomplets += 1
+            continue
+        
+        sous_projet_complet = True
+        
+        for sp_fpack in sp_fpacks:
+            # Nombre de sélections faites pour ce fpack
+            nb_selections = db.query(models.ProjetSelection).filter_by(
+                sous_projet_fpack_id=sp_fpack.id
+            ).count()
+            
+            # Nombre de groupes attendus (colonnes de type "group")
             nb_groupes_attendus = db.query(models.FPackConfigColumn).filter(
                 models.FPackConfigColumn.fpack_id == sp_fpack.fpack_id,
                 models.FPackConfigColumn.type == "group"
             ).count()
-            if nb_selections >= nb_groupes_attendus and nb_groupes_attendus > 0:
-                sous_projets_complets += 1
-            else:
-                sous_projets_incomplets += 1
+            
+            # Vérifier si ce fpack est complet
+            if nb_groupes_attendus == 0 or nb_selections < nb_groupes_attendus:
+                sous_projet_complet = False
+                break
+        
+        if sous_projet_complet:
+            sous_projets_complets += 1
         else:
             sous_projets_incomplets += 1
 
@@ -230,6 +251,37 @@ def get_projet_global(id: int, db: Session = Depends(get_db)):
         "client_nom": projet.client_rel.nom if projet.client_rel else None
     }
 
+@router.get("/sous_projet_fpack/{sous_projet_fpack_id}")
+def get_sous_projet_fpack_by_id(sous_projet_fpack_id: int, db: Session = Depends(get_db)):
+    """Récupère une association sous_projet_fpack par son ID"""
+    association = db.query(models.SousProjetFpack).get(sous_projet_fpack_id)
+    if not association:
+        raise HTTPException(status_code=404, detail="Association sous-projet/FPack non trouvée")
+    
+    # Récupérer aussi les infos du sous-projet et du fpack
+    sous_projet = db.query(models.SousProjet).get(association.sous_projet_id)
+    fpack = db.query(models.FPack).get(association.fpack_id)
+    
+    return {
+        "id": association.id,
+        "sous_projet_id": association.sous_projet_id,
+        "fpack_id": association.fpack_id,
+        "FPack_number": association.FPack_number,
+        "Robot_Location_Code": association.Robot_Location_Code,
+        "sous_projet": {
+            "id": sous_projet.id,
+            "nom": sous_projet.nom,
+            "id_global": sous_projet.id_global
+        } if sous_projet else None,
+        "fpack": {
+            "id": fpack.id,
+            "nom": fpack.nom,
+            "fpack_abbr": fpack.fpack_abbr
+        } if fpack else None
+    }
+
+
+
 @router.post("/projets_globaux", response_model=schemas.ProjetGlobalRead)
 def create_projet_global(projet: schemas.ProjetGlobalCreate, db: Session = Depends(get_db)):
     """Crée un nouveau projet global"""
@@ -264,23 +316,101 @@ def update_projet_global(id: int, projet: schemas.ProjetGlobalCreate, db: Sessio
 
 @router.delete("/projets_globaux/{id}")
 def delete_projet_global(id: int, db: Session = Depends(get_db)):
-    """Supprime un projet global et tous ses sous-projets"""
+    """Supprime un projet global et tous ses sous-projets en cascade (optimisé)"""
     db_projet = db.query(models.ProjetGlobal).get(id)
     if not db_projet:
         raise HTTPException(status_code=404, detail="Projet global non trouvé")
     
-    # Vérifier s'il y a des sous-projets
-    sous_projets = db.query(models.SousProjet).filter(models.SousProjet.id_global == id).all()
-    if sous_projets:
-        raise HTTPException(
-            status_code=400,
-            detail=f"Suppression impossible : le projet contient {len(sous_projets)} sous-projet(s)"
-        )
+    # Récupérer les IDs des sous-projets
+    sous_projets_ids = db.query(models.SousProjet.id).filter(
+        models.SousProjet.id_global == id
+    ).all()
+    sous_projets_ids = [sp_id[0] for sp_id in sous_projets_ids]
     
+    if not sous_projets_ids:
+        # Aucun sous-projet, supprimer directement le projet
+        db.delete(db_projet)
+        db.commit()
+        return {"ok": True, "message": "Projet global supprimé (aucun sous-projet)"}
+    
+    # Récupérer les IDs des associations FPack
+    associations_ids = db.query(models.SousProjetFpack.id).filter(
+        models.SousProjetFpack.sous_projet_id.in_(sous_projets_ids)
+    ).all()
+    associations_ids = [assoc_id[0] for assoc_id in associations_ids]
+    
+    stats = {
+        "nb_sous_projets": len(sous_projets_ids),
+        "nb_fpacks": len(associations_ids),
+        "nb_selections": 0
+    }
+    
+    if associations_ids:
+        # Compter les sélections avant suppression
+        stats["nb_selections"] = db.query(models.ProjetSelection).filter(
+            models.ProjetSelection.sous_projet_fpack_id.in_(associations_ids)
+        ).count()
+        
+        # Suppression en bulk des sélections
+        db.query(models.ProjetSelection).filter(
+            models.ProjetSelection.sous_projet_fpack_id.in_(associations_ids)
+        ).delete(synchronize_session=False)
+        
+        # Suppression en bulk des associations FPack
+        db.query(models.SousProjetFpack).filter(
+            models.SousProjetFpack.id.in_(associations_ids)
+        ).delete(synchronize_session=False)
+    
+    # Suppression en bulk des sous-projets
+    db.query(models.SousProjet).filter(
+        models.SousProjet.id.in_(sous_projets_ids)
+    ).delete(synchronize_session=False)
+    
+    # Supprimer le projet global
     db.delete(db_projet)
     db.commit()
-    return {"ok": True}
+    
+    return {
+        "ok": True, 
+        "message": f"Projet global supprimé avec {stats['nb_sous_projets']} sous-projet(s), {stats['nb_fpacks']} FPack(s) et {stats['nb_selections']} sélection(s)"
+    }
 
+
+def delete_sous_projet_cascade_bulk(sous_projet_id: int, db: Session):
+    """Fonction utilitaire pour supprimer un sous-projet en cascade (optimisée)"""
+    # Récupérer les IDs des associations FPack
+    associations_ids = db.query(models.SousProjetFpack.id).filter(
+        models.SousProjetFpack.sous_projet_id == sous_projet_id
+    ).all()
+    associations_ids = [assoc_id[0] for assoc_id in associations_ids]
+    
+    stats = {
+        "nb_fpacks_supprimes": len(associations_ids),
+        "nb_selections_supprimees": 0
+    }
+    
+    if associations_ids:
+        # Compter les sélections avant suppression
+        stats["nb_selections_supprimees"] = db.query(models.ProjetSelection).filter(
+            models.ProjetSelection.sous_projet_fpack_id.in_(associations_ids)
+        ).count()
+        
+        # Suppression en bulk des sélections
+        db.query(models.ProjetSelection).filter(
+            models.ProjetSelection.sous_projet_fpack_id.in_(associations_ids)
+        ).delete(synchronize_session=False)
+        
+        # Suppression en bulk des associations FPack
+        db.query(models.SousProjetFpack).filter(
+            models.SousProjetFpack.id.in_(associations_ids)
+        ).delete(synchronize_session=False)
+    
+    # Supprimer le sous-projet
+    db.query(models.SousProjet).filter(
+        models.SousProjet.id == sous_projet_id
+    ).delete(synchronize_session=False)
+    
+    return stats
 
 
 # ========== SOUS-PROJETS ==========
@@ -405,7 +535,6 @@ def get_sous_projet(id: int, db: Session = Depends(get_db)):
 @router.post("/sous_projets", response_model=schemas.SousProjetRead)
 def create_sous_projet(sous_projet: schemas.SousProjetCreate, db: Session = Depends(get_db)):
     """Crée un nouveau sous-projet"""
-    # Vérifier que le projet global existe
     projet_global = db.query(models.ProjetGlobal).get(sous_projet.id_global)
     if not projet_global:
         raise HTTPException(status_code=400, detail="Projet global non trouvé")
@@ -436,22 +565,21 @@ def update_sous_projet(id: int, sous_projet: schemas.SousProjetCreate, db: Sessi
 
 @router.delete("/sous_projets/{id}")
 def delete_sous_projet(id: int, db: Session = Depends(get_db)):
-    """Supprime un sous-projet"""
+    """Supprime un sous-projet et toutes ses associations FPack/sélections en cascade (optimisé)"""
+    # Vérifier que le sous-projet existe
     db_sous_projet = db.query(models.SousProjet).get(id)
     if not db_sous_projet:
         raise HTTPException(status_code=404, detail="Sous-projet non trouvé")
     
-    # Vérifier s'il y a des FPacks associés
-    fpacks = db.query(models.SousProjetFpack).filter(models.SousProjetFpack.sous_projet_id == id).all()
-    if fpacks:
-        raise HTTPException(
-            status_code=400,
-            detail=f"Suppression impossible : le sous-projet contient {len(fpacks)} FPack(s) associé(s)"
-        )
+    # Utiliser la fonction utilitaire optimisée pour la suppression en cascade
+    stats = delete_sous_projet_cascade_bulk(id, db)
     
-    db.delete(db_sous_projet)
     db.commit()
-    return {"ok": True}
+    
+    return {
+        "ok": True,
+        "message": f"Sous-projet supprimé avec {stats['nb_fpacks_supprimes']} FPack(s) et {stats['nb_selections_supprimees']} sélection(s)"
+    }
 
 # ========== FPACKS ASSOCIÉS AUX SOUS-PROJETS ==========
 
@@ -517,7 +645,7 @@ def update_fpack_association(
 
 @router.delete("/sous_projets/{sous_projet_id}/fpacks/{fpack_id}")
 def remove_fpack_from_sous_projet(sous_projet_id: int, fpack_id: int, db: Session = Depends(get_db)):
-    """Retire un FPack d'un sous-projet"""
+    """Retire un FPack d'un sous-projet et supprime toutes ses sélections en cascade (optimisé)"""
     association = db.query(models.SousProjetFpack).filter_by(
         sous_projet_id=sous_projet_id,
         fpack_id=fpack_id
@@ -526,17 +654,24 @@ def remove_fpack_from_sous_projet(sous_projet_id: int, fpack_id: int, db: Sessio
     if not association:
         raise HTTPException(status_code=404, detail="Association FPack/sous-projet non trouvée")
     
-    # Vérifier s'il y a des sélections
-    selections = db.query(models.ProjetSelection).filter_by(sous_projet_fpack_id=association.id).all()
-    if selections:
-        raise HTTPException(
-            status_code=400,
-            detail=f"Suppression impossible : cette association contient {len(selections)} sélection(s)"
-        )
+    # Compter les sélections avant suppression
+    nb_selections = db.query(models.ProjetSelection).filter(
+        models.ProjetSelection.sous_projet_fpack_id == association.id
+    ).count()
     
+    # Suppression en bulk des sélections
+    db.query(models.ProjetSelection).filter(
+        models.ProjetSelection.sous_projet_fpack_id == association.id
+    ).delete(synchronize_session=False)
+    
+    # Supprimer l'association
     db.delete(association)
     db.commit()
-    return {"ok": True}
+    
+    return {
+        "ok": True,
+        "message": f"Association FPack supprimée avec {nb_selections} sélection(s)"
+    }
 
 # ========== SÉLECTIONS ==========
 
@@ -1006,37 +1141,238 @@ def get_sous_projet_facture(id: int, db: Session = Depends(get_db)):
         }
     }
 
-@router.get("/fpacks/{fpack_id}/facture")
-def get_fpack_facture(fpack_id: int, client_id: int, db: Session = Depends(get_db)):
-    """Génère une facture pour un FPack spécifique avec un client donné"""
+@router.get("/sous_projet_fpack/{sous_projet_fpack_id}/selections", response_model=List[schemas.ProjetSelectionReadWithDetails])
+def get_selections_by_sous_projet_fpack_id(sous_projet_fpack_id: int, db: Session = Depends(get_db)):
+    """Récupère toutes les sélections pour une association sous_projet_fpack par son ID"""
+    # Vérifier que l'association existe
+    association = db.query(models.SousProjetFpack).get(sous_projet_fpack_id)
+    if not association:
+        raise HTTPException(status_code=404, detail="Association sous-projet/FPack non trouvée")
     
-    fpack = db.query(models.FPack).get(fpack_id)
-    if not fpack:
-        raise HTTPException(status_code=404, detail="FPack non trouvé")
+    selections = db.query(models.ProjetSelection).filter_by(
+        sous_projet_fpack_id=sous_projet_fpack_id
+    ).all()
     
-    # Vérifier que le client existe
-    client = db.query(models.Client).get(client_id)
-    if not client:
-        raise HTTPException(status_code=400, detail="Client non trouvé")
+    result = []
+    for sel in selections:
+        # Récupérer le nom du groupe
+        groupe = db.query(models.Groupes).get(sel.groupe_id)
+        groupe_nom = groupe.nom if groupe else None
+        
+        # Récupérer le nom de l'item selon son type
+        item_nom = None
+        if sel.type_item == "produit":
+            produit = db.query(models.Produit).get(sel.ref_id)
+            item_nom = produit.nom if produit else None
+        elif sel.type_item == "equipement":
+            equipement = db.query(models.Equipements).get(sel.ref_id)
+            item_nom = equipement.nom if equipement else None
+        elif sel.type_item == "robot":
+            robot = db.query(models.Robots).get(sel.ref_id)
+            item_nom = robot.nom if robot else None
+        
+        result.append({
+            "sous_projet_fpack_id": sel.sous_projet_fpack_id,
+            "groupe_id": sel.groupe_id,
+            "type_item": sel.type_item,
+            "ref_id": sel.ref_id,
+            "groupe_nom": groupe_nom,
+            "item_nom": item_nom
+        })
+    
+    return result
 
-    # Configuration du FPack
+
+@router.post("/sous_projet_fpack/{sous_projet_fpack_id}/selections", response_model=schemas.ProjetSelectionRead)
+def create_selection_by_sous_projet_fpack_id(
+    sous_projet_fpack_id: int,
+    selection: schemas.ProjetSelectionCreate,
+    db: Session = Depends(get_db)
+):
+    """Crée une nouvelle sélection pour une association sous_projet_fpack"""
+    # Vérifier que l'association existe
+    association = db.query(models.SousProjetFpack).get(sous_projet_fpack_id)
+    if not association:
+        raise HTTPException(status_code=404, detail="Association sous-projet/FPack non trouvée")
+    
+    # Vérifier que le groupe existe
+    groupe = db.query(models.Groupes).get(selection.groupe_id)
+    if not groupe:
+        raise HTTPException(status_code=400, detail="Groupe non trouvé")
+    
+    # Vérifier que l'item existe selon son type
+    if selection.type_item == "produit":
+        item = db.query(models.Produit).get(selection.ref_id)
+    elif selection.type_item == "equipement":
+        item = db.query(models.Equipements).get(selection.ref_id)
+    elif selection.type_item == "robot":
+        item = db.query(models.Robots).get(selection.ref_id)
+    else:
+        raise HTTPException(status_code=400, detail="Type d'item invalide")
+    
+    if not item:
+        raise HTTPException(status_code=400, detail=f"{selection.type_item.capitalize()} non trouvé")
+    
+    # Vérifier que cette sélection n'existe pas déjà
+    existing = db.query(models.ProjetSelection).filter_by(
+        sous_projet_fpack_id=sous_projet_fpack_id,
+        groupe_id=selection.groupe_id
+    ).first()
+    
+    if existing:
+        raise HTTPException(status_code=400, detail="Une sélection existe déjà pour ce groupe")
+    
+    db_selection = models.ProjetSelection(
+        sous_projet_fpack_id=sous_projet_fpack_id,
+        **selection.dict()
+    )
+    db.add(db_selection)
+    db.commit()
+    db.refresh(db_selection)
+    return db_selection
+
+
+@router.put("/sous_projet_fpack/{sous_projet_fpack_id}/selections/{groupe_id}", response_model=schemas.ProjetSelectionRead)
+def update_selection_by_sous_projet_fpack_id(
+    sous_projet_fpack_id: int,
+    groupe_id: int,
+    selection_data: schemas.ProjetSelectionCreate,
+    db: Session = Depends(get_db)
+):
+    """Met à jour une sélection pour une association sous_projet_fpack"""
+    # Vérifier que l'association existe
+    association = db.query(models.SousProjetFpack).get(sous_projet_fpack_id)
+    if not association:
+        raise HTTPException(status_code=404, detail="Association sous-projet/FPack non trouvée")
+    
+    selection = db.query(models.ProjetSelection).filter_by(
+        sous_projet_fpack_id=sous_projet_fpack_id,
+        groupe_id=groupe_id
+    ).first()
+    
+    if not selection:
+        raise HTTPException(status_code=404, detail="Sélection non trouvée")
+    
+    # Vérifier que l'item existe selon son type
+    if selection_data.type_item == "produit":
+        item = db.query(models.Produit).get(selection_data.ref_id)
+    elif selection_data.type_item == "equipement":
+        item = db.query(models.Equipements).get(selection_data.ref_id)
+    elif selection_data.type_item == "robot":
+        item = db.query(models.Robots).get(selection_data.ref_id)
+    else:
+        raise HTTPException(status_code=400, detail="Type d'item invalide")
+    
+    if not item:
+        raise HTTPException(status_code=400, detail=f"{selection_data.type_item.capitalize()} non trouvé")
+    
+    for key, value in selection_data.dict().items():
+        if key != "sous_projet_fpack_id":  # Ne pas modifier l'ID de l'association
+            setattr(selection, key, value)
+    
+    db.commit()
+    db.refresh(selection)
+    return selection
+
+
+@router.delete("/sous_projet_fpack/{sous_projet_fpack_id}/selections/{groupe_id}")
+def delete_selection_by_sous_projet_fpack_id(sous_projet_fpack_id: int, groupe_id: int, db: Session = Depends(get_db)):
+    """Supprime une sélection pour une association sous_projet_fpack"""
+    # Vérifier que l'association existe
+    association = db.query(models.SousProjetFpack).get(sous_projet_fpack_id)
+    if not association:
+        raise HTTPException(status_code=404, detail="Association sous-projet/FPack non trouvée")
+    
+    selection = db.query(models.ProjetSelection).filter_by(
+        sous_projet_fpack_id=sous_projet_fpack_id,
+        groupe_id=groupe_id
+    ).first()
+    
+    if not selection:
+        raise HTTPException(status_code=404, detail="Sélection non trouvée")
+    
+    db.delete(selection)
+    db.commit()
+    return {"ok": True}
+
+@router.delete("/sous_projet_fpack/{fpack_association_id}")
+def remove_fpack_association(fpack_association_id: int, db: Session = Depends(get_db)):
+    """Supprime une association sous-projet/FPack par son ID et toutes ses sélections en cascade (optimisé)"""
+    association = db.query(models.SousProjetFpack).get(fpack_association_id)
+    
+    if not association:
+        raise HTTPException(status_code=404, detail="Association FPack/sous-projet non trouvée")
+    
+    # Compter les sélections avant suppression
+    nb_selections = db.query(models.ProjetSelection).filter(
+        models.ProjetSelection.sous_projet_fpack_id == fpack_association_id
+    ).count()
+    
+    # Suppression en bulk des sélections
+    db.query(models.ProjetSelection).filter(
+        models.ProjetSelection.sous_projet_fpack_id == fpack_association_id
+    ).delete(synchronize_session=False)
+    
+    # Supprimer l'association
+    db.delete(association)
+    db.commit()
+    
+    return {
+        "ok": True,
+        "message": f"Association FPack supprimée avec {nb_selections} sélection(s)"
+    }
+
+
+# Fonction utilitaire pour supprimer toutes les sélections d'une association FPack (optimisée)
+def delete_fpack_association_cascade_bulk(association_id: int, db: Session):
+    """Supprime toutes les sélections d'une association FPack puis l'association (optimisé)"""
+    # Compter les sélections avant suppression
+    nb_selections = db.query(models.ProjetSelection).filter(
+        models.ProjetSelection.sous_projet_fpack_id == association_id
+    ).count()
+    
+    # Suppression en bulk des sélections
+    db.query(models.ProjetSelection).filter(
+        models.ProjetSelection.sous_projet_fpack_id == association_id
+    ).delete(synchronize_session=False)
+    
+    # Supprimer l'association
+    db.query(models.SousProjetFpack).filter(
+        models.SousProjetFpack.id == association_id
+    ).delete(synchronize_session=False)
+    
+    return nb_selections
+
+@router.get("/sous_projet_fpack/{sous_projet_fpack_id}/facture")
+def get_sous_projet_fpack_facture(sous_projet_fpack_id: int, db: Session = Depends(get_db)):
+    """Génère la facture d'une association sous_projet_fpack spécifique"""
+    
+    # Récupérer l'association
+    sp_fpack = db.query(models.SousProjetFpack).get(sous_projet_fpack_id)
+    if not sp_fpack:
+        raise HTTPException(status_code=404, detail="Association sous-projet/FPack non trouvée")
+    
+    # Récupérer les informations liées
+    sous_projet = db.query(models.SousProjet).get(sp_fpack.sous_projet_id)
+    if not sous_projet:
+        raise HTTPException(status_code=404, detail="Sous-projet non trouvé")
+    
+    projet_global = db.query(models.ProjetGlobal).get(sous_projet.id_global)
+    client_id = projet_global.client if projet_global else None
+    
+    if not client_id:
+        raise HTTPException(status_code=400, detail="Client non trouvé pour ce projet")
+    
+    fpack = db.query(models.FPack).get(sp_fpack.fpack_id)
+    
+    # Configuration et sélections
     config_cols = db.query(models.FPackConfigColumn)\
-        .filter_by(fpack_id=fpack_id)\
+        .filter_by(fpack_id=sp_fpack.fpack_id)\
         .order_by(models.FPackConfigColumn.ordre)\
         .all()
     
-    if not config_cols:
-        return {
-            "fpack_id": fpack_id,
-            "nom_fpack": fpack.nom,
-            "client_id": client_id,
-            "client_nom": client.nom,
-            "currency": "EUR",
-            "lines": [],
-            "totaux": {"produit": 0.0, "transport": 0.0, "global": 0.0},
-            "resume": {"nb_lignes": 0, "nb_produits": 0, "nb_robots": 0},
-            "note": "Configuration FPack vide"
-        }
+    sels = db.query(models.ProjetSelection).filter_by(sous_projet_fpack_id=sous_projet_fpack_id).all()
+    sel_map = {s.groupe_id: {"type": s.type_item, "ref_id": s.ref_id} for s in sels}
 
     # Mapping équipements -> produits
     eq_prods = db.query(models.Equipement_Produit).all()
@@ -1044,11 +1380,10 @@ def get_fpack_facture(fpack_id: int, client_id: int, db: Session = Depends(get_d
     for ep in eq_prods:
         eq_map.setdefault(ep.equipement_id, []).append((ep.produit_id, ep.quantite))
 
-    # Calcul des quantités (uniquement éléments fixes, pas de sélections)
+    # Calcul des quantités (même logique que get_sous_projet_facture)
     produit_counts = defaultdict(int)
     robot_counts = defaultdict(int)
-    
-    # Pour les groupes, on prend les items "standard" seulement
+
     for col in config_cols:
         if col.type == "produit":
             produit_counts[col.ref_id] += 1
@@ -1056,21 +1391,19 @@ def get_fpack_facture(fpack_id: int, client_id: int, db: Session = Depends(get_d
             for pid, qte in eq_map.get(col.ref_id, []):
                 produit_counts[pid] += qte
         elif col.type == "group":
-            # Pour les groupes, prendre uniquement les items marqués comme "standard"
-            items_standard = db.query(models.GroupeItem)\
-                .filter_by(group_id=col.ref_id, statut="standard")\
-                .all()
-            
-            for item in items_standard:
-                if item.type == "produit":
-                    produit_counts[item.ref_id] += 1
-                elif item.type == "equipement":
-                    for pid, qte in eq_map.get(item.ref_id, []):
-                        produit_counts[pid] += qte
-                elif item.type == "robot":
-                    robot_counts[item.ref_id] += 1
+            chosen = sel_map.get(col.ref_id)
+            if not chosen:
+                continue
+                
+            if chosen["type"] == "produit":
+                produit_counts[chosen["ref_id"]] += 1
+            elif chosen["type"] == "equipement":
+                for pid, qte in eq_map.get(chosen["ref_id"], []):
+                    produit_counts[pid] += qte
+            elif chosen["type"] == "robot":
+                robot_counts[chosen["ref_id"]] += 1
 
-    # Récupération des prix et construction de la facture (même logique que sous-projet)
+    # Récupération des prix et construction des lignes (même logique que get_sous_projet_facture)
     all_produit_ids = list(produit_counts.keys())
     
     prix_rows = db.query(models.Prix)\
@@ -1153,11 +1486,21 @@ def get_fpack_facture(fpack_id: int, client_id: int, db: Session = Depends(get_d
         })
 
     return {
-        "fpack_id": fpack_id,
-        "nom_fpack": fpack.nom,
-        "fpack_abbr": fpack.fpack_abbr,
+        "sous_projet_fpack_id": sous_projet_fpack_id,
+        "sous_projet_id": sous_projet.id,
+        "nom_sous_projet": sous_projet.nom,
+        "projet_global": {
+            "id": projet_global.id,
+            "nom": projet_global.projet,
+        } if projet_global else None,
         "client_id": client_id,
-        "client_nom": client.nom,
+        "fpack": {
+            "id": fpack.id,
+            "nom": fpack.nom,
+            "abbr": fpack.fpack_abbr,
+            "FPack_number": sp_fpack.FPack_number,
+            "Robot_Location_Code": sp_fpack.Robot_Location_Code
+        } if fpack else None,
         "currency": "EUR",
         "lines": lines,
         "totaux": {
@@ -1169,6 +1512,5 @@ def get_fpack_facture(fpack_id: int, client_id: int, db: Session = Depends(get_d
             "nb_lignes": len(lines),
             "nb_produits": len([l for l in lines if l["type"] == "produit"]),
             "nb_robots": len([l for l in lines if l["type"] == "robot"])
-        },
-        "note": "Facture basée sur la configuration FPack (items standard uniquement)"
+        }
     }

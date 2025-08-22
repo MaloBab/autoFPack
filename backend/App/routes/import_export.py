@@ -44,7 +44,7 @@ def validate_and_parse_excel(file: UploadFile, table_name: str, db, required_fie
         "fpacks": "FPM_fpacks",
         "prix": "FPM_prix",
         "prix_robot": "FPM_prix_robot",
-        "projets": "FPM_projets",
+        "projets": "FPM_projets_global",
     }
     
     actual_name = table_mapping.get(table_name, table_name)
@@ -86,8 +86,6 @@ def validate_and_parse_excel(file: UploadFile, table_name: str, db, required_fie
         data_rows.append(entry)
 
     return data_rows
-
-
         
 #EXPORT PRODUITS
 
@@ -102,7 +100,6 @@ def export_produits_excel(db: Session = Depends(get_db)):
 
     headers = ["Reference", "Nom", "Description", "Fournisseur", "Type"]
     ws.append(headers)
-
 
     header_font = Font(bold=True)
     header_fill = PatternFill(start_color="DDDDDD", end_color="DDDDDD", fill_type="solid")
@@ -171,11 +168,6 @@ async def import_produits_add(file: UploadFile = File(...), db: Session = Depend
 
     return {"message": f"{len(data_rows)} produits ajoutés"}
 
-
-
-
-
-
 #EXPORT ROBOTS
 
 @router.get("/robots/export/excel")
@@ -183,14 +175,12 @@ def export_robots_excel(db: Session = Depends(get_db)):
     robots = db.query(models.Robots).all()
     clients = [c.nom for c in db.query(models.Client).all()]
 
-
     wb = openpyxl.Workbook()
     ws = wb.active
     ws.title = "Robots"
 
     headers = ["Reference", "Nom", "Generation", "Client", "Payload", "Range"]
     ws.append(headers)
-
 
     header_font = Font(bold=True)
     header_fill = PatternFill(start_color="DDDDDD", end_color="DDDDDD", fill_type="solid")
@@ -215,7 +205,6 @@ def export_robots_excel(db: Session = Depends(get_db)):
     ws.add_data_validation(dv)
     dv.add(f"D2:D{ws.max_row}")
 
-    
     for col_idx, col in enumerate(ws.columns, 1):
         max_length = max(len(str(cell.value or "")) for cell in col)
         ws.column_dimensions[get_column_letter(col_idx)].width = max_length + 2
@@ -262,117 +251,6 @@ async def import_robots_add(file: UploadFile = File(...), db: Session = Depends(
     db.commit()
 
     return {"message": f"{len(data_rows)} robots ajoutés"}
-
-
-
-#EXPORT FACTURE PROJET
-
-@router.get("/sous_projets/{id}/facture-pdf")
-def export_projet_facture_pdf(id: int, db: Session = Depends(get_db)):
-    facture = get_projet_facture(id, db)
-    output = BytesIO()
-    doc = SimpleDocTemplate(output, pagesize=A4)
-
-    elements = []
-    styles = getSampleStyleSheet()
-
-    BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-    logo_path = os.path.join(BASE_DIR, "frontend", "assets", "FANUCLOGO.jpg")
-    if os.path.exists(logo_path):
-        img = Image(logo_path, width=100, height=40)
-        elements.append(img)
-
-    elements.append(Spacer(1, 12))
-
-    elements.append(Paragraph(f"<b>FACTURE - {facture['nom_projet']}</b>", styles['Title']))
-    elements.append(Spacer(1, 12))
-
-    data = [["Produit", "Quantité", "Prix Unité", "Transport", "Commentaire", "Total ligne"]]
-    for ligne in facture["lines"]:
-        data.append([
-            ligne.get("nom", ""),
-            ligne.get("qte", 0),
-            f"{ligne.get('prix_produit', 0)} €",
-            f"{ligne.get('prix_transport', 0)} €",
-            ligne.get("commentaire", ""),
-            f"{ligne.get('total_ligne', 0)} €"
-        ])
-
-    table = Table(data, hAlign='LEFT')
-    table.setStyle(TableStyle([
-        ('BACKGROUND', (0, 0), (-1, 0), colors.lightgrey),
-        ('TEXTCOLOR', (0, 0), (-1, 0), colors.black),
-        ('FONTNAME', (0, 0), (-1, 0), 'Helvetica-Bold'),
-        ('ALIGN', (0, 0), (-1, -1), 'CENTER'),
-        ('GRID', (0, 0), (-1, -1), 0.25, colors.grey),
-    ]))
-    elements.append(table)
-    elements.append(Spacer(1, 24))
-
-    for label, value in facture["totaux"].items():
-        elements.append(Paragraph(f"<b>{label.title()} :</b> {value} €", styles['Normal']))
-
-    doc.build(elements)
-    output.seek(0)
-
-    return StreamingResponse(
-        output,
-        media_type="application/pdf",
-        headers={"Content-Disposition": f'attachment; filename="facture-projet-{id}.pdf"'}
-    )
-
-@router.get("/sous_projets/{id}/facture-excel")
-def export_projet_facture_excel(id: int, db: Session = Depends(get_db)):
-    facture = get_projet_facture(id, db)
-    wb = Workbook()
-    ws = wb.active
-    ws.title = "Facture Projet"
-
-    ws.merge_cells("C2:F2")
-    cell = ws["C2"]
-    cell.value = f"FACTURE - {facture['nom_projet']}"
-    cell.font = Font(size=14, bold=True)
-    cell.alignment = Alignment(horizontal="center")
-
-    headers = ["Produit", "Quantité", "Prix Unité", "Transport", "Commentaire", "Total ligne"]
-    ws.append([""] * len(headers))  
-    ws.append(headers)
-    header_row = ws.max_row
-    header_fill = PatternFill(start_color="FFFF00", end_color="FFFF00", fill_type="solid")
-    for col in range(1, len(headers) + 1):
-        cell = ws.cell(row=header_row, column=col)
-        cell.font = Font(bold=True, color="AA0000")
-        cell.fill = header_fill
-        cell.alignment = Alignment(horizontal="center")
-
-    for ligne in facture["lines"]:
-        ws.append([
-            ligne.get("nom", ""),
-            ligne.get("qte", 0),
-            float(ligne.get("prix_produit") or 0),
-            float(ligne.get("prix_transport") or 0),
-            ligne.get("commentaire", ""),
-            float(ligne.get("total_ligne") or 0)
-        ])
-
-    ws.append([])
-    ws.append(["", "", "", "", "Total produit", facture["totaux"]["produit"]])
-    ws.append(["", "", "", "", "Total transport", facture["totaux"]["transport"]])
-    ws.append(["", "", "", "", "Total global", facture["totaux"]["global"]])
-
-    for i in range(1, 8):
-        ws.column_dimensions[chr(64 + i)].width = 25
-
-    output = BytesIO()
-    wb.save(output)
-    output.seek(0)
-
-    return StreamingResponse(
-        output,
-        media_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
-        headers={"Content-Disposition": f'attachment; filename="facture-projet-{id}.xlsx"'}
-    )
-    
 
 #EXPORT FPACK TO EXCEL
 @router.post("/export-fpack/{fpack_id}")

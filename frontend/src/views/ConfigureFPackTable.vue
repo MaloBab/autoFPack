@@ -86,7 +86,7 @@ async function fetchConfiguration() {
   console.log('Données reçues:', res.data)
   const enriched: ConfigColumn[] = []
 
-  for (const col of res.data) {
+  for (const col of res.data.columns) {
     if (col.type === 'produit') {
       try {
         const prodRes = await axios.get(`http://localhost:8000/produits/${col.ref_id}`)
