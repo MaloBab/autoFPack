@@ -437,8 +437,8 @@ onUnmounted(() => {
 .toolbar {
   display: flex;
   align-items: center;
-  gap: 20px;
-  padding: 20px 24px;
+  gap: 15px;
+  padding: 10px 13px;
   background: linear-gradient(135deg, #f8fafc 0%, #e2e8f0 100%);
   border-bottom: 1px solid #e2e8f0;
   flex-wrap: wrap;
@@ -616,8 +616,8 @@ onUnmounted(() => {
 /* Quick Stats */
 .quick-stats {
   display: flex;
-  gap: 24px;
-  padding: 16px 24px;
+  gap: 12px;
+  padding: 8px 12px;
   background: #f8fafc;
   border-bottom: 1px solid #e2e8f0;
 }
@@ -635,13 +635,13 @@ onUnmounted(() => {
 }
 
 .stat-value {
-  font-size: 1.5rem;
+  font-size: 1.25rem;
   font-weight: 700;
   color: #1e293b;
 }
 
 .stat-label {
-  font-size: 0.75rem;
+  font-size: 0.7rem;
   color: #64748b;
   text-transform: uppercase;
   letter-spacing: 0.5px;
@@ -707,7 +707,6 @@ onUnmounted(() => {
   font-size: 15px;
 }
 
-/* Loading */
 .loading-overlay {
   position: absolute;
   inset: 0;

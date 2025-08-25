@@ -3,4 +3,8 @@ uvicorn[standard]
 sqlalchemy
 psycopg2-binary      
 pyodbc               
-python-dotenv        
+python-dotenv
+pandas
+openpyxl
+fuzzywuzzy
+python-Levenshtein

@@ -59,7 +59,7 @@ const handleCompleteFpack = (sousProjetId, fpackId) => {
   <div class="projects-view" :class="{ 'fullscreen': isFullscreen }">
     <div class="view-header">
       <div class="header-left">
-        <h2 class="view-title">Mes Projets</h2>
+        <h2 class="view-title">Projets</h2>
         <div class="projects-count">
           <CounterAnimation :value="projets.length" />
           <span class="count-label">projets</span>

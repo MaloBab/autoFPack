@@ -313,6 +313,7 @@ onUnmounted(() => {
               {{ item.data.fpacks.length }} FPacks
             </span>
 
+            <!-- Badges FPack existants -->
             <span v-if="item.type === 'fpack' && item.data.FPack_number" class="badge badge-number">
               # {{ item.data.FPack_number }}
             </span>
@@ -323,6 +324,42 @@ onUnmounted(() => {
                 <circle cx="12" cy="10" r="3"/>
               </svg>
               {{ item.data.Robot_Location_Code }}
+            </span>
+
+            <!-- Nouveaux badges FPack -->
+            <span v-if="item.type === 'fpack'" class="badge badge-contractor">
+              <svg class="badge-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor">
+                <path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/>
+                <circle cx="9" cy="7" r="4"/>
+                <path d="M22 21v-2a4 4 0 0 0-3-3.87"/>
+                <path d="M16 3.13a4 4 0 0 1 0 7.75"/>
+              </svg>
+              {{ item.data.contractor }}
+            </span>
+
+            <span v-if="item.type === 'fpack'" class="badge badge-delivery-time">
+              <svg class="badge-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor">
+                <circle cx="12" cy="12" r="10"/>
+                <polyline points="12,6 12,12 16,14"/>
+              </svg>
+              {{ item.data.required_delivery_time }}
+            </span>
+
+            <span v-if="item.type === 'fpack'" class="badge badge-delivery-site">
+              <svg class="badge-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor">
+                <path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/>
+                <polyline points="9,22 9,12 15,12 15,22"/>
+              </svg>
+              {{ item.data.delivery_site }}
+            </span>
+
+            <span v-if="item.type === 'fpack'" class="badge badge-tracking">
+              <svg class="badge-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor">
+                <path d="M9 12l2 2 4-4"/>
+                <path d="M21 12c.552 0 1-.448 1-1V5c0-.552-.448-1-1-1H3c-.552 0-1 .448-1 1v6c0 .552.448 1 1 1"/>
+                <path d="M3 12v7c0 .552.448 1 1 1h16c.552 0 1-.448 1-1v-7"/>
+              </svg>
+              {{ item.data.tracking }}
             </span>
 
             <span v-if="item.type === 'fpack'" class="badge badge-progress">
@@ -750,6 +787,30 @@ onUnmounted(() => {
   background: rgba(139, 69, 19, 0.1);
   color: #92400e;
   border: 1px solid rgba(139, 69, 19, 0.2);
+}
+
+.badge-contractor {
+  background: rgba(168, 85, 247, 0.1);
+  color: #7c3aed;
+  border: 1px solid rgba(168, 85, 247, 0.2);
+}
+
+.badge-delivery-time {
+  background: rgba(245, 11, 11, 0.1);
+  color: #d90606;
+  border: 1px solid rgba(245, 11, 11, 0.2);
+}
+
+.badge-delivery-site {
+  background: rgba(34, 197, 94, 0.1);
+  color: #16a34a;
+  border: 1px solid rgba(34, 197, 94, 0.2);
+}
+
+.badge-tracking {
+  background: rgba(99, 102, 241, 0.1);
+  color: #4f46e5;
+  border: 1px solid rgba(99, 102, 241, 0.2);
 }
 
 /* Indicateur de progression */

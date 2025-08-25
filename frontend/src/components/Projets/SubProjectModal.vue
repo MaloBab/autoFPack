@@ -126,11 +126,7 @@ onUnmounted(() => {
                 </p>
               </div>
             </div>
-            <button @click="$emit('close')" style="position: absolute; top: 24px; right: 24px; width: 40px; height: 40px; border: none; background: rgba(255, 255, 255, 0.2); border-radius: 10px; color: white; cursor: pointer; transition: all 0.2s ease; display: flex; align-items: center; justify-content: center;">
-              <svg width="24" height="24" viewBox="0 0 24 24" fill="none">
-                <path d="M18 6L6 18M6 6L18 18" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
-              </svg>
-            </button>
+            <button @click="$emit('close')" style="position: absolute; top: 24px; right: 24px; width: 40px; height: 40px; border: none; background: rgba(255, 255, 255, 0.2); border-radius: 10px; color: white; cursor: pointer; transition: all 0.2s ease; display: flex; align-items: center; justify-content: center;">X</button>
           </div>
 
           <!-- Formulaire -->

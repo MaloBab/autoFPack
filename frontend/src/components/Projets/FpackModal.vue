@@ -20,14 +20,17 @@ const emit = defineEmits(['save', 'close'])
 const formData = ref({
   fpack_id: '',
   FPack_number: '',
-  Robot_Location_Code: ''
+  Robot_Location_Code: '',
+  contractor: '',
+  required_delivery_time: '',
+  delivery_site: '',
+  tracking: ''
 })
 
 const selectedFpack = computed(() => {
   if (!formData.value.fpack_id) return null
   return props.availableFpacks.find(f => f.id === formData.value.fpack_id)
 })
-
 
 const handleSubmit = () => {
   if (formData.value.fpack_id) {
@@ -45,7 +48,11 @@ watch(() => props.show, (show) => {
       formData.value = {
         fpack_id: '',
         FPack_number: '',
-        Robot_Location_Code: ''
+        Robot_Location_Code: '',
+        contractor: '',
+        required_delivery_time: '',
+        delivery_site: '',
+        tracking: ''
       }
     }, 300)
   }
@@ -115,9 +122,9 @@ watch(() => props.show, (show) => {
                 </div>
               </div>
 
-              <!-- Champs optionnels avec design moderne -->
+              <!-- Champs de base avec design moderne -->
               <div class="form-section">
-                <div class="optional-fields">
+                <div class="form-grid">
                   <div class="field-group">
                     <label for="fpack-number" class="form-label optional">
                       <span class="label-icon">#</span>
@@ -143,6 +150,80 @@ watch(() => props.show, (show) => {
                       <input
                         id="robot-location"
                         v-model="formData.Robot_Location_Code"
+                        type="text"
+                        class="form-input"
+                      >
+                      <div class="input-focus-border"></div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              <!-- Nouveaux champs de livraison -->
+              <div class="form-section">
+                <h4 class="section-title">
+                  <span class="section-icon">🚚</span>
+                  Informations générales
+                </h4>
+                
+                <div class="form-grid">
+                  <div class="field-group">
+                    <label for="contractor" class="form-label optional">
+                      <span class="label-icon">👷</span>
+                      <span class="label-text">Entrepreneur</span>
+                    </label>
+                    <div class="input-container">
+                      <input
+                        id="contractor"
+                        v-model="formData.contractor"
+                        type="text"
+                        class="form-input"
+                      >
+                      <div class="input-focus-border"></div>
+                    </div>
+                  </div>
+
+                  <div class="field-group">
+                    <label for="required-delivery-time" class="form-label optional">
+                      <span class="label-icon">⏰</span>
+                      <span class="label-text">Temps de livraison requis</span>
+                    </label>
+                    <div class="input-container">
+                      <input
+                        id="required-delivery-time"
+                        v-model="formData.required_delivery_time"
+                        type="text"
+                        class="form-input"
+                      >
+                      <div class="input-focus-border"></div>
+                    </div>
+                  </div>
+
+                  <div class="field-group">
+                    <label for="delivery-site" class="form-label optional">
+                      <span class="label-icon">🏢</span>
+                      <span class="label-text">Site de livraison</span>
+                    </label>
+                    <div class="input-container">
+                      <input
+                        id="delivery-site"
+                        v-model="formData.delivery_site"
+                        type="text"
+                        class="form-input"
+                      >
+                      <div class="input-focus-border"></div>
+                    </div>
+                  </div>
+
+                  <div class="field-group">
+                    <label for="tracking" class="form-label optional">
+                      <span class="label-icon">📊</span>
+                      <span class="label-text">Suivi</span>
+                    </label>
+                    <div class="input-container">
+                      <input
+                        id="tracking"
+                        v-model="formData.tracking"
                         type="text"
                         class="form-input"
                       >
@@ -234,7 +315,7 @@ watch(() => props.show, (show) => {
 
 .modal-container {
   width: 100%;
-  max-width: 520px;
+  max-width: 600px;
   max-height: 90vh;
   transition: all 0.3s cubic-bezier(0.25, 0.8, 0.25, 1);
 }
@@ -368,6 +449,23 @@ watch(() => props.show, (show) => {
   margin-bottom: 0;
 }
 
+/* Section Title */
+.section-title {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin: 0 0 16px 0;
+  font-size: 16px;
+  font-weight: 600;
+  color: #334155;
+  padding-bottom: 8px;
+  border-bottom: 2px solid #f1f5f9;
+}
+
+.section-icon {
+  font-size: 18px;
+}
+
 /* Form Labels */
 .form-label {
   display: flex;
@@ -386,6 +484,17 @@ watch(() => props.show, (show) => {
 
 .label-icon {
   font-size: 16px;
+}
+
+/* Grid Layout */
+.form-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+  gap: 20px;
+}
+
+.field-group {
+  width: 100%;
 }
 
 /* Select Field */
@@ -417,31 +526,7 @@ watch(() => props.show, (show) => {
   background: rgba(16, 185, 129, 0.02);
 }
 
-.select-icon {
-  position: absolute;
-  right: 16px;
-  top: 50%;
-  transform: translateY(-50%);
-  color: #64748b;
-  pointer-events: none;
-  transition: all 0.3s ease;
-}
-
-.form-select:focus + .select-icon {
-  color: #667eea;
-  transform: translateY(-50%) rotate(180deg);
-}
-
 /* Input Fields */
-.optional-fields {
-  display: grid;
-  gap: 20px;
-}
-
-.field-group {
-  width: 100%;
-}
-
 .input-container {
   position: relative;
   width: 100%;
@@ -465,10 +550,6 @@ watch(() => props.show, (show) => {
   border-color: #667eea;
   transform: translateY(-2px);
   box-shadow: 0 8px 25px rgba(102, 126, 234, 0.15);
-}
-
-.form-input::placeholder {
-  color: #94a3b8;
 }
 
 .input-focus-border {

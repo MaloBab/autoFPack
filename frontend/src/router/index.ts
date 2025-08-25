@@ -15,6 +15,7 @@ import Projet_global from '../views/Projets.vue'
 import CompleteProjet from '../views/CompleteProjet.vue'
 import FactureProjet from '../views/FactureProjet.vue'
 import PrixRobot from '../views/PrixRobot.vue'
+import ImportExport from '../views/ImportExport.vue'
 
 const routes = [
   { path: '/', component: Dashboard },
@@ -24,6 +25,7 @@ const routes = [
   { path: '/clients', component: Clients },
   { path: '/fpack', name: 'FPackMenu', component: FPack },
   { path: '/robots', component: Robots },
+  { path: '/import-export', component: ImportExport },
   { path: '/remplir/:tableName/:id', name: 'RemplirEquipement', component: RemplirEquipement },
   { path: '/configure/:tableName/:id', name: 'ConfigureFPack', component: ConfigureFPack},
   { path: '/incompatibilites', name: 'Incompatibilites', component: Incompatibilites },

@@ -8,8 +8,10 @@ const menuItems = [
   { label: 'Equipements', route: '/equipements', icon: '🔧' },
   { label: 'Produits', route: '/produits', icon: '🧩' },
   { label: 'F-Pack', route: '/fpack', icon: '📦' },
-  { label: 'Projets', route: '/projet_global', icon: '📈' }
+  { label: 'Projets', route: '/projet_global', icon: '📈' },
 ]
+
+const footerItem = { label: 'Import / Export', route: '/import-export', icon: '📥' }
 </script>
 
 <template>
@@ -23,6 +25,14 @@ const menuItems = [
         <router-link :to="item.route" class="menu-link" :title="state === 1 ? item.label : ''">
           <span class="icon">{{ item.icon }}</span>
           <span class="label" v-if="state === 2">{{ item.label }}</span>
+        </router-link>
+      </li>
+
+      <!-- Footer directement dans la liste -->
+      <li class="footer-item">
+        <router-link :to="footerItem.route" class="menu-link" :title="state === 1 ? footerItem.label : ''">
+          <span class="icon">{{ footerItem.icon }}</span>
+          <span class="label" v-if="state === 2">{{ footerItem.label }}</span>
         </router-link>
       </li>
     </ul>
@@ -39,7 +49,6 @@ const menuItems = [
   transition: width 0.3s ease, min-width 0.3s ease, padding 0.3s ease;
   display: flex;
   flex-direction: column;
-  justify-content: space-between;
   overflow: hidden;
 }
 
@@ -64,6 +73,9 @@ const menuItems = [
   list-style: none;
   padding: 0%;
   margin: 0%;
+  display: flex;
+  flex-direction: column;
+  height: 100%;
 }
 
 .menu-link {
@@ -108,23 +120,12 @@ const menuItems = [
   transition: opacity 0.2s ease;
 }
 
-.param-link {
+/* Footer style identique mais placé en bas */
+.footer-item {
   margin-top: auto;
-  padding-bottom: 1%;
 }
 
-.iconfooter {
-  width: 20%;
-  margin-right: 0%;
-  font-size: 130%;
-  flex-shrink: 0;
-}
-
-.sidebar.icons-only .iconfooter {
-  width: auto;
-  margin-right: 0;
-}
-
+/* Tooltip en mode icons-only */
 .sidebar.icons-only .menu-link {
   position: relative;
 }
