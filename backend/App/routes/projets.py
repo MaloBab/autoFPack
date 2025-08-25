@@ -137,6 +137,10 @@ def list_projets_globaux(
                         "fpack_nom": fpack_nom,
                         "FPack_number": sp_fpack.FPack_number,
                         "Robot_Location_Code": sp_fpack.Robot_Location_Code,
+                        "contractor": sp_fpack.contractor,
+                        "required_delivery_time": sp_fpack.required_delivery_time,
+                        "delivery_site": sp_fpack.delivery_site,
+                        "tracking": sp_fpack.tracking,
                         "nb_selections": nb_selections_fpack,
                         "nb_groupes_attendus": nb_groupes_attendus_fpack,
                         "complet": nb_selections_fpack >= nb_groupes_attendus_fpack if nb_groupes_attendus_fpack > 0 else False
@@ -156,11 +160,6 @@ def list_projets_globaux(
                     "nb_selections": total_selections,
                     "nb_groupes_attendus": total_groupes_attendus,
                     "fpacks": fpacks_array,  # Nouveau format avec tous les FPacks
-                    # Garder l'ancien format pour compatibilité (utilise le premier FPack)
-                    "fpack_id": fpacks_array[0]["fpack_id"] if fpacks_array else None,
-                    "fpack_nom": fpacks_array[0]["fpack_nom"] if fpacks_array else None,
-                    "FPack_number": fpacks_array[0]["FPack_number"] if fpacks_array else None,
-                    "Robot_Location_Code": fpacks_array[0]["Robot_Location_Code"] if fpacks_array else None
                 })
             else:
                 # Aucun FPack associé
@@ -175,10 +174,6 @@ def list_projets_globaux(
                     "nb_selections": 0,
                     "nb_groupes_attendus": 0,
                     "fpacks": [],  # Tableau vide
-                    "fpack_id": None,
-                    "fpack_nom": None,
-                    "FPack_number": None,
-                    "Robot_Location_Code": None
                 })
         
         result.append({
@@ -206,15 +201,6 @@ def get_projet_global(id: int, db: Session = Depends(get_db)):
     sous_projets_details = []
     for sp in projet.projets:
         sp_fpack = db.query(models.SousProjetFpack).filter_by(sous_projet_id=sp.id).first()
-        fpack_nom = None
-        fpack_number = None
-        robot_location_code = None
-        
-        if sp_fpack:
-            fpack = db.query(models.FPack).get(sp_fpack.fpack_id)
-            fpack_nom = fpack.nom if fpack else None
-            fpack_number = sp_fpack.FPack_number
-            robot_location_code = sp_fpack.Robot_Location_Code
         
         nb_selections = db.query(models.ProjetSelection).join(
             models.SousProjetFpack, 
@@ -232,15 +218,12 @@ def get_projet_global(id: int, db: Session = Depends(get_db)):
             "id": sp.id,
             "nom": sp.nom,
             "id_global": sp.id_global,
-            "fpack_nom": fpack_nom,
             "client_nom": projet.client_rel.nom if projet.client_rel else None,
             "projet_global_nom": projet.projet,
             "sous_projet_nom": sp.nom,
             "complet": nb_selections >= nb_groupes_attendus if nb_groupes_attendus > 0 else False,
             "nb_selections": nb_selections,
             "nb_groupes_attendus": nb_groupes_attendus,
-            "FPack_number": fpack_number,
-            "Robot_Location_Code": robot_location_code
         })
     
     return {
@@ -268,6 +251,10 @@ def get_sous_projet_fpack_by_id(sous_projet_fpack_id: int, db: Session = Depends
         "fpack_id": association.fpack_id,
         "FPack_number": association.FPack_number,
         "Robot_Location_Code": association.Robot_Location_Code,
+        "contractor": association.contractor,
+        "required_delivery_time": association.required_delivery_time,
+        "delivery_site": association.delivery_site,
+        "tracking": association.tracking,
         "sous_projet": {
             "id": sous_projet.id,
             "nom": sous_projet.nom,
@@ -438,15 +425,6 @@ def list_sous_projets(
         client = db.query(models.Client).get(projet_global.client) if projet_global else None
         
         sp_fpack = db.query(models.SousProjetFpack).filter_by(sous_projet_id=sp.id).first()
-        fpack_nom = None
-        fpack_number = None
-        robot_location_code = None
-        
-        if sp_fpack:
-            fpack = db.query(models.FPack).get(sp_fpack.fpack_id)
-            fpack_nom = fpack.nom if fpack else None
-            fpack_number = sp_fpack.FPack_number
-            robot_location_code = sp_fpack.Robot_Location_Code
         
         nb_selections = db.query(models.ProjetSelection).join(
             models.SousProjetFpack, 
@@ -464,16 +442,12 @@ def list_sous_projets(
             "id": sp.id,
             "nom": sp.nom,
             "id_global": sp.id_global,
-            "fpack_id": sp_fpack.fpack_id if sp_fpack else None,
-            "fpack_nom": fpack_nom,
             "client_nom": client.nom if client else None,
             "projet_global_nom": projet_global.projet if projet_global else None,
             "sous_projet_nom": sp.nom,
             "complet": nb_selections >= nb_groupes_attendus if nb_groupes_attendus > 0 else False,
             "nb_selections": nb_selections,
             "nb_groupes_attendus": nb_groupes_attendus,
-            "FPack_number": fpack_number,
-            "Robot_Location_Code": robot_location_code
         })
     
     return result
@@ -494,15 +468,6 @@ def get_sous_projet(id: int, db: Session = Depends(get_db)):
     client = db.query(models.Client).get(projet_global.client) if projet_global else None
     
     sp_fpack = db.query(models.SousProjetFpack).filter_by(sous_projet_id=sp.id).first()
-    fpack_nom = None
-    fpack_number = None
-    robot_location_code = None
-    
-    if sp_fpack:
-        fpack = db.query(models.FPack).get(sp_fpack.fpack_id)
-        fpack_nom = fpack.nom if fpack else None
-        fpack_number = sp_fpack.FPack_number
-        robot_location_code = sp_fpack.Robot_Location_Code
     
     nb_selections = db.query(models.ProjetSelection).join(
         models.SousProjetFpack, 
@@ -520,16 +485,12 @@ def get_sous_projet(id: int, db: Session = Depends(get_db)):
         "id": sp.id,
         "nom": sp.nom,
         "id_global": sp.id_global,
-        "fpack_id": sp_fpack.fpack_id if sp_fpack else None,
-        "fpack_nom": fpack_nom,
         "client_nom": client.nom if client else None,
         "projet_global_nom": projet_global.projet if projet_global else None,
         "sous_projet_nom": sp.nom,
         "complet": nb_selections >= nb_groupes_attendus if nb_groupes_attendus > 0 else False,
         "nb_selections": nb_selections,
         "nb_groupes_attendus": nb_groupes_attendus,
-        "FPack_number": fpack_number,
-        "Robot_Location_Code": robot_location_code
     }
 
 @router.post("/sous_projets", response_model=schemas.SousProjetRead)
@@ -900,6 +861,10 @@ def get_projets_tree(client_id: Optional[int] = None, db: Session = Depends(get_
                     "fpack_abbr": fpack.fpack_abbr,
                     "FPack_number": fpack_assoc.FPack_number,
                     "Robot_Location_Code": fpack_assoc.Robot_Location_Code,
+                    "contractor": fpack_assoc.contractor,  
+                    "required_delivery_time": fpack_assoc.required_delivery_time,  
+                    "delivery_site": fpack_assoc.delivery_site, 
+                    "tracking": fpack_assoc.tracking,  
                     "selections": selections_data
                 })
             
@@ -1125,7 +1090,11 @@ def get_sous_projet_facture(id: int, db: Session = Depends(get_db)):
             "nom": fpack.nom,
             "abbr": fpack.fpack_abbr,
             "FPack_number": sp_fpack.FPack_number,
-            "Robot_Location_Code": sp_fpack.Robot_Location_Code
+            "Robot_Location_Code": sp_fpack.Robot_Location_Code,
+            "contractor": sp_fpack.contractor,
+            "required_delivery_time": sp_fpack.required_delivery_time,
+            "delivery_site": sp_fpack.delivery_site,
+            "tracking": sp_fpack.tracking
         } if fpack else None,
         "currency": "EUR",
         "lines": lines,
@@ -1499,7 +1468,11 @@ def get_sous_projet_fpack_facture(sous_projet_fpack_id: int, db: Session = Depen
             "nom": fpack.nom,
             "abbr": fpack.fpack_abbr,
             "FPack_number": sp_fpack.FPack_number,
-            "Robot_Location_Code": sp_fpack.Robot_Location_Code
+            "Robot_Location_Code": sp_fpack.Robot_Location_Code,
+            "contractor": sp_fpack.contractor,
+            "required_delivery_time": sp_fpack.required_delivery_time,
+            "delivery_site": sp_fpack.delivery_site,
+            "tracking": sp_fpack.tracking
         } if fpack else None,
         "currency": "EUR",
         "lines": lines,

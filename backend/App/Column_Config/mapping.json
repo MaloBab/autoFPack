@@ -1,0 +1,358 @@
+{
+  "excel_columns": {
+    "FPack Number": {
+      "target": "sous_projet_fpack.FPack_number",
+      "type": "direct"
+    },
+    "Plant": {
+      "target": "sous_projet_fpack.plant",
+      "type": "direct"
+    },
+    "Area/Line": {
+      "target": "sous_projet_fpack.area_line",
+      "type": "direct"
+    },
+    "Station/Mode zone": {
+      "target": "sous_projet_fpack.station_mode_zone",
+      "type": "direct"
+    },
+    "Machine code": {
+      "target": "sous_projet_fpack.machine_code",
+      "type": "direct"
+    },
+    "Robot location code": {
+      "target": "sous_projet_fpack.Robot_Location_Code",
+      "type": "direct"
+    },
+    "Area section": {
+      "target": "sous_projet_fpack.area_section",
+      "type": "direct"
+    },
+    "Direct Link": {
+      "target": "sous_projet_fpack.direct_link",
+      "type": "direct"
+    },
+    "Comments": {
+      "target": "sous_projet_fpack.comments",
+      "type": "direct"
+    },
+    "Order Planning": {
+      "target": "ignore",
+      "type": "ignore"
+    },
+    "Contractor": {
+      "target": "sous_projet_fpack.contractor",
+      "type": "direct"
+    },
+    "Required Delivery time": {
+      "target": "sous_projet_fpack.required_delivery_time",
+      "type": "direct"
+    },
+    "Delivery site": {
+      "target": "sous_projet_fpack.delivery_site",
+      "type": "direct"
+    },
+    "Tracking": {
+      "target": "sous_projet_fpack.tracking",
+      "type": "direct"
+    },
+    "Comments order": {
+      "target": "ignore",
+      "type": "ignore"
+    },
+    "F-pack Type": {
+      "target": "sous_projet_fpack.fpack_type",
+      "type": "direct"
+    },
+    "Fpack Type": {
+      "target": "ignore",
+      "type": "ignore"
+    },
+    "Fpack abbreviation": {
+      "target": "ignore",
+      "type": "ignore"
+    },
+    "Standard or Extended": {
+      "target": "sous_projet_fpack.standard_or_extended",
+      "type": "direct"
+    },
+    "Fpack category": {
+      "target": "sous_projet_fpack.fpack_category",
+      "type": "direct"
+    },
+    "F-pack Comment": {
+      "target": "ignore",
+      "type": "ignore"
+    },
+    "Track motion(7th-axis)option": {
+      "target": "sous_projet_fpack.track_motion_option",
+      "type": "direct"
+    },
+    "Other Comments": {
+      "target": "sous_projet_fpack.other_comments",
+      "type": "direct"
+    },
+    "Mechanical Unit": {
+      "target": "selection",
+      "groupe_nom": "Mechanical Unit",
+      "search_in": ["robots", "equipements"],
+      "search_fields": ["nom", "model"],
+      "type": "fuzzy_match"
+    },
+    "Robot": {
+      "target": "selection",
+      "groupe_nom": "Robot",
+      "search_in": ["robots"],
+      "search_fields": ["nom", "model"],
+      "type": "fuzzy_match"
+    },
+    "RCC Length": {
+      "target": "selection",
+      "groupe_nom": "RCC Length",
+      "search_in": ["produits"],
+      "search_fields": ["nom"],
+      "type": "exact_match"
+    },
+    "Cable Teach Length": {
+      "target": "selection",
+      "groupe_nom": "Cable Teach Length",
+      "search_in": ["produits"],
+      "search_fields": ["nom"],
+      "type": "exact_match"
+    },
+    "Extension for cable Teach": {
+      "target": "selection",
+      "groupe_nom": "Extension Cable Teach",
+      "search_in": ["produits"],
+      "search_fields": ["nom"],
+      "type": "exact_match"
+    },
+    "Retractable TP Cable": {
+      "target": "selection",
+      "groupe_nom": "Retractable TP Cable",
+      "search_in": ["produits"],
+      "search_fields": ["nom"],
+      "type": "exact_match"
+    },
+    "Robot base plate": {
+      "target": "selection",
+      "groupe_nom": "Robot Base Plate",
+      "search_in": ["equipements"],
+      "search_fields": ["nom"],
+      "type": "fuzzy_match"
+    },
+    "Transport kit forklift": {
+      "target": "selection",
+      "groupe_nom": "Transport Kit Forklift",
+      "search_in": ["equipements"],
+      "search_fields": ["nom"],
+      "type": "fuzzy_match"
+    },
+    "Stacking kit": {
+      "target": "selection",
+      "groupe_nom": "Stacking Kit",
+      "search_in": ["equipements"],
+      "search_fields": ["nom"],
+      "type": "fuzzy_match"
+    },
+    "Power Regeneration": {
+      "target": "selection",
+      "groupe_nom": "Power Regeneration",
+      "search_in": ["equipements"],
+      "search_fields": ["nom"],
+      "type": "fuzzy_match"
+    },
+    "Smooth Stop": {
+      "target": "selection",
+      "groupe_nom": "Smooth Stop",
+      "search_in": ["equipements"],
+      "search_fields": ["nom"],
+      "type": "fuzzy_match"
+    },
+    "Key Equipment (G)": {
+      "target": "selection",
+      "groupe_nom": "Key Equipment G",
+      "search_in": ["equipements"],
+      "search_fields": ["nom", "description"],
+      "type": "fuzzy_match"
+    },
+    "Media Panel (G)": {
+      "target": "selection",
+      "groupe_nom": "Media Panel G",
+      "search_in": ["produits", "equipements"],
+      "search_fields": ["nom"],
+      "type": "exact_match"
+    },
+    "Robot Controller <-> MP (G)": {
+      "target": "selection",
+      "groupe_nom": "Robot Controller MP G",
+      "search_in": ["produits"],
+      "search_fields": ["nom"],
+      "type": "fuzzy_match"
+    },
+    "MP <-> Robot (Air) (G)": {
+      "target": "selection",
+      "groupe_nom": "MP Robot Air G",
+      "search_in": ["produits"],
+      "search_fields": ["nom"],
+      "type": "fuzzy_match"
+    },
+    "MP <-> Equip (Air) (G)": {
+      "target": "selection",
+      "groupe_nom": "MP Equip Air G",
+      "search_in": ["produits"],
+      "search_fields": ["nom"],
+      "type": "fuzzy_match"
+    },
+    "MP <-> Equip (Water) (G)": {
+      "target": "selection",
+      "groupe_nom": "MP Equip Water G",
+      "search_in": ["produits"],
+      "search_fields": ["nom"],
+      "type": "fuzzy_match"
+    },
+    "MP Support Kit (G)": {
+      "target": "selection",
+      "groupe_nom": "MP Support Kit G",
+      "search_in": ["equipements"],
+      "search_fields": ["nom"],
+      "type": "fuzzy_match"
+    },
+    "Robot Controller <-> Robot (J1) (G)": {
+      "target": "selection",
+      "groupe_nom": "Robot Controller Robot J1 G",
+      "search_in": ["produits"],
+      "search_fields": ["nom"],
+      "type": "fuzzy_match"
+    },
+    "Key Equipment (H)": {
+      "target": "selection",
+      "groupe_nom": "Key Equipment H",
+      "search_in": ["equipements"],
+      "search_fields": ["nom", "description"],
+      "type": "fuzzy_match"
+    },
+    "Handling type (H)": {
+      "target": "selection",
+      "groupe_nom": "Handling Type H",
+      "search_in": ["equipements"],
+      "search_fields": ["nom"],
+      "type": "exact_match"
+    },
+    "Robot Controller <-> Robot (H)": {
+      "target": "selection",
+      "groupe_nom": "Robot Controller Robot H",
+      "search_in": ["produits"],
+      "search_fields": ["nom"],
+      "type": "fuzzy_match"
+    },
+    "Media Panel Air (H)": {
+      "target": "selection",
+      "groupe_nom": "Media Panel Air H",
+      "search_in": ["produits"],
+      "search_fields": ["nom"],
+      "type": "exact_match"
+    },
+    "Robot Controller <-> MP (H)": {
+      "target": "selection",
+      "groupe_nom": "Robot Controller MP H",
+      "search_in": ["produits"],
+      "search_fields": ["nom"],
+      "type": "fuzzy_match"
+    },
+    "MP Support Kit (H)": {
+      "target": "selection",
+      "groupe_nom": "MP Support Kit H",
+      "search_in": ["equipements"],
+      "search_fields": ["nom"],
+      "type": "fuzzy_match"
+    },
+    "MP <-> Robot (H)": {
+      "target": "selection",
+      "groupe_nom": "MP Robot H",
+      "search_in": ["produits"],
+      "search_fields": ["nom"],
+      "type": "fuzzy_match"
+    }
+  },
+  "metadata": {
+    "version": "1.0",
+    "description": "Configuration de mapping pour l'import/export F-Pack Matrix",
+    "created_date": "2025-08-25",
+    "last_modified": "2025-08-25",
+    "based_on_template": "Robot F-Pack Matrix - Extraction 23-07-2025.pdf",
+    "notes": [
+      "Les colonnes avec target 'ignore' ne sont pas traitées lors de l'import",
+      "Les colonnes avec target 'selection' créent des entrées dans FPM_projet_selection",
+      "Les colonnes avec target 'sous_projet_fpack.*' remplissent directement la table FPM_sous_projet_fpack",
+      "Le type 'fuzzy_match' utilise la similarité de chaîne pour trouver des correspondances",
+      "Le type 'exact_match' cherche une correspondance exacte",
+      "Le type 'direct' copie la valeur directement sans transformation"
+    ]
+  },
+  "validation_rules": {
+    "required_fields": [
+      "FPack Number",
+      "Robot location code"
+    ],
+    "optional_fields": [
+      "Plant",
+      "Area/Line",
+      "Station/Mode zone",
+      "Machine code",
+      "Contractor",
+      "Required Delivery time",
+      "Delivery site"
+    ],
+    "fuzzy_match_threshold": 70,
+    "exact_match_case_sensitive": false
+  },
+  "column_mappings_by_category": {
+    "basic_info": [
+      "FPack Number",
+      "Plant", 
+      "Area/Line",
+      "Station/Mode zone",
+      "Machine code",
+      "Robot location code"
+    ],
+    "logistics": [
+      "Contractor",
+      "Required Delivery time",
+      "Delivery site",
+      "Tracking"
+    ],
+    "mechanical_equipment": [
+      "Mechanical Unit",
+      "Robot",
+      "RCC Length",
+      "Cable Teach Length",
+      "Robot base plate",
+      "Transport kit forklift",
+      "Stacking kit"
+    ],
+    "electrical_equipment": [
+      "Power Regeneration",
+      "Smooth Stop"
+    ],
+    "control_system_g": [
+      "Key Equipment (G)",
+      "Media Panel (G)",
+      "Robot Controller <-> MP (G)",
+      "MP <-> Robot (Air) (G)",
+      "MP <-> Equip (Air) (G)",
+      "MP <-> Equip (Water) (G)",
+      "MP Support Kit (G)",
+      "Robot Controller <-> Robot (J1) (G)"
+    ],
+    "control_system_h": [
+      "Key Equipment (H)",
+      "Handling type (H)",
+      "Robot Controller <-> Robot (H)",
+      "Media Panel Air (H)",
+      "Robot Controller <-> MP (H)",
+      "MP Support Kit (H)",
+      "MP <-> Robot (H)"
+    ]
+  }
+}

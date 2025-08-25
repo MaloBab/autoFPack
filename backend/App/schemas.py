@@ -254,6 +254,10 @@ class SousProjetFpackBase(BaseModel):
     fpack_id: int
     FPack_number: Optional[str] = None
     Robot_Location_Code: Optional[str] = None
+    contractor: str = "N/A"
+    required_delivery_time: str = "N/A"
+    delivery_site: str = "N/A"
+    tracking: str = "N/A"
 
 class SousProjetFpackCreate(SousProjetFpackBase):
     pass
@@ -285,18 +289,12 @@ class ProjetSelectionRead(ProjetSelectionBase):
 # SCHÉMAS ÉTENDUS POUR LES VUES
 class SousProjetReadWithDetails(SousProjetRead):
     """Schema pour afficher un projet avec ses détails complets"""
-    fpack_nom: Optional[str] = None
     client_nom: Optional[str] = None
     projet_global_nom: Optional[str] = None
     sous_projet_nom: Optional[str] = None
     complet: bool = False
     nb_selections: int = 0
     nb_groupes_attendus: int = 0
-    # Ajout des détails FPack (ancien format)
-    fpack_id: Optional[int] = None
-    FPack_number: Optional[str] = None
-    Robot_Location_Code: Optional[str] = None
-    # Nouveau format avec tableau
     fpacks: List[Dict] = []
 
 class ProjetGlobalReadWithSousProjets(ProjetGlobalRead):

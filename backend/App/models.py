@@ -205,6 +205,10 @@ class SousProjetFpack(Base):
     fpack_id = Column(Integer, ForeignKey("dbo.FPM_fpacks.id", ondelete="CASCADE"))
     FPack_number = Column(String(255), nullable=True)
     Robot_Location_Code = Column(String(255), nullable=True)
+    contractor = Column(String(255), nullable=False, default="N/A")
+    required_delivery_time = Column(String(255), nullable=False, default="N/A")
+    delivery_site = Column(String(255), nullable=False, default="N/A")
+    tracking = Column(String(255), nullable=False, default="N/A")
 
     sous_projet = relationship("SousProjet", back_populates="fpacks", passive_deletes=True)
     fpack = relationship("FPack", back_populates="sous_projets", passive_deletes=True)
