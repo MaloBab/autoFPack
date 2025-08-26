@@ -15,7 +15,7 @@ import Projet_global from '../views/Projets.vue'
 import CompleteProjet from '../views/CompleteProjet.vue'
 import FactureProjet from '../views/FactureProjet.vue'
 import PrixRobot from '../views/PrixRobot.vue'
-import ImportExport from '../views/ImportExport.vue'
+import ImportExport from '../views/ProjectImportExport.vue'
 
 const routes = [
   { path: '/', component: Dashboard },

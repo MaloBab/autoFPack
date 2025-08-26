@@ -1,19 +1,18 @@
 from App import models
 from App.database import SessionLocal
-from fastapi import APIRouter, UploadFile, File, Form, HTTPException, Depends
-from fastapi.responses import FileResponse
-from sqlalchemy.orm import Session
+from fastapi import APIRouter, UploadFile, File, HTTPException, Depends #type: ignore
+from fastapi.responses import FileResponse # type: ignore
+from sqlalchemy.orm import Session # type: ignore
 from typing import List, Dict, Any, Optional
-import pandas as pd
+import pandas as pd # type: ignore
 import json
 import os
 from datetime import datetime
-from pydantic import BaseModel
-from fuzzywuzzy import fuzz
+from pydantic import BaseModel # type: ignore
+from fuzzywuzzy import fuzz # type: ignore
 import tempfile
-import openpyxl
-from openpyxl.styles import Font, PatternFill, Alignment, Border, Side
-from openpyxl.utils.dataframe import dataframe_to_rows
+import openpyxl # type: ignore
+from openpyxl.styles import Font, Alignment, Border, Side # type: ignore
 from io import BytesIO
 
 # Chemin vers le fichier de configuration JSON externe
@@ -298,62 +297,49 @@ async def preview_import(
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Erreur lors du traitement : {str(e)}")
 
+
+#-------------------- Execution du programme d'import --------------------
+
+
 @router.post("/import/execute")
 async def execute_import(
     request: ImportExecuteRequest,
     db: Session = Depends(get_db)
 ):
     """
-    Étape 3 : Exécution de l'import avec création en base de données
+    Étape 3 : Exécution de l'import avec création des entrées FPM_sous_projet_fpack uniquement
     """
     try:
-        results = {"created_projects": 0, "created_selections": 0, "errors": []}
+        results = {"created_fpack_entries": 0, "created_selections": 0, "errors": []}
         
-        # Transaction pour rollback en cas d'erreur
         db.begin()
         try:
-            # 1. Créer le projet global
-            projet_global = create_projet_global(
-                nom=f"Import_{datetime.now().strftime('%Y%m%d_%H%M%S')}",
-                client_id=request.client_id,
-                db=db
-            )
-            results["created_projects"] += 1
-            
-            # 2. Créer les sous-projets et FPacks
-            fpacks_created = {}
             for row_data in request.file_data:
                 if row_data.get('_status') == 'error':
                     continue
                 
-                # Créer sous-projet si pas encore créé
-                fpack_number = get_mapped_value(row_data, "FPack_number", request.mapping_config)
-                if fpack_number and fpack_number not in fpacks_created:
-                    sous_projet = create_sous_projet(
-                        id_global=projet_global.id,
-                        nom=f"Sous-projet_{fpack_number}",
-                        db=db
-                    )
-                    
-                    # Créer l'entrée sous_projet_fpack
-                    sous_projet_fpack = create_sous_projet_fpack(
-                        sous_projet_id=sous_projet.id,
-                        fpack_data=extract_fpack_data(row_data, request.mapping_config),
-                        db=db
-                    )
-                    
-                    fpacks_created[fpack_number] = sous_projet_fpack
+                # Créer l'entrée sous_projet_fpack
+                sous_projet_fpack = create_sous_projet_fpack_entry(
+                    row_data=row_data,
+                    mapping_config=request.mapping_config,
+                    client_id=request.client_id,
+                    db=db
+                )
                 
-                # 3. Créer les sélections
-                if fpack_number in fpacks_created:
+                if sous_projet_fpack:
+                    results["created_fpack_entries"] += 1
+                    
+                    # Créer les sélections pour cette entrée
                     selections_created = create_selections_from_row(
                         row_data, 
                         request.mapping_config, 
-                        fpacks_created[fpack_number].id,
+                        sous_projet_fpack.id,
                         request.manual_matches,
                         db
                     )
                     results["created_selections"] += len(selections_created)
+                else:
+                    results["errors"].append(f"Impossible de créer l'entrée pour FPack: {get_mapped_value(row_data, 'FPack_number', request.mapping_config)}")
             
             db.commit()
             
@@ -364,11 +350,123 @@ async def execute_import(
         return {
             "success": True,
             "results": results,
-            "message": f"Import terminé : {results['created_projects']} projets, {results['created_selections']} sélections"
+            "message": f"Import terminé : {results['created_fpack_entries']} entrées F-Pack, {results['created_selections']} sélections"
         }
         
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Erreur lors de l'import : {str(e)}")
+
+def create_sous_projet_fpack_entry(row_data: Dict, mapping_config: MappingConfig, client_id: int, db: Session):
+    """
+    Crée une entrée FPM_sous_projet_fpack en liant à des sous-projets et F-Packs existants
+    """
+    try:
+        # Extraire le numéro F-Pack depuis les données
+        fpack_number = get_mapped_value(row_data, "FPack_number", mapping_config)
+        
+        if not fpack_number:
+            raise ValueError("FPack_number est requis")
+        
+        # 1. Trouver ou sélectionner un sous-projet existant
+        sous_projet_id = find_or_assign_sous_projet(fpack_number, client_id, db)
+        
+        if not sous_projet_id:
+            raise ValueError(f"Aucun sous-projet disponible pour le client {client_id}")
+        
+        # 2. Trouver le template F-Pack correspondant
+        fpack_template_id = find_fpack_template(fpack_number, client_id, db)
+        
+        # 3. Extraire toutes les données F-Pack depuis la ligne
+        fpack_data = extract_fpack_data(row_data, mapping_config)
+        
+        # 4. Créer l'entrée FPM_sous_projet_fpack
+        sous_projet_fpack = models.SousProjetFpack(
+            sous_projet_id=sous_projet_id,
+            fpack_id=fpack_template_id,  # Peut être None si pas de template trouvé
+            FPack_number=fpack_data.get('FPack_number', fpack_number),
+            Robot_Location_Code=fpack_data.get('Robot_Location_Code', ''),
+            contractor=fpack_data.get('contractor', ''),
+            required_delivery_time=fpack_data.get('required_delivery_time', ''),
+            delivery_site=fpack_data.get('delivery_site', ''),
+            tracking=fpack_data.get('tracking', '')
+        )
+        
+        db.add(sous_projet_fpack)
+        db.flush()
+        return sous_projet_fpack
+        
+    except Exception as e:
+        raise ValueError(f"Erreur création entrée F-Pack: {str(e)}")
+
+def find_or_assign_sous_projet(fpack_number: str, client_id: int, db: Session) -> int:
+    """
+    Trouve un sous-projet existant approprié ou en assigne un selon la logique métier
+    """
+    try:
+        # Stratégie 1: Chercher un sous-projet lié au même client
+        # via le projet global
+        sous_projets = db.query(models.SousProjet).join(
+            models.ProjetGlobal, models.SousProjet.id_global == models.ProjetGlobal.id
+        ).filter(
+            models.ProjetGlobal.client == client_id
+        ).all()
+        
+        if sous_projets:
+            # Stratégie: prendre le premier sous-projet disponible
+            # ou implémenter une logique plus sophistiquée
+            return sous_projets[0].id
+        
+        # Stratégie 2: Si aucun sous-projet pour ce client,
+        # chercher dans tous les sous-projets (à adapter selon vos besoins)
+        premier_sous_projet = db.query(models.SousProjet).first()
+        
+        if premier_sous_projet:
+            return premier_sous_projet.id
+        
+        return None
+        
+    except Exception as e:
+        return None
+
+def find_fpack_template(fpack_number: str, client_id: int, db: Session) -> int:
+    """
+    Trouve un template F-Pack existant correspondant
+    """
+    try:
+        # Stratégie 1: Chercher par nom exact
+        fpack_template = db.query(models.FPack).filter(
+            models.FPack.nom == fpack_number,
+            models.FPack.client == client_id
+        ).first()
+        
+        if fpack_template:
+            return fpack_template.id
+        
+        # Stratégie 2: Chercher par nom partiel ou abréviation
+        fpack_template = db.query(models.FPack).filter(
+            models.FPack.fpack_abbr == fpack_number[:10],
+            models.FPack.client == client_id
+        ).first()
+        
+        if fpack_template:
+            return fpack_template.id
+        
+        # Stratégie 3: Chercher un template générique pour ce client
+        fpack_template = db.query(models.FPack).filter(
+            models.FPack.client == client_id
+        ).first()
+        
+        if fpack_template:
+            return fpack_template.id
+        
+        return None  # Pas de template trouvé
+        
+    except Exception as e:
+        return None
+
+
+#------------------------------------------------------------------------------------
+
 
 @router.get("/import/mapping-config")
 async def get_mapping_config():
@@ -701,89 +799,6 @@ def extract_fpack_data(row_data: Dict, mapping_config: MappingConfig) -> Dict:
     
     return fpack_data
 
-def create_projet_global(nom: str, client_id: int, db: Session):
-    """Crée un projet global"""
-    try:
-        projet = models.ProjetGlobal(
-            projet=nom,
-            client=client_id
-        )
-        db.add(projet)
-        db.flush()  
-        return projet
-    except Exception as e:
-        raise e
-
-def create_sous_projet(id_global: int, nom: str, db: Session):
-    """Crée un sous-projet"""
-    try:
-        sous_projet = models.SousProjet(
-            id_global=id_global,
-            nom=nom
-        )
-        db.add(sous_projet)
-        db.flush()
-        return sous_projet
-    except Exception as e:
-        raise e
-
-def create_sous_projet_fpack(sous_projet_id: int, fpack_data: Dict, db: Session):
-    """Crée une entrée sous_projet_fpack avec toutes les données du PDF"""
-    try:
-        # Récupérer ou créer le FPack si nécessaire
-        fpack_id = None
-        fpack_number = fpack_data.get('FPack_number')
-        
-        if fpack_number:
-            # Chercher si le FPack existe déjà
-            existing_fpack = db.query(models.FPack).filter(
-                models.FPack.nom == fpack_number
-            ).first()
-            
-            if not existing_fpack:
-                # Créer un nouveau FPack
-                new_fpack = models.FPack(
-                    nom=fpack_number,
-                    client=1,  # À adapter selon votre logique
-                    fpack_abbr=fpack_number[:10]  # Abbréviation
-                )
-                db.add(new_fpack)
-                db.flush()
-                fpack_id = new_fpack.id
-            else:
-                fpack_id = existing_fpack.id
-        
-        # Créer l'entrée sous_projet_fpack avec tous les champs du PDF
-        sous_projet_fpack = models.SousProjetFpack(
-            sous_projet_id=sous_projet_id,
-            fpack_id=fpack_id,
-            FPack_number=fpack_data.get('FPack_number', ''),
-            Robot_Location_Code=fpack_data.get('Robot_Location_Code', ''),
-            contractor=fpack_data.get('contractor', ''),
-            required_delivery_time=fpack_data.get('required_delivery_time', ''),
-            delivery_site=fpack_data.get('delivery_site', ''),
-            tracking=fpack_data.get('tracking', ''),
-            # Nouveaux champs basés sur le PDF
-            plant=fpack_data.get('plant', ''),
-            area_line=fpack_data.get('area_line', ''),
-            station_mode_zone=fpack_data.get('station_mode_zone', ''),
-            machine_code=fpack_data.get('machine_code', ''),
-            area_section=fpack_data.get('area_section', ''),
-            direct_link=fpack_data.get('direct_link', ''),
-            fpack_type=fpack_data.get('fpack_type', ''),
-            fpack_category=fpack_data.get('fpack_category', ''),
-            track_motion_option=fpack_data.get('track_motion_option', ''),
-            standard_or_extended=fpack_data.get('standard_or_extended', ''),
-            comments=fpack_data.get('comments', ''),
-            other_comments=fpack_data.get('other_comments', '')
-        )
-        
-        db.add(sous_projet_fpack)
-        db.flush()
-        return sous_projet_fpack
-        
-    except Exception as e:
-        raise e
 
 def create_selections_from_row(row_data: Dict, mapping_config: MappingConfig, 
                               sous_projet_fpack_id: int, manual_matches: List, db: Session):
