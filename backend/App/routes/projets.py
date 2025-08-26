@@ -130,10 +130,9 @@ def list_projets_globaux(
                     total_selections += nb_selections_fpack
                     total_groupes_attendus += nb_groupes_attendus_fpack
                     
-                    # Ajouter ce FPack au tableau
                     fpacks_array.append({
-                        "id": sp_fpack.id,  # ID de l'enregistrement SousProjetFpack
-                        "fpack_id": sp_fpack.fpack_id,  # ID du template FPack
+                        "id": sp_fpack.id,  
+                        "fpack_id": sp_fpack.fpack_id,  
                         "fpack_nom": fpack_nom,
                         "FPack_number": sp_fpack.FPack_number,
                         "Robot_Location_Code": sp_fpack.Robot_Location_Code,

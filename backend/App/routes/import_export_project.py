@@ -704,7 +704,7 @@ def extract_fpack_data(row_data: Dict, mapping_config: MappingConfig) -> Dict:
 def create_projet_global(nom: str, client_id: int, db: Session):
     """Crée un projet global"""
     try:
-        projet = models.FPM_projets_global(
+        projet = models.ProjetGlobal(
             projet=nom,
             client=client_id
         )
@@ -717,7 +717,7 @@ def create_projet_global(nom: str, client_id: int, db: Session):
 def create_sous_projet(id_global: int, nom: str, db: Session):
     """Crée un sous-projet"""
     try:
-        sous_projet = models.FPM_sous_projets(
+        sous_projet = models.SousProjet(
             id_global=id_global,
             nom=nom
         )
@@ -736,13 +736,13 @@ def create_sous_projet_fpack(sous_projet_id: int, fpack_data: Dict, db: Session)
         
         if fpack_number:
             # Chercher si le FPack existe déjà
-            existing_fpack = db.query(models.FPM_fpacks).filter(
-                models.FPM_fpacks.nom == fpack_number
+            existing_fpack = db.query(models.FPack).filter(
+                models.FPack.nom == fpack_number
             ).first()
             
             if not existing_fpack:
                 # Créer un nouveau FPack
-                new_fpack = models.FPM_fpacks(
+                new_fpack = models.FPack(
                     nom=fpack_number,
                     client=1,  # À adapter selon votre logique
                     fpack_abbr=fpack_number[:10]  # Abbréviation
@@ -754,7 +754,7 @@ def create_sous_projet_fpack(sous_projet_id: int, fpack_data: Dict, db: Session)
                 fpack_id = existing_fpack.id
         
         # Créer l'entrée sous_projet_fpack avec tous les champs du PDF
-        sous_projet_fpack = models.FPM_sous_projet_fpack(
+        sous_projet_fpack = models.SousProjetFpack(
             sous_projet_id=sous_projet_id,
             fpack_id=fpack_id,
             FPack_number=fpack_data.get('FPack_number', ''),
@@ -825,17 +825,17 @@ def create_selections_from_row(row_data: Dict, mapping_config: MappingConfig,
                 
                 if selected_item:
                     # Trouver ou créer le groupe
-                    groupe = db.query(models.FPM_groupes).filter(
-                        models.FPM_groupes.nom == rule.groupe_nom
+                    groupe = db.query(models.Groupes).filter(
+                        models.Groupes.nom == rule.groupe_nom
                     ).first()
                     
                     if not groupe:
-                        groupe = models.FPM_groupes(nom=rule.groupe_nom)
+                        groupe = models.Groupes(nom=rule.groupe_nom)
                         db.add(groupe)
                         db.flush()
                     
                     # Créer la sélection
-                    selection = models.FPM_projet_selection(
+                    selection = models.ProjetSelection(
                         sous_projet_fpack_id=sous_projet_fpack_id,
                         groupe_id=groupe.id,
                         type_item=selected_item['type'],
@@ -858,16 +858,16 @@ def get_project_export_data(project_ids: List[int], db: Session) -> List[Dict]:
         
         for project_id in project_ids:
             # Récupérer le projet global
-            projet = db.query(models.FPM_projets_global).filter(
-                models.FPM_projets_global.id == project_id
+            projet = db.query(models.ProjetGlobal).filter(
+                models.ProjetGlobal.id == project_id
             ).first()
             
             if not projet:
                 continue
             
             # Récupérer tous les sous-projets
-            sous_projets = db.query(models.FPM_sous_projets).filter(
-                models.FPM_sous_projets.id_global == project_id
+            sous_projets = db.query(models.SousProjet).filter(
+                models.SousProjet.id_global == project_id
             ).all()
             
             project_info = {
@@ -879,14 +879,14 @@ def get_project_export_data(project_ids: List[int], db: Session) -> List[Dict]:
             
             # Pour chaque sous-projet, récupérer les FPacks
             for sous_projet in sous_projets:
-                fpacks = db.query(models.FPM_sous_projet_fpack).filter(
-                    models.FPM_sous_projet_fpack.sous_projet_id == sous_projet.id
+                fpacks = db.query(models.SousProjetFpack).filter(
+                    models.SousProjetFpack.sous_projet_id == sous_projet.id
                 ).all()
                 
                 for fpack in fpacks:
                     # Récupérer les sélections pour ce FPack
-                    selections = db.query(models.FPM_projet_selection).filter(
-                        models.FPM_projet_selection.sous_projet_fpack_id == fpack.id
+                    selections = db.query(models.ProjetSelection).filter(
+                        models.ProjetSelection.sous_projet_fpack_id == fpack.id
                     ).all()
                     
                     selections_data = []
@@ -965,8 +965,8 @@ def get_item_details(type_item: str, ref_id: int, db: Session) -> Dict:
 def get_groupe_name(groupe_id: int, db: Session) -> str:
     """Récupère le nom d'un groupe"""
     try:
-        groupe = db.query(models.FPM_groupes).filter(
-            models.FPM_groupes.id == groupe_id
+        groupe = db.query(models.Groupes).filter(
+            models.Groupes.id == groupe_id
         ).first()
         return groupe.nom if groupe else ""
     except Exception as e:

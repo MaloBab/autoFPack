@@ -1394,6 +1394,7 @@ onMounted(fetchData)
 .search-input-modal {
   width: 100%;
   padding: 12px 16px;
+  color: #000000;
   border: 2px solid #e2e8f0;
   border-radius: 10px;
   font-size: 14px;

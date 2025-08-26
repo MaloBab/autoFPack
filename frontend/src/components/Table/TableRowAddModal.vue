@@ -1122,6 +1122,7 @@ onMounted(async () => {
 
 .form-input {
   width: 80%;
+  color: #000;
   padding: 16px 20px;
   border: 2px solid #e2e8f0;
   border-radius: 12px;

@@ -278,9 +278,6 @@
   "metadata": {
     "version": "1.0",
     "description": "Configuration de mapping pour l'import/export F-Pack Matrix",
-    "created_date": "2025-08-25",
-    "last_modified": "2025-08-25",
-    "based_on_template": "Robot F-Pack Matrix - Extraction 23-07-2025.pdf",
     "notes": [
       "Les colonnes avec target 'ignore' ne sont pas traitées lors de l'import",
       "Les colonnes avec target 'selection' créent des entrées dans FPM_projet_selection",
@@ -296,10 +293,6 @@
       "Robot location code"
     ],
     "optional_fields": [
-      "Plant",
-      "Area/Line",
-      "Station/Mode zone",
-      "Machine code",
       "Contractor",
       "Required Delivery time",
       "Delivery site"
@@ -310,10 +303,6 @@
   "column_mappings_by_category": {
     "basic_info": [
       "FPack Number",
-      "Plant", 
-      "Area/Line",
-      "Station/Mode zone",
-      "Machine code",
       "Robot location code"
     ],
     "logistics": [
