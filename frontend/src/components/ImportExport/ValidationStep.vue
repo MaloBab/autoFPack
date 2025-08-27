@@ -10,10 +10,13 @@ interface UnmatchedItem {
 }
 
 interface FpackItem {
-  FPackNumber: string
-  RobotLocationCode: string
+  FPackNumber: string 
+  FPack_number: string
+  RobotLocationCode: string 
+  Robot_Location_Code: string
   selectedProjetGlobal: number | null
   selectedSousProjet: number | null
+  selectedFPackTemplate?: any 
   [key: string]: any
 }
 
@@ -145,16 +148,12 @@ const totalUnresolvedItems = computed(() => {
         <h4>👁️ Aperçu des F-Packs à importer</h4>
         <div class="preview-grid">
           <div 
-            v-for="(fpack, index) in fpackList.slice(0, 6)" 
+            v-for="(fpack, index) in fpackList" 
             :key="index"
             class="preview-fpack"
           >
             <div class="fpack-number">{{ fpack.FPackNumber }}</div>
             <div class="fpack-location">📍 {{ fpack.RobotLocationCode }}</div>
-          </div>
-          <div v-if="fpackList.length > 6" class="more-fpacks">
-            <div class="more-count">+{{ fpackList.length - 6 }}</div>
-            <div class="more-text">autres F-Packs</div>
           </div>
         </div>
       </div>

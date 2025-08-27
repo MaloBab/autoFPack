@@ -1,6 +1,6 @@
 from __future__ import annotations
 from pydantic import BaseModel  # type: ignore
-from typing import List, Optional, Dict
+from typing import Any, List, Optional, Dict
 
 
 class ProduitBase(BaseModel):

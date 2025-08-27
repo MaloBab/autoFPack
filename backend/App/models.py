@@ -190,7 +190,7 @@ class SousProjet(Base):
     __table_args__ = {'schema': 'dbo'}
 
     id = Column(Integer, primary_key=True, autoincrement=True)
-    nom = Column(String(255), nullable=False)  # Spécifié la longueur
+    nom = Column(String(255), nullable=False)
     id_global = Column(Integer, ForeignKey("dbo.FPM_projets_global.id", ondelete="CASCADE"), nullable=False)  
 
     global_rel = relationship("ProjetGlobal", back_populates="projets", passive_deletes=True)

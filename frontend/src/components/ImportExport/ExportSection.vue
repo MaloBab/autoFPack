@@ -1,119 +1,3 @@
-<template>
-  <div class="export-section">
-    <div class="step-container active">
-      <div class="step-header">
-        <div class="step-indicator">
-          <div class="step-number">1</div>
-        </div>
-        <div class="step-content-header">
-          <h3>📤 Sélection des données à exporter</h3>
-          <p class="step-description">Choisissez les projets à inclure dans votre export Excel</p>
-        </div>
-      </div>
-      
-      <div class="step-body">
-        <!-- Contrôles d'export -->
-        <div class="export-controls">
-          <div class="selection-actions">
-            <button class="btn btn-outline" @click="selectAllProjects">
-              ✅ Tout sélectionner
-            </button>
-            <button class="btn btn-outline" @click="deselectAllProjects">
-              ❌ Tout désélectionner
-            </button>
-          </div>
-        </div>
-
-        <!-- Sélection des projets -->
-        <div class="projects-selection">
-          <div class="projects-header">
-            <h4>🏗️ Projets disponibles</h4>
-            <div class="selected-count">
-              {{ totalSelectedItems }} projet(s) sélectionné(s)
-            </div>
-          </div>
-          
-          <div class="projects-grid">
-            <div 
-              v-for="projet in projetsGlobaux" 
-              :key="projet.id"
-              class="project-card"
-              :class="{ selected: isProjetSelected(projet.id) }"
-              @click="toggleProjetSelection(projet.id)"
-            >
-              <div class="project-header">
-                <div class="project-checkbox">
-                  <input 
-                    type="checkbox"
-                    :checked="isProjetSelected(projet.id)"
-                    @click.stop
-                    @change="toggleProjetSelection(projet.id)"
-                  />
-                </div>
-                <div class="project-info">
-                  <h5 class="project-name">{{ projet.projet }}</h5>
-                  <p class="project-client">🏢 {{ projet.client }}</p>
-                </div>
-              </div>
-              
-              <div class="project-stats" v-if="projet.sous_projets">
-                <div class="stat-item">
-                  <span class="stat-icon">📁</span>
-                  <span class="stat-text">{{ projet.sous_projets.length }} sous-projets</span>
-                </div>
-                <div class="stat-item">
-                  <span class="stat-icon">📦</span>
-                  <span class="stat-text">
-                    {{ projet.sous_projets.reduce((total, sp) => total + (sp.fpacks?.length || 0), 0) }} F-Packs
-                  </span>
-                </div>
-              </div>
-            </div>
-          </div>
-        </div>
-        
-        <!-- Résumé de l'export -->
-        <div class="export-summary">
-          <h4>📈 Résumé de l'export</h4>
-          <div class="summary-stats">
-            <div class="stat-bubble">
-              <div class="stat-number">{{ selectedExportData.project_ids.length }}</div>
-              <div class="stat-label">Projets</div>
-            </div>
-            <div class="stat-bubble">
-              <div class="stat-number">
-                {{ projetsGlobaux
-                  .filter(p => isProjetSelected(p.id))
-                  .reduce((total, p) => total + (p.sous_projets?.length || 0), 0) }}
-              </div>
-              <div class="stat-label">Sous-projets</div>
-            </div>
-            <div class="stat-bubble">
-              <div class="stat-number">
-                {{ projetsGlobaux
-                  .filter(p => isProjetSelected(p.id))
-                  .reduce((total, p) => total + (p.sous_projets?.reduce((sp_total, sp) => sp_total + (sp.fpacks?.length || 0), 0) || 0), 0) }}
-              </div>
-              <div class="stat-label">F-Packs</div>
-            </div>
-          </div>
-        </div>
-        
-        <div class="step-actions">
-          <button 
-            class="btn btn-success btn-large"
-            :disabled="totalSelectedItems === 0 || isExporting"
-            @click="executeExport"
-          >
-            <span v-if="!isExporting">📤 Générer l'export Excel</span>
-            <span v-else>⏳ Génération en cours...</span>
-          </button>
-        </div>
-      </div>
-    </div>
-  </div>
-</template>
-
 <script setup lang="ts">
 import { reactive, computed, ref } from 'vue'
 
@@ -121,7 +5,7 @@ import { reactive, computed, ref } from 'vue'
 interface ProjetGlobal {
   id: number
   projet: string
-  client: string
+  client: number 
   sous_projets?: SousProjet[]
 }
 
@@ -238,6 +122,122 @@ const executeExport = async () => {
   }
 }
 </script>
+
+<template>
+  <div class="export-section">
+    <div class="step-container active">
+      <div class="step-header">
+        <div class="step-indicator">
+          <div class="step-number">1</div>
+        </div>
+        <div class="step-content-header">
+          <h3>📤 Sélection des données à exporter</h3>
+          <p class="step-description">Choisissez les projets à inclure dans votre export Excel</p>
+        </div>
+      </div>
+      
+      <div class="step-body">
+        <!-- Contrôles d'export -->
+        <div class="export-controls">
+          <div class="selection-actions">
+            <button class="btn btn-outline" @click="selectAllProjects">
+              ✅ Tout sélectionner
+            </button>
+            <button class="btn btn-outline" @click="deselectAllProjects">
+              ❌ Tout désélectionner
+            </button>
+          </div>
+        </div>
+
+        <!-- Sélection des projets -->
+        <div class="projects-selection">
+          <div class="projects-header">
+            <h4>🏗️ Projets disponibles</h4>
+            <div class="selected-count">
+              {{ totalSelectedItems }} projet(s) sélectionné(s)
+            </div>
+          </div>
+          
+          <div class="projects-grid">
+            <div 
+              v-for="projet in projetsGlobaux" 
+              :key="projet.id"
+              class="project-card"
+              :class="{ selected: isProjetSelected(projet.id) }"
+              @click="toggleProjetSelection(projet.id)"
+            >
+              <div class="project-header">
+                <div class="project-checkbox">
+                  <input 
+                    type="checkbox"
+                    :checked="isProjetSelected(projet.id)"
+                    @click.stop
+                    @change="toggleProjetSelection(projet.id)"
+                  />
+                </div>
+                <div class="project-info">
+                  <h5 class="project-name">{{ projet.projet }}</h5>
+                  <p class="project-client">🏢 {{ projet.client }}</p>
+                </div>
+              </div>
+              
+              <div class="project-stats" v-if="projet.sous_projets">
+                <div class="stat-item">
+                  <span class="stat-icon">📁</span>
+                  <span class="stat-text">{{ projet.sous_projets.length }} sous-projets</span>
+                </div>
+                <div class="stat-item">
+                  <span class="stat-icon">📦</span>
+                  <span class="stat-text">
+                    {{ projet.sous_projets.reduce((total, sp) => total + (sp.fpacks?.length || 0), 0) }} F-Packs
+                  </span>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+        
+        <!-- Résumé de l'export -->
+        <div class="export-summary">
+          <h4>📈 Résumé de l'export</h4>
+          <div class="summary-stats">
+            <div class="stat-bubble">
+              <div class="stat-number">{{ selectedExportData.project_ids.length }}</div>
+              <div class="stat-label">Projets</div>
+            </div>
+            <div class="stat-bubble">
+              <div class="stat-number">
+                {{ projetsGlobaux
+                  .filter(p => isProjetSelected(p.id))
+                  .reduce((total, p) => total + (p.sous_projets?.length || 0), 0) }}
+              </div>
+              <div class="stat-label">Sous-projets</div>
+            </div>
+            <div class="stat-bubble">
+              <div class="stat-number">
+                {{ projetsGlobaux
+                  .filter(p => isProjetSelected(p.id))
+                  .reduce((total, p) => total + (p.sous_projets?.reduce((sp_total, sp) => sp_total + (sp.fpacks?.length || 0), 0) || 0), 0) }}
+              </div>
+              <div class="stat-label">F-Packs</div>
+            </div>
+          </div>
+        </div>
+        
+        <div class="step-actions">
+          <button 
+            class="btn btn-success btn-large"
+            :disabled="totalSelectedItems === 0 || isExporting"
+            @click="executeExport"
+          >
+            <span v-if="!isExporting">📤 Générer l'export Excel</span>
+            <span v-else>⏳ Génération en cours...</span>
+          </button>
+        </div>
+      </div>
+    </div>
+  </div>
+</template>
 
 <style scoped>
 /* Conteneur principal avec scroll */

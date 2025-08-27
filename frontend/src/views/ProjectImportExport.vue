@@ -10,7 +10,7 @@ import { useNotifications } from '../composables/useNotifications'
 interface ProjetGlobal {
   id: number
   projet: string
-  client: string
+  client: number 
   sous_projets?: SousProjet[]
 }
 
@@ -46,9 +46,22 @@ interface Selection {
 const activeTab = ref<'import' | 'export'>('import')
 const projetsGlobaux = ref<ProjetGlobal[]>([])
 const clients = ref<any[]>([])
+const fpackTemplates = ref<any[]>([]) 
 
 // Composable pour les notifications
 const { notifications, addNotification, removeNotification, getNotificationIcon } = useNotifications()
+
+// Props for the step-based ImportSection component
+const importProps = ref({
+  step: 1,
+  active: true,
+  completed: false,
+  visible: true,
+  previewData: [] as any[],
+  previewColumns: [] as string[],
+  fpackList: [] as any[],
+  allFPacksConfigured: false
+})
 
 // Méthodes
 const loadData = async () => {
@@ -62,10 +75,35 @@ const loadData = async () => {
     const resClient = await axios.get('http://localhost:8000/clients')
     clients.value = resClient.data
 
+    const resTemplates = await axios.get('http://localhost:8000/import/fpack-templates')
+    fpackTemplates.value = resTemplates.data
+
   } catch (error) {
     console.error('Erreur lors du chargement des projets:', error)
     addNotification('error', 'Erreur lors du chargement des projets')
   }
+}
+
+// Event handlers for ImportSection
+const handleProjetGlobalChange = (fpack: any) => {
+  // Handle projet global change
+  console.log('Projet global changed:', fpack)
+}
+
+const handleFpackTemplateChange = (fpack: any) => {
+  // Handle fpack template change
+  console.log('FPack template changed:', fpack)
+}
+
+const handleConfigurationComplete = () => {
+  // Handle configuration complete
+  console.log('Configuration complete')
+  addNotification('success', 'Configuration terminée avec succès')
+}
+
+const handlePreviousStep = () => {
+  // Handle previous step
+  console.log('Previous step')
 }
 
 // Lifecycle
@@ -106,9 +144,21 @@ onMounted(async () => {
     <!-- Sections -->
     <ImportSection 
       v-if="activeTab === 'import'"
-      :projets-globaux="projetsGlobaux"
+      :step="importProps.step"
+      :active="importProps.active"
+      :completed="importProps.completed"
+      :visible="importProps.visible"
+      :preview-data="importProps.previewData"
+      :preview-columns="importProps.previewColumns"
       :clients="clients"
-      @add-notification="addNotification"
+      :fpack-list="importProps.fpackList"
+      :projets-globaux="projetsGlobaux"
+      :fpack-templates="fpackTemplates"
+      :all-f-packs-configured="importProps.allFPacksConfigured"
+      @projet-global-change="handleProjetGlobalChange"
+      @fpack-template-change="handleFpackTemplateChange"
+      @configuration-complete="handleConfigurationComplete"
+      @previous-step="handlePreviousStep"
     />
     
     <ExportSection 

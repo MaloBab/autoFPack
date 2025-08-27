@@ -1,56 +1,13 @@
 from App import models
 from App.database import SessionLocal
 from fastapi import APIRouter, UploadFile, File, HTTPException, Depends #type: ignore
-from fastapi.responses import FileResponse # type: ignore
-from sqlalchemy.orm import Session # type: ignore
+from sqlalchemy.orm import Session #type: ignore
 from typing import List, Dict, Any, Optional
-import pandas as pd # type: ignore
-import json
-import os
-from datetime import datetime
-from pydantic import BaseModel # type: ignore
-from fuzzywuzzy import fuzz # type: ignore
-import tempfile
-import openpyxl # type: ignore
-from openpyxl.styles import Font, Alignment, Border, Side # type: ignore
+import pandas as pd #type: ignore
+import traceback
+from pydantic import BaseModel #type: ignore
+from fuzzywuzzy import fuzz #type: ignore
 from io import BytesIO
-
-# Chemin vers le fichier de configuration JSON externe
-CONFIG_FILE_PATH = os.path.join(os.path.dirname(__file__), "Column_Config/mapping.json")
-
-# Modèles Pydantic pour la validation des données
-class MappingRule(BaseModel):
-    target: str
-    groupe_nom: Optional[str] = None
-    type: Optional[str] = "exact_match"
-    search_in: Optional[List[str]] = []
-    search_fields: Optional[List[str]] = []
-
-class MappingConfig(BaseModel):
-    excel_columns: Dict[str, MappingRule]
-
-class ImportPreviewRequest(BaseModel):
-    preview_data: List[Dict[str, Any]]
-    mapping_config: MappingConfig
-    client_id: int
-
-class ImportExecuteRequest(BaseModel):
-    file_data: List[Dict[str, Any]]
-    mapping_config: MappingConfig
-    client_id: int
-    manual_matches: List[Dict[str, Any]]
-
-class ExportRequest(BaseModel):
-    project_ids: List[int]
-    options: Dict[str, bool]
-    format: str = "excel"
-
-class UnmatchedItem(BaseModel):
-    id: str
-    value: str
-    column: str
-    suggestions: List[Dict[str, Any]]
-    selectedMatch: Optional[Dict[str, Any]] = None
 
 router = APIRouter()
 
@@ -60,111 +17,6 @@ def get_db():
         yield db
     finally:
         db.close()
-
-def load_mapping_config() -> Dict:
-    """Charge la configuration de mapping depuis le fichier JSON externe"""
-    try:
-        if os.path.exists(CONFIG_FILE_PATH):
-            with open(CONFIG_FILE_PATH, 'r', encoding='utf-8') as f:
-                return json.load(f)
-        else:
-            # Configuration par défaut basée sur le PDF
-            default_config = {
-                "excel_columns": {
-                    "FPack Number": {
-                        "target": "sous_projet_fpack.FPack_number",
-                        "type": "direct"
-                    },
-                    "Plant": {
-                        "target": "sous_projet_fpack.plant",
-                        "type": "direct"
-                    },
-                    "Area/Line": {
-                        "target": "sous_projet_fpack.area_line",
-                        "type": "direct"
-                    },
-                    "Station/Mode zone": {
-                        "target": "sous_projet_fpack.station_mode_zone",
-                        "type": "direct"
-                    },
-                    "Machine code": {
-                        "target": "sous_projet_fpack.machine_code",
-                        "type": "direct"
-                    },
-                    "Robot location code": {
-                        "target": "sous_projet_fpack.Robot_Location_Code",
-                        "type": "direct"
-                    },
-                    "Area section": {
-                        "target": "sous_projet_fpack.area_section",
-                        "type": "direct"
-                    },
-                    "Direct Link": {
-                        "target": "sous_projet_fpack.direct_link",
-                        "type": "direct"
-                    },
-                    "Contractor": {
-                        "target": "sous_projet_fpack.contractor",
-                        "type": "direct"
-                    },
-                    "Required Delivery time": {
-                        "target": "sous_projet_fpack.required_delivery_time",
-                        "type": "direct"
-                    },
-                    "Delivery site": {
-                        "target": "sous_projet_fpack.delivery_site",
-                        "type": "direct"
-                    },
-                    "Tracking": {
-                        "target": "sous_projet_fpack.tracking",
-                        "type": "direct"
-                    },
-                    "F-pack Type": {
-                        "target": "sous_projet_fpack.fpack_type",
-                        "type": "direct"
-                    },
-                    "Mechanical Unit": {
-                        "target": "selection",
-                        "groupe_nom": "Mechanical Unit",
-                        "search_in": ["robots", "equipements"],
-                        "search_fields": ["nom", "model"],
-                        "type": "fuzzy_match"
-                    },
-                    "Robot Controller": {
-                        "target": "selection",
-                        "groupe_nom": "Robot Controller",
-                        "search_in": ["produits", "equipements"],
-                        "search_fields": ["nom", "description"],
-                        "type": "fuzzy_match"
-                    },
-                    "Media Panel (G)": {
-                        "target": "selection",
-                        "groupe_nom": "Media Panel",
-                        "search_in": ["produits"],
-                        "search_fields": ["nom"],
-                        "type": "exact_match"
-                    },
-                    "Key Equipment (G)": {
-                        "target": "selection",
-                        "groupe_nom": "Key Equipment",
-                        "search_in": ["equipements"],
-                        "search_fields": ["nom"],
-                        "type": "fuzzy_match"
-                    }
-                }
-            }
-            save_mapping_config(default_config)
-            return default_config
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Erreur configuration : {str(e)}")
-
-def save_mapping_config(config: Dict):
-    """Sauvegarde la configuration de mapping dans le fichier JSON externe"""
-    try:
-        with open(CONFIG_FILE_PATH, 'w', encoding='utf-8') as f:
-            json.dump(config, f, indent=2, ensure_ascii=False)
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Erreur sauvegarde : {str(e)}")
 
 @router.post("/import/upload")
 async def upload_import_file(
@@ -185,35 +37,40 @@ async def upload_import_file(
         # Lire le contenu binaire du fichier
         content = await file.read()
 
-        # Lire uniquement l’onglet "F-Pack Matrix"
+        # Lire uniquement l'onglet "F-Pack Matrix"
         try:
             df = pd.read_excel(BytesIO(content), sheet_name="F-Pack Matrix", header=4)
         except ValueError:
-            # Pandas lève ValueError si l’onglet n’existe pas
             raise HTTPException(
                 status_code=400,
                 detail="L'onglet 'F-Pack Matrix' est introuvable dans le fichier Excel"
+            )
+        except Exception as e:
+            raise HTTPException(
+                status_code=400,
+                detail=f"Erreur lors de la lecture du fichier Excel: {str(e)}"
             )
         
         # Nettoyer les colonnes
         df.columns = df.columns.str.strip()
         
-        # Supprimer les lignes complètement vides
-        df = df.dropna(how='all')
+        valid_rows = []
+        for index, row in df.iterrows():
+            first_cell = str(row.iloc[0]).strip().lower() if pd.notna(row.iloc[0]) else ""
+            if first_cell and first_cell != "total":
+                row_dict = row.fillna('').to_dict()
+                row_dict['_row_index'] = index
+                valid_rows.append(row_dict)
         
-        # Prendre les 10 premières lignes pour l'aperçu
-        preview_rows = df.head(10).fillna('').to_dict('records')
-        
-        # Ajouter un status par défaut
-        for row in preview_rows:
-            row['_status'] = 'pending'
+
+        preview_rows = valid_rows[:5]
         
         return {
             "success": True,
             "columns": df.columns.tolist(),
             "preview": preview_rows,
-            "total_rows": len(df),
-            "message": f"Fichier analysé : {len(df)} lignes, {len(df.columns)} colonnes"
+            "total_valid_rows": len(valid_rows),
+            "message": f"Fichier analysé : {len(valid_rows)} lignes valides, {len(df.columns)} colonnes"
         }
         
     except Exception as e:
@@ -222,173 +79,597 @@ async def upload_import_file(
 
 @router.post("/import/preview")
 async def preview_import(
-    request: ImportPreviewRequest,
+    data: Dict[str, Any],
     db: Session = Depends(get_db)
 ):
     """
-    Étape 2 : Aperçu avec mapping et validation
+    Étape 2 : Aperçu avec mapping et validation - Support multi-clients
+    Utilise des dictionnaires génériques sans modèles Pydantic spécifiques
     """
     try:
+        # Validation des champs requis
+        required_fields = ["preview_data", "mapping_config", "fpack_configurations"]
+        for field in required_fields:
+            if field not in data:
+                raise HTTPException(status_code=400, detail=f"Champ requis manquant: {field}")
+        
+        preview_data = data["preview_data"]
+        mapping_config = data["mapping_config"]
+        fpack_configurations = data["fpack_configurations"]
+        
+        # Validation des configurations F-Pack
+        if not isinstance(fpack_configurations, list):
+            raise HTTPException(status_code=400, detail="fpack_configurations doit être une liste")
+        
+        for i, config in enumerate(fpack_configurations):
+            required_config_fields = ["selectedProjetGlobal", "selectedSousProjet", "selectedFPackTemplate", "clientId"]
+            for field in required_config_fields:
+                if field not in config:
+                    raise HTTPException(
+                        status_code=400, 
+                        detail=f"Configuration F-Pack {i}: champ requis manquant '{field}'"
+                    )
+        
+        # Vérifier que nous avons le même nombre de configurations que de lignes
+        if len(fpack_configurations) != len(preview_data):
+            raise HTTPException(
+                status_code=400, 
+                detail=f"Nombre de configurations ({len(fpack_configurations)}) != nombre de lignes ({len(preview_data)})"
+            )
+        
+        # Variables pour les résultats
         processed_data = []
-        unmatched_items = []
-        summary = {"nb_projets": 0, "nb_sous_projets": 0, "nb_selections": 0}
+        all_unmatched_items = []
+        summary = {
+            "nb_fpacks": 0, 
+            "nb_selections_potentielles": 0,
+            "colonnes_mappables": [],
+            "clients_count": 0,
+            "templates_used": []
+        }
         
-        # Compter les projets uniques
-        fpack_numbers = set()
+        # Cache des templates pour éviter les requêtes répétées
+        unique_template_ids = list(set(config["selectedFPackTemplate"] for config in fpack_configurations))
+        templates_cache = {}
         
-        for row_index, row_data in enumerate(request.preview_data):
-            processed_row = row_data.copy()
+        for template_id in unique_template_ids:
+            fpack_template = db.query(models.FPack).filter(
+                models.FPack.id == template_id
+            ).first()
+            
+            if not fpack_template:
+                raise HTTPException(status_code=404, detail=f"Template F-Pack {template_id} non trouvé")
+            
+            templates_cache[template_id] = {
+                'template': fpack_template,
+                'groups': get_fpack_template_groups(template_id, db)
+            }
+        
+        # Traitement ligne par ligne
+        for row_index, (row_data, fpack_config) in enumerate(zip(preview_data, fpack_configurations)):
+            processed_row = dict(row_data)  # Copie du dictionnaire
             status = "success"
             errors = []
+            warnings = []
             
-            # Appliquer le mapping pour chaque colonne
-            for column, rule in request.mapping_config.excel_columns.items():
-                if column not in row_data or not row_data[column]:
+            # Récupération des informations du template
+            template_id = fpack_config["selectedFPackTemplate"]
+            template_info = templates_cache[template_id]
+            fpack_groups = template_info['groups']
+            group_names = [group['nom'] for group in fpack_groups]
+            client_id = fpack_config["clientId"]
+            
+            # Analyse des colonnes
+            for column_name, cell_value in row_data.items():
+                if column_name.startswith('_') or not str(cell_value).strip():
                     continue
                 
-                value = str(row_data[column]).strip()
+                cell_value = str(cell_value).strip()
                 
-                if rule.target == "selection" and rule.groupe_nom:
-                    # Rechercher des correspondances dans les items
-                    matches = await find_matching_items(
-                        value, 
-                        rule.search_in or ["produits", "equipements"], 
-                        rule.search_fields or ["nom"],
-                        rule.type or "exact_match",
-                        db
-                    )
-                    
-                    if not matches:
-                        unmatched_items.append({
-                            "id": f"{row_index}_{column}",
-                            "value": value,
-                            "column": column,
-                            "suggestions": await get_suggestions_for_value(value, rule.search_in, db)
+                # Champs directs mappables
+                direct_fields = [
+                    'FPack_number', 'Robot_Location_Code', 'contractor',
+                    'required_delivery_time', 'delivery_site', 'tracking'
+                ]
+                
+                is_direct_field = (
+                    column_name in direct_fields or 
+                    any(field.lower() in column_name.lower() for field in direct_fields)
+                )
+                
+                if is_direct_field:
+                    # Éviter les doublons dans les colonnes mappables
+                    if not any(col["column"] == column_name for col in summary["colonnes_mappables"]):
+                        summary["colonnes_mappables"].append({
+                            "column": column_name,
+                            "type": "direct_field",
+                            "target": column_name
                         })
-                        status = "warning"
-                        errors.append(f"Aucune correspondance trouvée pour '{value}' dans {column}")
-                    else:
-                        summary["nb_selections"] += 1
                 
-                elif rule.target.startswith("sous_projet_fpack."):
-                    # Validation des champs directs
-                    field_name = rule.target.split(".")[1]
-                    if field_name == "FPack_number" and value:
-                        fpack_numbers.add(value)
+                # Groupes du template F-Pack
+                elif column_name in group_names:
+                    try:
+                        # Recherche de correspondances
+                        matches = find_matching_items_for_group(
+                            cell_value, column_name, fpack_groups, db, client_id
+                        )
+                        
+                        if not matches:
+                            suggestions = get_suggestions_for_group(
+                                cell_value, column_name, fpack_groups, db, client_id
+                            )
+                            
+                            all_unmatched_items.append({
+                                "id": f"{row_index}_{column_name}",
+                                "value": cell_value,
+                                "column": column_name,
+                                "group_name": column_name,
+                                "client_id": client_id,
+                                "fpack_template_id": template_id,
+                                "suggestions": suggestions
+                            })
+                            warnings.append(f"Aucune correspondance pour '{cell_value}' dans '{column_name}'")
+                        else:
+                            summary["nb_selections_potentielles"] += 1
+                        
+                        # Ajouter aux colonnes mappables
+                        if not any(col["column"] == column_name for col in summary["colonnes_mappables"]):
+                            summary["colonnes_mappables"].append({
+                                "column": column_name,
+                                "type": "group",
+                                "target": column_name,
+                                "matches_found": len(matches) if matches else 0
+                            })
                     
-                    # Validation basique des champs requis
-                    if not value and field_name in ["FPack_number"]:
-                        status = "error"
-                        errors.append(f"{column} est requis")
+                    except Exception as e:
+                        warnings.append(f"Erreur lors du traitement de '{column_name}': {str(e)}")
             
-            processed_row['_status'] = status
-            processed_row['_errors'] = errors
+            # Validation des champs obligatoires
+            if not get_cell_value_by_field(row_data, 'FPack_number'):
+                status = "error"
+                errors.append("FPack_number est requis")
+            
+            # Détermination du statut final
+            if warnings and status == "success":
+                status = "warning"
+            
+            # Enrichissement des données traitées
+            processed_row.update({
+                '_status': status,
+                '_errors': errors,
+                '_warnings': warnings,
+                '_client_id': client_id,
+                '_template_id': template_id
+            })
+            
             processed_data.append(processed_row)
         
-        summary["nb_projets"] = len(fpack_numbers)
-        summary["nb_sous_projets"] = len(fpack_numbers)        
+        # Calcul des statistiques finales
+        summary.update({
+            "nb_fpacks": len([row for row in processed_data if row['_status'] != 'error']),
+            "clients_count": len(set(config["clientId"] for config in fpack_configurations)),
+            "templates_used": [
+                {
+                    "id": template_id,
+                    "nom": templates_cache[template_id]['template'].nom,
+                    "count": sum(1 for c in fpack_configurations if c["selectedFPackTemplate"] == template_id)
+                }
+                for template_id in unique_template_ids
+            ]
+        })
+        
+        # Groupes disponibles (tous les groupes de tous les templates)
+        available_groups = list(set(
+            group['nom']
+            for template_info in templates_cache.values()
+            for group in template_info['groups']
+        ))
+        
         return {
             "success": True,
             "processed_data": processed_data,
-            "unmatched_items": unmatched_items,
-            "summary": summary
+            "unmatched_items": all_unmatched_items,
+            "summary": summary,
+            "available_groups": available_groups
         }
         
+    except HTTPException:
+        # Re-lever les HTTPException telles quelles
+        raise
     except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Erreur lors du traitement : {str(e)}")
-
-
-#-------------------- Execution du programme d'import --------------------
-
-
+        # Logger l'erreur complète pour le débogage
+        print(f"Erreur dans preview_import: {traceback.format_exc()}")
+        raise HTTPException(
+            status_code=500, 
+            detail=f"Erreur interne du serveur: {str(e)}"
+        )
+        
 @router.post("/import/execute")
 async def execute_import(
-    request: ImportExecuteRequest,
+    data: Dict[str, Any],
     db: Session = Depends(get_db)
 ):
     """
-    Étape 3 : Exécution de l'import avec création des entrées FPM_sous_projet_fpack uniquement
+    Exécution de l'import - Support multi-clients sans modèles Pydantic
     """
     try:
-        results = {"created_fpack_entries": 0, "created_selections": 0, "errors": []}
+        # Validation des champs requis
+        required_fields = ["file_data", "mapping_config", "fpack_configurations"]
+        for field in required_fields:
+            if field not in data:
+                raise HTTPException(status_code=400, detail=f"Champ requis manquant: {field}")
         
-        db.begin()
-        try:
-            for row_data in request.file_data:
-                if row_data.get('_status') == 'error':
-                    continue
-                
-                # Créer l'entrée sous_projet_fpack
-                sous_projet_fpack = create_sous_projet_fpack_entry(
-                    row_data=row_data,
-                    mapping_config=request.mapping_config,
-                    client_id=request.client_id,
-                    db=db
-                )
-                
-                if sous_projet_fpack:
-                    results["created_fpack_entries"] += 1
-                    
-                    # Créer les sélections pour cette entrée
-                    selections_created = create_selections_from_row(
-                        row_data, 
-                        request.mapping_config, 
-                        sous_projet_fpack.id,
-                        request.manual_matches,
-                        db
+        file_data = data["file_data"]
+        mapping_config = data["mapping_config"]
+        fpack_configurations = data["fpack_configurations"]
+        manual_matches = data.get("manual_matches", [])
+        
+        # Validation des configurations F-Pack
+        if not isinstance(fpack_configurations, list):
+            raise HTTPException(status_code=400, detail="fpack_configurations doit être une liste")
+        
+        for i, config in enumerate(fpack_configurations):
+            required_config_fields = ["selectedProjetGlobal", "selectedSousProjet", "selectedFPackTemplate", "clientId"]
+            for field in required_config_fields:
+                if field not in config:
+                    raise HTTPException(
+                        status_code=400, 
+                        detail=f"Configuration F-Pack {i}: champ requis manquant '{field}'"
                     )
-                    results["created_selections"] += len(selections_created)
-                else:
-                    results["errors"].append(f"Impossible de créer l'entrée pour FPack: {get_mapped_value(row_data, 'FPack_number', request.mapping_config)}")
-            
-            db.commit()
-            
-        except Exception as e:
-            db.rollback()
-            raise e
         
-        return {
-            "success": True,
-            "results": results,
-            "message": f"Import terminé : {results['created_fpack_entries']} entrées F-Pack, {results['created_selections']} sélections"
+        # Statistiques de l'import
+        stats = {
+            "created_projects": 0,
+            "created_fpacks": 0,
+            "created_selections": 0,
+            "errors": [],
+            "warnings": []
         }
         
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Erreur lors de l'import : {str(e)}")
-
-def create_sous_projet_fpack_entry(row_data: Dict, mapping_config: MappingConfig, client_id: int, db: Session):
-    """
-    Crée une entrée FPM_sous_projet_fpack en liant à des sous-projets et F-Packs existants
-    """
-    try:
-        # Extraire le numéro F-Pack depuis les données
-        fpack_number = get_mapped_value(row_data, "FPack_number", mapping_config)
+        # Traitement des correspondances manuelles
+        manual_matches_dict = {}
+        for match in manual_matches:
+            row_idx = match.get("row_index")
+            column = match.get("column")
+            if row_idx is not None and column:
+                key = f"{row_idx}_{column}"
+                manual_matches_dict[key] = match.get("selectedMatch")
         
-        if not fpack_number:
+        # Traitement ligne par ligne
+        for row_index, (row_data, fpack_config) in enumerate(zip(file_data, fpack_configurations)):
+            try:
+                sous_projet_id = fpack_config["selectedSousProjet"]
+                template_id = fpack_config["selectedFPackTemplate"]
+                client_id = fpack_config["clientId"]
+                
+                # Vérification que le sous-projet existe
+                sous_projet = db.query(models.SousProjet).filter(
+                    models.SousProjet.id == sous_projet_id
+                ).first()
+                
+                if not sous_projet:
+                    stats["errors"].append(f"Ligne {row_index + 1}: Sous-projet {sous_projet_id} non trouvé")
+                    continue
+                
+                # Création du SousProjetFpack
+                fpack_data = {
+
+                    "FPack_number": get_cell_value_by_field(row_data, "FPack_number") or "",
+                    "Robot_Location_Code": get_cell_value_by_field(row_data, "Robot_Location_Code") or "",
+                    "contractor": get_cell_value_by_field(row_data, "contractor"),
+                    "required_delivery_time": get_cell_value_by_field(row_data, "required_delivery_time"),
+                    "delivery_site": get_cell_value_by_field(row_data, "delivery_site"),
+                    "tracking": get_cell_value_by_field(row_data, "tracking")
+                }
+                
+                print(row_data)
+                
+                # Création du F-Pack dans la base
+                new_fpack = models.SousProjetFpack(
+                    **fpack_data,
+                    sous_projet_id=sous_projet_id,
+                    fpack_id=template_id
+                )
+                
+                db.add(new_fpack)
+                db.flush()  # Pour obtenir l'ID
+                
+                stats["created_fpacks"] += 1
+                
+                # Traitement des sélections (groupes)
+                template_groups = get_fpack_template_groups(template_id, db)
+                group_names = [group['nom'] for group in template_groups]
+                
+                for column_name, cell_value in row_data.items():
+                    if column_name in group_names and str(cell_value).strip():
+                        cell_value = str(cell_value).strip()
+                        match_key = f"{row_index}_{column_name}"
+                        
+                        # Utiliser la correspondance manuelle si disponible
+                        selected_item = manual_matches_dict.get(match_key)
+                        
+                        if not selected_item:
+                            # Recherche automatique de correspondance
+                            matches = find_matching_items_for_group(
+                                cell_value, column_name, template_groups, db, client_id
+                            )
+                            if matches:
+                                selected_item = matches[0]  # Prendre le meilleur match
+                        
+                        if selected_item:
+                            try:
+                                # Trouver le groupe correspondant
+                                target_group = None
+                                for group in template_groups:
+                                    if group['nom'] == column_name:
+                                        target_group = group
+                                        break
+                                
+                                if target_group:
+                                    # Créer la sélection
+                                    new_selection = models.SousProjetFpackSelection(
+                                        sous_projet_fpack_id=new_fpack.id,
+                                        groupe_id=target_group['id'],
+                                        groupe_nom=column_name,
+                                        type_item=selected_item.get('type', 'unknown'),
+                                        ref_id=selected_item['id'],
+                                        item_nom=selected_item['nom']
+                                    )
+                                    
+                                    db.add(new_selection)
+                                    stats["created_selections"] += 1
+                                
+                            except Exception as e:
+                                stats["warnings"].append(
+                                    f"Ligne {row_index + 1}, colonne '{column_name}': Erreur lors de la création de la sélection: {str(e)}"
+                                )
+                        else:
+                            stats["warnings"].append(
+                                f"Ligne {row_index + 1}, colonne '{column_name}': Aucune correspondance trouvée pour '{cell_value}'"
+                            )
+                
+            except Exception as e:
+                stats["errors"].append(f"Ligne {row_index + 1}: Erreur lors du traitement: {str(e)}")
+                continue
+        
+        # Compter les projets uniques créés/modifiés
+        unique_projects = set(config["selectedProjetGlobal"] for config in fpack_configurations)
+        stats["created_projects"] = len(unique_projects)
+        
+        # Validation finale et commit
+        if stats["errors"]:
+            db.rollback()
+            return {
+                "success": False,
+                "detail": f"Import échoué avec {len(stats['errors'])} erreurs",
+                "results": stats
+            }
+        else:
+            db.commit()
+            return {
+                "success": True,
+                "results": stats,
+                "message": f"Import réalisé avec succès: {stats['created_fpacks']} F-Packs créés"
+            }
+            
+    except HTTPException:
+        db.rollback()
+        raise
+    except Exception as e:
+        db.rollback()
+        print(f"Erreur dans execute_import: {traceback.format_exc()}")
+        raise HTTPException(
+            status_code=500,
+            detail=f"Erreur interne du serveur: {str(e)}"
+        )
+# Fonctions utilitaires
+
+def get_fpack_template_groups(fpack_id: int, db: Session) -> List[Dict]:
+    """Récupère les groupes configurés pour un template F-Pack"""
+    try:
+        # Récupérer les colonnes de configuration du F-Pack
+        config_columns = db.query(models.FPackConfigColumn).filter(
+            models.FPackConfigColumn.fpack_id == fpack_id,
+            models.FPackConfigColumn.type == 'group'
+        ).order_by(models.FPackConfigColumn.ordre).all()
+        
+        groups = []
+        for config_col in config_columns:
+            if config_col.ref_id:
+                groupe = db.query(models.Groupes).filter(
+                    models.Groupes.id == config_col.ref_id
+                ).first()
+                
+                if groupe:
+                    # Récupérer les items du groupe
+                    groupe_items = db.query(models.GroupeItem).filter(
+                        models.GroupeItem.group_id == groupe.id
+                    ).all()
+                    
+                    groups.append({
+                        "id": groupe.id,
+                        "nom": groupe.nom,
+                        "items": groupe_items,
+                        "ordre": config_col.ordre
+                    })
+        
+        return groups
+        
+    except Exception as e:
+        return []
+
+def find_matching_items_for_group(
+    search_value: str, 
+    group_name: str, 
+    fpack_groups: List[Dict], 
+    db: Session,
+    client_id: int = None
+) -> List[Dict]:
+    """Trouve les items correspondants pour un groupe"""
+    try:
+        # Trouver le groupe cible
+        target_group = None
+        for group in fpack_groups:
+            if group['nom'] == group_name:
+                target_group = group
+                break
+        
+        if not target_group:
+            return []
+        
+        matches = []
+        
+        # Tables de recherche
+        search_tables = {
+            'robots': models.Robot,
+            'equipements': models.Equipement, 
+            'produits': models.Produit
+        }
+        
+        for table_name, model_class in search_tables.items():
+            try:
+                query = db.query(model_class)
+                
+                # Filtrage par client si applicable et disponible
+                if client_id and hasattr(model_class, 'client_id'):
+                    query = query.filter(model_class.client_id == client_id)
+                
+                # Recherche par nom (case-insensitive)
+                items = query.filter(model_class.nom.ilike(f"%{search_value}%")).limit(10).all()
+                
+                for item in items:
+                    matches.append({
+                        'id': item.id,
+                        'nom': item.nom,
+                        'type': table_name,
+                        'client_id': getattr(item, 'client_id', None),
+                        'score': calculate_similarity_score(search_value, item.nom)
+                    })
+                    
+            except Exception as e:
+                print(f"Erreur lors de la recherche dans {table_name}: {e}")
+                continue
+        
+        # Tri par score de similarité
+        matches.sort(key=lambda x: x['score'], reverse=True)
+        return matches[:10]
+        
+    except Exception as e:
+        print(f"Erreur dans find_matching_items_for_group: {e}")
+        return []
+
+        
+
+def calculate_similarity_score(str1: str, str2: str) -> float:
+    """Calcule un score de similarité entre deux chaînes"""
+    try:
+        from difflib import SequenceMatcher
+        return SequenceMatcher(None, str1.lower(), str2.lower()).ratio()
+    except:
+        return 0.0
+
+
+def get_suggestions_for_group(
+    search_value: str, 
+    group_name: str, 
+    fpack_groups: List[Dict], 
+    db: Session,
+    client_id: int = None,
+    limit: int = 5
+) -> List[Dict]:
+    """Obtient des suggestions pour un groupe"""
+    try:
+        # Recherche avec le client spécifique
+        matches = find_matching_items_for_group(search_value, group_name, fpack_groups, db, client_id)
+        
+        # Si pas assez de résultats, recherche sans filtre client
+        if len(matches) < limit and client_id:
+            additional_matches = find_matching_items_for_group(search_value, group_name, fpack_groups, db, None)
+            for match in additional_matches:
+                if not any(m['id'] == match['id'] and m['type'] == match['type'] for m in matches):
+                    match['from_other_client'] = True
+                    matches.append(match)
+        
+        return matches[:limit]
+        
+    except Exception as e:
+        print(f"Erreur dans get_suggestions_for_group: {e}")
+        return []
+
+
+def get_cell_value_by_field(row_data: Dict[str, Any], field_name: str) -> Any:
+    """Récupère la valeur d'un champ dans les données de ligne"""
+    # Recherche directe
+    if field_name in row_data:
+        return row_data[field_name]
+    
+    # Recherche case-insensitive
+    for key, value in row_data.items():
+        if key.lower() == field_name.lower():
+            return value
+    
+    # Recherche partielle
+    for key, value in row_data.items():
+        if field_name.lower() in key.lower():
+            return value
+    
+    return None
+
+def get_item_by_type_and_id(item_type: str, item_id: int, db: Session) -> Dict:
+    """Récupère un item selon son type et son ID"""
+    try:
+        if item_type == "produits":
+            item = db.query(models.Produit).filter(models.Produit.id == item_id).first()
+        elif item_type == "equipements":
+            item = db.query(models.Equipements).filter(models.Equipements.id == item_id).first()
+        elif item_type == "robots":
+            item = db.query(models.Robots).filter(models.Robots.id == item_id).first()
+        else:
+            return {}
+        
+        if item:
+            return {
+                "id": item.id,
+                "nom": getattr(item, 'nom', ''),
+                "description": getattr(item, 'description', ''),
+                "reference": getattr(item, 'reference', ''),
+                "type": item_type
+            }
+        
+        return {}
+        
+    except Exception as e:
+        return {}
+
+def create_sous_projet_fpack_entry(row_data: Dict, sous_projet_id: int, fpack_id: int, 
+                                  column_mapping: Dict, db: Session):
+    """Crée une entrée SousProjetFpack depuis une ligne de données"""
+    try:
+        # Extraire les valeurs des champs directs
+        fpack_data = {}
+        
+        direct_fields = ['FPack_number', 'Robot_Location_Code', 'contractor', 
+                        'required_delivery_time', 'delivery_site', 'tracking']
+        
+        for field in direct_fields:
+            value = get_cell_value_by_field(row_data, field, column_mapping)
+            if value:
+                fpack_data[field] = value
+        
+        # Vérifier que FPack_number est présent
+        if not fpack_data.get('FPack_number'):
             raise ValueError("FPack_number est requis")
         
-        # 1. Trouver ou sélectionner un sous-projet existant
-        sous_projet_id = find_or_assign_sous_projet(fpack_number, client_id, db)
-        
-        if not sous_projet_id:
-            raise ValueError(f"Aucun sous-projet disponible pour le client {client_id}")
-        
-        # 2. Trouver le template F-Pack correspondant
-        fpack_template_id = find_fpack_template(fpack_number, client_id, db)
-        
-        # 3. Extraire toutes les données F-Pack depuis la ligne
-        fpack_data = extract_fpack_data(row_data, mapping_config)
-        
-        # 4. Créer l'entrée FPM_sous_projet_fpack
+        # Créer l'entrée
         sous_projet_fpack = models.SousProjetFpack(
             sous_projet_id=sous_projet_id,
-            fpack_id=fpack_template_id,  # Peut être None si pas de template trouvé
-            FPack_number=fpack_data.get('FPack_number', fpack_number),
+            fpack_id=fpack_id,
+            FPack_number=fpack_data.get('FPack_number', ''),
             Robot_Location_Code=fpack_data.get('Robot_Location_Code', ''),
-            contractor=fpack_data.get('contractor', ''),
-            required_delivery_time=fpack_data.get('required_delivery_time', ''),
-            delivery_site=fpack_data.get('delivery_site', ''),
-            tracking=fpack_data.get('tracking', '')
+            contractor=fpack_data.get('contractor', 'N/A'),
+            required_delivery_time=fpack_data.get('required_delivery_time', 'N/A'),
+            delivery_site=fpack_data.get('delivery_site', 'N/A'),
+            tracking=fpack_data.get('tracking', 'N/A')
         )
         
         db.add(sous_projet_fpack)
@@ -398,467 +679,70 @@ def create_sous_projet_fpack_entry(row_data: Dict, mapping_config: MappingConfig
     except Exception as e:
         raise ValueError(f"Erreur création entrée F-Pack: {str(e)}")
 
-def find_or_assign_sous_projet(fpack_number: str, client_id: int, db: Session) -> int:
-    """
-    Trouve un sous-projet existant approprié ou en assigne un selon la logique métier
-    """
+def get_cell_value_by_field(row_data: Dict, field_name: str, column_mapping: Dict = None) -> str:
+    """Extrait une valeur de cellule selon le nom du champ"""
     try:
-        # Stratégie 1: Chercher un sous-projet lié au même client
-        # via le projet global
-        sous_projets = db.query(models.SousProjet).join(
-            models.ProjetGlobal, models.SousProjet.id_global == models.ProjetGlobal.id
-        ).filter(
-            models.ProjetGlobal.client == client_id
-        ).all()
+        # Si un mapping explicite existe
+        if column_mapping and field_name in column_mapping:
+            column_name = column_mapping[field_name]
+            return str(row_data.get(column_name, "")).strip()
         
-        if sous_projets:
-            # Stratégie: prendre le premier sous-projet disponible
-            # ou implémenter une logique plus sophistiquée
-            return sous_projets[0].id
+        # Chercher par nom exact
+        if field_name in row_data:
+            return str(row_data[field_name]).strip()
         
-        # Stratégie 2: Si aucun sous-projet pour ce client,
-        # chercher dans tous les sous-projets (à adapter selon vos besoins)
-        premier_sous_projet = db.query(models.SousProjet).first()
+        # Chercher par correspondance partielle (insensible à la casse)
+        for column_name in row_data.keys():
+            if field_name.lower() in column_name.lower():
+                return str(row_data[column_name]).strip()
         
-        if premier_sous_projet:
-            return premier_sous_projet.id
-        
-        return None
+        return ""
         
     except Exception as e:
-        return None
+        return ""
 
-def find_fpack_template(fpack_number: str, client_id: int, db: Session) -> int:
-    """
-    Trouve un template F-Pack existant correspondant
-    """
-    try:
-        # Stratégie 1: Chercher par nom exact
-        fpack_template = db.query(models.FPack).filter(
-            models.FPack.nom == fpack_number,
-            models.FPack.client == client_id
-        ).first()
-        
-        if fpack_template:
-            return fpack_template.id
-        
-        # Stratégie 2: Chercher par nom partiel ou abréviation
-        fpack_template = db.query(models.FPack).filter(
-            models.FPack.fpack_abbr == fpack_number[:10],
-            models.FPack.client == client_id
-        ).first()
-        
-        if fpack_template:
-            return fpack_template.id
-        
-        # Stratégie 3: Chercher un template générique pour ce client
-        fpack_template = db.query(models.FPack).filter(
-            models.FPack.client == client_id
-        ).first()
-        
-        if fpack_template:
-            return fpack_template.id
-        
-        return None  # Pas de template trouvé
-        
-    except Exception as e:
-        return None
-
-
-#------------------------------------------------------------------------------------
-
-
-@router.get("/import/mapping-config")
-async def get_mapping_config():
-    """
-    Récupérer la configuration de mapping depuis le fichier JSON externe
-    """
-    try:
-        config = load_mapping_config()
-        return {
-            "success": True,
-            "config": config
-        }
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Erreur récupération config : {str(e)}")
-
-@router.put("/import/mapping-config")
-async def update_mapping_config(config: MappingConfig):
-    """
-    Mettre à jour la configuration de mapping dans le fichier JSON externe
-    """
-    try:
-        # Validation basique
-        for column, rule in config.excel_columns.items():
-            if rule.target not in ["ignore", "selection"] and not rule.target.startswith("sous_projet_fpack."):
-                raise HTTPException(status_code=400, detail=f"Target invalide pour {column}: {rule.target}")
-        
-        # Sauvegarder dans le fichier JSON
-        save_mapping_config(config.dict())
-        
-        
-        return {
-            "success": True,
-            "message": "Configuration sauvegardée"
-        }
-        
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Erreur sauvegarde : {str(e)}")
-
-@router.get("/{project_id}/export")
-async def export_single_project(
-    project_id: int,
-    db: Session = Depends(get_db)
-):
-    """
-    Exporter un projet unique avec la structure exacte du PDF
-    """
-    try:
-        project_data = get_project_export_data([project_id], db)
-        excel_file = generate_fpack_matrix_export(project_data)
-        
-        return FileResponse(
-            excel_file,
-            media_type='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
-            filename=f'F-Pack_Matrix_{project_id}_{datetime.now().strftime("%d-%m-%Y")}.xlsx'
-        )
-        
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Erreur export : {str(e)}")
-
-@router.post("/export/batch")
-async def export_multiple_projects(
-    request: ExportRequest,
-    db: Session = Depends(get_db)
-):
-    """
-    Exporter plusieurs projets avec la structure F-Pack Matrix
-    """
-    try:
-        project_data = get_project_export_data(request.project_ids, db)
-        
-        if request.format == "excel":
-            excel_file = generate_fpack_matrix_export(project_data, request.options)
-            return FileResponse(
-                excel_file,
-                media_type='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
-                filename=f'F-Pack_Matrix_{datetime.now().strftime("%d-%m-%Y")}.xlsx'
-            )
-        else:
-            csv_file = generate_csv_export(project_data, request.options)
-            return FileResponse(
-                csv_file,
-                media_type='text/csv',
-                filename=f'export_projets_{datetime.now().strftime("%Y%m%d")}.csv'
-            )
-        
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Erreur export : {str(e)}")
-
-# Fonctions utilitaires améliorées
-
-def generate_fpack_matrix_export(project_data: List[Dict], options: Dict = None) -> str:
-    """
-    Génère un fichier Excel avec la structure exacte du F-Pack Matrix (PDF)
-    """
-    temp_file = tempfile.NamedTemporaryFile(delete=False, suffix='.xlsx')
-    
-    try:
-        # Créer le workbook
-        wb = openpyxl.Workbook()
-        ws = wb.active
-        ws.title = "F-Pack Matrix"
-        
-        # Styles
-        header_font = Font(bold=True, size=10)
-        border = Border(
-            left=Side(style='thin'),
-            right=Side(style='thin'), 
-            top=Side(style='thin'),
-            bottom=Side(style='thin')
-        )
-        
-        # Ligne 1: Titre du document
-        ws.merge_cells('A1:AZ1')
-        ws['A1'] = "All non-Italic header columns must be filled in for quotation, except for Comments and Option columns with earlier dependencies. The rest shall be filled in during project."
-        
-        # Ligne 2: Information de révision
-        ws.merge_cells('A2:AZ2')
-        ws['A2'] = f"Revision: 3.8 - Exported on {datetime.now().strftime('%d-%m-%Y')}"
-        
-        # Lignes 3-4: Vides pour correspondre au PDF
-        
-        # Ligne 5: Headers (exactement comme dans le PDF)
-        headers = [
-            "FPack Number", "Plant", "Area/Line", "Station/Mode zone", "Machine code",
-            "Robot location code", "Area section", "Direct Link", "Comments", "Order Planning",
-            "Contractor", "Required Delivery time", "Delivery site", "Tracking",
-            "Comments order", "F-pack Type", "Fpack Type", "Fpack abbreviation",
-            "Standard or Extended", "Fpack category", "F-pack Comment", "Track motion(7th-axis)option",
-            "Comments", "Other Comments", "Mechanical Unit", "Robot", "RCC Length",
-            "Cable Teach Length", "Extension for cable Teach", "Retractable TP Cable",
-            "Robot base plate", "Transport kit forklift", "Stacking kit", "Power Regeneration",
-            "Smooth Stop", "Key Equipment (G)", "Media Panel (G)", "Robot Controller <-> MP (G)",
-            "MP <-> Robot (Air) (G)", "MP <-> Equip (Air) (G)", "MP <-> Equip (Water) (G)",
-            "MP Support Kit (G)", "Robot Controller <-> Robot (J1) (G)", "Key Equipment (H)",
-            "Handling type (H)", "Robot Controller <-> Robot (H)", "Media Panel Air (H)",
-            "Robot Controller <-> MP (H)", "MP Support Kit (H)", "MP <-> Robot (H)"
-        ]
-        
-        # Écrire les headers en ligne 5
-        for col, header in enumerate(headers, 1):
-            cell = ws.cell(row=5, column=col, value=header)
-            cell.font = header_font
-            cell.border = border
-            # Rotation du texte pour certaines colonnes comme dans le PDF
-            if col > 25:  # Colonnes des équipements
-                cell.alignment = Alignment(text_rotation=90, horizontal='center')
-        
-        # Données des F-Packs (à partir de la ligne 6)
-        row_num = 6
-        for project in project_data:
-            for fpack in project.get('fpacks', []):
-                # Écrire les données de base du F-Pack
-                ws.cell(row=row_num, column=1, value=fpack.get('FPack_number', ''))
-                ws.cell(row=row_num, column=2, value=fpack.get('plant', ''))
-                ws.cell(row=row_num, column=3, value=fpack.get('area_line', ''))
-                ws.cell(row=row_num, column=4, value=fpack.get('station_mode_zone', ''))
-                ws.cell(row=row_num, column=5, value=fpack.get('machine_code', ''))
-                ws.cell(row=row_num, column=6, value=fpack.get('Robot_Location_Code', ''))
-                ws.cell(row=row_num, column=11, value=fpack.get('contractor', ''))
-                ws.cell(row=row_num, column=12, value=fpack.get('required_delivery_time', ''))
-                ws.cell(row=row_num, column=13, value=fpack.get('delivery_site', ''))
-                ws.cell(row=row_num, column=14, value=fpack.get('tracking', ''))
-                
-                # Ajouter les sélections dans les colonnes appropriées
-                selections = fpack.get('selections', [])
-                for selection in selections:
-                    groupe_nom = selection.get('groupe_nom', '')
-                    item_nom = selection.get('item_nom', '')
-                    
-                    # Mapper les groupes aux colonnes selon le PDF
-                    if groupe_nom == "Mechanical Unit":
-                        ws.cell(row=row_num, column=25, value=item_nom)
-                    elif groupe_nom == "Robot Controller":
-                        ws.cell(row=row_num, column=26, value=item_nom)
-                    elif groupe_nom == "Key Equipment":
-                        ws.cell(row=row_num, column=36, value=item_nom)
-                    elif groupe_nom == "Media Panel":
-                        ws.cell(row=row_num, column=37, value=item_nom)
-                
-                # Appliquer les bordures à toute la ligne
-                for col in range(1, len(headers) + 1):
-                    ws.cell(row=row_num, column=col).border = border
-                
-                row_num += 1
-        
-        # Ajuster la largeur des colonnes
-        for col in range(1, len(headers) + 1):
-            ws.column_dimensions[openpyxl.utils.get_column_letter(col)].width = 12
-        
-        # Ligne de total en bas
-        total_row = row_num + 1
-        ws.cell(row=total_row, column=1, value="Total")
-        ws.cell(row=total_row, column=2, value=len(project_data))
-        
-        # Informations en bas (comme dans le PDF)
-        info_row = total_row + 2
-        ws.merge_cells(f'A{info_row}:D{info_row}')
-        ws[f'A{info_row}'] = "Dans sous projet fpack"
-        
-        ws.merge_cells(f'E{info_row}:H{info_row}')
-        ws[f'E{info_row}'] = "F-Pack Matrix"
-        
-        ws.merge_cells(f'I{info_row}:L{info_row}')
-        ws[f'I{info_row}'] = "BILA A/S"
-        
-        ws.merge_cells(f'M{info_row}:P{info_row}')
-        ws[f'M{info_row}'] = "Mechanical Unit Generic Handling"
-        
-        # Sauvegarder
-        wb.save(temp_file.name)
-        wb.close()
-        
-        return temp_file.name
-        
-    except Exception as e:
-        if os.path.exists(temp_file.name):
-            os.unlink(temp_file.name)
-        raise e
-
-async def find_matching_items(value: str, search_in: List[str], search_fields: List[str], match_type: str, db: Session):
-    """Trouve des correspondances pour une valeur donnée avec amélioration de performance"""
-    matches = []
-    
-    try:
-        for table_name in search_in:
-            # Optimisation : utiliser des requêtes ciblées
-            if table_name == "produits":
-                query = db.query(models.produits)
-                if "nom" in search_fields:
-                    if match_type == "exact_match":
-                        query = query.filter(models.produits.nom.ilike(f'%{value}%'))
-                    items = query.limit(50).all()  # Limiter pour performance
-            elif table_name == "equipements":
-                query = db.query(models.equipements)
-                if "nom" in search_fields:
-                    if match_type == "exact_match":
-                        query = query.filter(models.equipements.nom.ilike(f'%{value}%'))
-                    items = query.limit(50).all()
-            elif table_name == "robots":
-                query = db.query(models.robots)
-                if "nom" in search_fields:
-                    if match_type == "exact_match":
-                        query = query.filter(models.robots.nom.ilike(f'%{value}%'))
-                    items = query.limit(50).all()
-            else:
-                continue
-            
-            for item in items:
-                for field in search_fields:
-                    item_value = getattr(item, field, "")
-                    if not item_value:
-                        continue
-                    
-                    if match_type == "exact_match":
-                        if value.lower() in item_value.lower() or item_value.lower() in value.lower():
-                            matches.append({
-                                "id": item.id,
-                                "nom": item_value,
-                                "type": table_name,
-                                "score": 100
-                            })
-                    elif match_type == "fuzzy_match":
-                        ratio = fuzz.ratio(value.lower(), item_value.lower())
-                        if ratio >= 70:  # Seuil de correspondance ajusté
-                            matches.append({
-                                "id": item.id,
-                                "nom": item_value,
-                                "type": table_name,
-                                "score": ratio
-                            })
-        
-        # Trier par score décroissant
-        matches.sort(key=lambda x: x.get('score', 0), reverse=True)
-        return matches[:10] 
-        
-    except Exception as e:
-        return []
-
-async def get_suggestions_for_value(value: str, search_in: List[str], db: Session):
-    """Obtient des suggestions pour une valeur non trouvée avec fuzzy matching"""
-    suggestions = []
-    
-    try:
-        for table_name in search_in:
-            if table_name == "produits":
-                items = db.query(models.produits).limit(20).all()
-            elif table_name == "equipements":
-                items = db.query(models.equipements).limit(20).all()
-            elif table_name == "robots":
-                items = db.query(models.robots).limit(20).all()
-            else:
-                continue
-                
-            for item in items:
-                item_name = getattr(item, 'nom', '')
-                if item_name:
-                    # Calcul du score de similarité
-                    score = fuzz.partial_ratio(value.lower(), item_name.lower())
-                    suggestions.append({
-                        "id": item.id,
-                        "nom": item_name,
-                        "type": table_name,
-                        "score": score
-                    })
-        
-        # Trier par score et retourner les 10 meilleurs
-        suggestions.sort(key=lambda x: x['score'], reverse=True)
-        return suggestions[:10]
-        
-    except Exception as e:
-        return []
-
-def get_mapped_value(row_data: Dict, field_name: str, mapping_config: MappingConfig) -> str:
-    """Extrait une valeur mappée depuis les données de ligne"""
-    for column, rule in mapping_config.excel_columns.items():
-        if rule.target == f"sous_projet_fpack.{field_name}":
-            return str(row_data.get(column, "")).strip()
-    return ""
-
-def extract_fpack_data(row_data: Dict, mapping_config: MappingConfig) -> Dict:
-    """Extrait les données FPack depuis une ligne"""
-    fpack_data = {}
-    
-    for column, rule in mapping_config.excel_columns.items():
-        if rule.target.startswith("sous_projet_fpack."):
-            field_name = rule.target.split(".")[1]
-            value = str(row_data.get(column, "")).strip()
-            if value:  # Ne pas ajouter les valeurs vides
-                fpack_data[field_name] = value
-    
-    return fpack_data
-
-
-def create_selections_from_row(row_data: Dict, mapping_config: MappingConfig, 
-                              sous_projet_fpack_id: int, manual_matches: List, db: Session):
+async def create_selections_from_row(row_data: Dict, row_index: int, sous_projet_fpack_id: int,
+                                   fpack_groups: List[Dict], group_name_to_id: Dict,
+                                   manual_matches: Dict, db: Session):
     """Crée les sélections depuis une ligne de données"""
     selections_created = []
     
     try:
-        # Créer un dictionnaire des correspondances manuelles pour accès rapide
-        manual_matches_dict = {}
-        for match in manual_matches:
-            key = f"{match.get('row_index')}_{match.get('column')}"
-            manual_matches_dict[key] = match.get('selectedMatch')
-        
-        for row_index, row_item in enumerate([row_data]):  # Traiter une seule ligne
-            for column, rule in mapping_config.excel_columns.items():
-                if rule.target != "selection" or not rule.groupe_nom:
-                    continue
+        for column_name, cell_value in row_data.items():
+            if column_name.startswith('_') or not str(cell_value).strip():
+                continue
+            
+            cell_value = str(cell_value).strip()
+            
+            # Vérifier si cette colonne correspond à un groupe
+            if column_name not in group_name_to_id:
+                continue
+            
+            groupe_id = group_name_to_id[column_name]
+            
+            # Vérifier s'il y a une correspondance manuelle
+            match_key = f"{row_index}_{column_name}"
+            selected_item = manual_matches.get(match_key)
+            
+            if not selected_item:
+                # Chercher automatiquement
+                matches = await find_matching_items_for_group(
+                    cell_value, column_name, fpack_groups, db
+                )
+                if matches:
+                    selected_item = matches[0]  # Prendre le meilleur match
+            
+            if selected_item:
+                # Créer la sélection
+                selection = models.ProjetSelection(
+                    sous_projet_fpack_id=sous_projet_fpack_id,
+                    groupe_id=groupe_id,
+                    type_item=selected_item['type'],
+                    ref_id=selected_item['id']
+                )
                 
-                if column not in row_data or not row_data[column]:
-                    continue
-                
-                value = str(row_data[column]).strip()
-                match_key = f"{row_index}_{column}"
-                
-                # Vérifier s'il y a une correspondance manuelle
-                selected_item = manual_matches_dict.get(match_key)
-                
-                if not selected_item:
-                    # Chercher automatiquement
-                    matches = find_matching_items(
-                        value,
-                        rule.search_in or ["produits", "equipements"],
-                        rule.search_fields or ["nom"],
-                        rule.type or "exact_match",
-                        db
-                    )
-                    if matches:
-                        selected_item = matches[0]  # Prendre le meilleur match
-                
-                if selected_item:
-                    # Trouver ou créer le groupe
-                    groupe = db.query(models.Groupes).filter(
-                        models.Groupes.nom == rule.groupe_nom
-                    ).first()
-                    
-                    if not groupe:
-                        groupe = models.Groupes(nom=rule.groupe_nom)
-                        db.add(groupe)
-                        db.flush()
-                    
-                    # Créer la sélection
-                    selection = models.ProjetSelection(
-                        sous_projet_fpack_id=sous_projet_fpack_id,
-                        groupe_id=groupe.id,
-                        type_item=selected_item['type'],
-                        ref_id=selected_item['id']
-                    )
-                    
-                    db.add(selection)
-                    selections_created.append(selection)
+                db.add(selection)
+                selections_created.append(selection)
         
         db.flush()
         return selections_created
@@ -866,161 +750,55 @@ def create_selections_from_row(row_data: Dict, mapping_config: MappingConfig,
     except Exception as e:
         raise e
 
-def get_project_export_data(project_ids: List[int], db: Session) -> List[Dict]:
-    """Récupère les données des projets pour export avec structure complète"""
-    try:
-        projects_data = []
-        
-        for project_id in project_ids:
-            # Récupérer le projet global
-            projet = db.query(models.ProjetGlobal).filter(
-                models.ProjetGlobal.id == project_id
-            ).first()
-            
-            if not projet:
-                continue
-            
-            # Récupérer tous les sous-projets
-            sous_projets = db.query(models.SousProjet).filter(
-                models.SousProjet.id_global == project_id
-            ).all()
-            
-            project_info = {
-                "id": projet.id,
-                "nom": projet.projet,
-                "client_nom": getattr(projet.client_rel, 'nom', 'N/A') if hasattr(projet, 'client_rel') else 'N/A',
-                "fpacks": []
-            }
-            
-            # Pour chaque sous-projet, récupérer les FPacks
-            for sous_projet in sous_projets:
-                fpacks = db.query(models.SousProjetFpack).filter(
-                    models.SousProjetFpack.sous_projet_id == sous_projet.id
-                ).all()
-                
-                for fpack in fpacks:
-                    # Récupérer les sélections pour ce FPack
-                    selections = db.query(models.ProjetSelection).filter(
-                        models.ProjetSelection.sous_projet_fpack_id == fpack.id
-                    ).all()
-                    
-                    selections_data = []
-                    for selection in selections:
-                        # Récupérer les détails de l'item sélectionné
-                        item_data = get_item_details(selection.type_item, selection.ref_id, db)
-                        if item_data:
-                            selections_data.append({
-                                "groupe_id": selection.groupe_id,
-                                "groupe_nom": get_groupe_name(selection.groupe_id, db),
-                                "type_item": selection.type_item,
-                                "item_id": selection.ref_id,
-                                "item_nom": item_data.get('nom', ''),
-                                "item_details": item_data
-                            })
-                    
-                    fpack_info = {
-                        "id": fpack.id,
-                        "FPack_number": fpack.FPack_number or '',
-                        "Robot_Location_Code": fpack.Robot_Location_Code or '',
-                        "contractor": fpack.contractor or '',
-                        "required_delivery_time": fpack.required_delivery_time or '',
-                        "delivery_site": fpack.delivery_site or '',
-                        "tracking": fpack.tracking or '',
-                        # Nouveaux champs du PDF
-                        "plant": getattr(fpack, 'plant', '') or '',
-                        "area_line": getattr(fpack, 'area_line', '') or '',
-                        "station_mode_zone": getattr(fpack, 'station_mode_zone', '') or '',
-                        "machine_code": getattr(fpack, 'machine_code', '') or '',
-                        "area_section": getattr(fpack, 'area_section', '') or '',
-                        "direct_link": getattr(fpack, 'direct_link', '') or '',
-                        "fpack_type": getattr(fpack, 'fpack_type', '') or '',
-                        "fpack_category": getattr(fpack, 'fpack_category', '') or '',
-                        "track_motion_option": getattr(fpack, 'track_motion_option', '') or '',
-                        "standard_or_extended": getattr(fpack, 'standard_or_extended', '') or '',
-                        "comments": getattr(fpack, 'comments', '') or '',
-                        "other_comments": getattr(fpack, 'other_comments', '') or '',
-                        "selections": selections_data
-                    }
-                    
-                    project_info["fpacks"].append(fpack_info)
-            
-            projects_data.append(project_info)
-        
-        return projects_data
-        
-    except Exception as e:
-        raise e
+# Routes utilitaires pour le frontend
 
-def get_item_details(type_item: str, ref_id: int, db: Session) -> Dict:
-    """Récupère les détails d'un item selon son type"""
+@router.get("/import/sous-projets")
+async def get_available_sous_projets(db: Session = Depends(get_db)):
+    """Récupère la liste des sous-projets disponibles"""
     try:
-        if type_item == "produits":
-            item = db.query(models.produits).filter(models.produits.id == ref_id).first()
-        elif type_item == "equipements":
-            item = db.query(models.equipements).filter(models.equipements.id == ref_id).first()
-        elif type_item == "robots":
-            item = db.query(models.robots).filter(models.robots.id == ref_id).first()
-        else:
-            return {}
-        
-        if item:
-            return {
-                "id": item.id,
-                "nom": getattr(item, 'nom', ''),
-                "description": getattr(item, 'description', ''),
-                "model": getattr(item, 'model', ''),
-                "type": type_item
-            }
-        
-        return {}
-        
-    except Exception as e:
-        return {}
-
-def get_groupe_name(groupe_id: int, db: Session) -> str:
-    """Récupère le nom d'un groupe"""
-    try:
-        groupe = db.query(models.Groupes).filter(
-            models.Groupes.id == groupe_id
-        ).first()
-        return groupe.nom if groupe else ""
-    except Exception as e:
-        return ""
-
-def generate_csv_export(project_data: List[Dict], options: Dict = None) -> str:
-    """Génère un fichier CSV d'export simple"""
-    temp_file = tempfile.NamedTemporaryFile(delete=False, suffix='.csv')
-    
-    try:
-        # Aplatir les données pour CSV
-        rows = []
-        for project in project_data:
-            for fpack in project.get('fpacks', []):
-                row = {
-                    'Project_ID': project['id'],
-                    'Project_Name': project['nom'],
-                    'Client': project['client_nom'],
-                    'FPack_Number': fpack['FPack_number'],
-                    'Robot_Location_Code': fpack['Robot_Location_Code'],
-                    'Contractor': fpack['contractor'],
-                    'Required_Delivery_Time': fpack['required_delivery_time'],
-                    'Delivery_Site': fpack['delivery_site'],
-                    'Tracking': fpack['tracking']
+        sous_projets = db.query(models.SousProjet).all()
+        return {
+            "success": True,
+            "sous_projets": [
+                {
+                    "id": sp.id,
+                    "nom": sp.nom,
+                    "projet_global": sp.global_rel.projet if sp.global_rel else "N/A"
                 }
-                
-                # Ajouter les sélections sous forme de colonnes
-                for selection in fpack.get('selections', []):
-                    col_name = f"{selection['groupe_nom']}_Selection"
-                    row[col_name] = selection['item_nom']
-                
-                rows.append(row)
-        
-        df = pd.DataFrame(rows)
-        df.to_csv(temp_file.name, index=False, encoding='utf-8')
-        
-        return temp_file.name
-        
+                for sp in sous_projets
+            ]
+        }
     except Exception as e:
-        if os.path.exists(temp_file.name):
-            os.unlink(temp_file.name)
-        raise e
+        raise HTTPException(status_code=500, detail=f"Erreur : {str(e)}")
+
+@router.get("/import/fpack-templates")
+async def get_available_fpack_templates(db: Session = Depends(get_db)):
+    """Récupère la liste des templates F-Pack disponibles"""
+    try:
+        fpacks = db.query(models.FPack).all()
+        return {
+            "success": True,
+            "fpack_templates": [
+                {
+                    "id": fp.id,
+                    "nom": fp.nom,
+                    "client": fp.client_relfpack.nom if fp.client_relfpack else "N/A",
+                    "abbreviation": fp.fpack_abbr
+                }
+                for fp in fpacks
+            ]
+        }
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Erreur : {str(e)}")
+
+@router.get("/import/fpack-template/{fpack_id}/groups")
+async def get_fpack_template_groups_endpoint(fpack_id: int, db: Session = Depends(get_db)):
+    """Récupère les groupes d'un template F-Pack"""
+    try:
+        groups = get_fpack_template_groups(fpack_id, db)
+        return {
+            "success": True,
+            "groups": groups
+        }
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Erreur : {str(e)}")
