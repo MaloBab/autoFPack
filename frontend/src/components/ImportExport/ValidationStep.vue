@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed } from 'vue'
+import { computed} from 'vue'
 
 interface UnmatchedItem {
   id: string
@@ -7,6 +7,7 @@ interface UnmatchedItem {
   column: string
   suggestions: any[]
   selectedMatch?: any
+  type: 'subproject' | 'group'
 }
 
 interface FpackItem {
@@ -31,18 +32,105 @@ const props = defineProps<{
   mappedColumnsCount: number
   canExecuteImport: boolean
   isImporting: boolean
+  mappingConfig: Record<string, any> // Configuration JSON du mapping
 }>()
 
 // Emits
 const emit = defineEmits<{
-  executeImport: []
+  executeImport: [finalConfig: any]
   previousStep: []
+  updateUnmatchedItem: [itemId: string, selectedMatch: any]
 }>()
 
 // Computed
 const totalUnresolvedItems = computed(() => {
   return props.unmatchedItems.filter(item => !item.selectedMatch).length
 })
+
+const finalMappingConfig = computed(() => {
+  if (!props.mappingConfig) return null
+  
+  // Clone la configuration originale
+  const finalConfig = JSON.parse(JSON.stringify(props.mappingConfig))
+  
+  // Ajoute les mappings résolus manuellement
+  props.unmatchedItems.forEach(item => {
+    if (item.selectedMatch) {
+      if (item.type === 'subproject') {
+        // Ajouter à subproject_columns
+        if (!finalConfig.subproject_columns) {
+          finalConfig.subproject_columns = {}
+        }
+        finalConfig.subproject_columns[item.column] = item.selectedMatch.nom
+      } else if (item.type === 'group') {
+        // Ajouter aux groupes
+        if (!finalConfig.groups) {
+          finalConfig.groups = []
+        }
+        
+        // Chercher le groupe existant ou en créer un nouveau
+        let existingGroup = finalConfig.groups.find((g: any) => g.group_name === item.selectedMatch.nom)
+        if (!existingGroup) {
+          existingGroup = {
+            group_name: item.selectedMatch.nom,
+            columns: []
+          }
+          finalConfig.groups.push(existingGroup)
+        }
+        
+        // Ajouter la colonne au groupe si elle n'y est pas déjà
+        if (!existingGroup.columns.includes(item.column)) {
+          existingGroup.columns.push(item.column)
+        }
+      }
+    }
+  })
+  
+  return finalConfig
+})
+
+const mappingConfigSummary = computed(() => {
+  if (!props.mappingConfig) return null
+  
+  return {
+    name: props.mappingConfig.name || 'Configuration sans nom',
+    originalSubprojectColumns: Object.keys(props.mappingConfig.subproject_columns || {}).length,
+    originalGroups: (props.mappingConfig.groups || []).length,
+    manuallyResolvedSubprojects: props.unmatchedItems.filter(item => 
+      item.type === 'subproject' && item.selectedMatch
+    ).length,
+    manuallyResolvedGroups: props.unmatchedItems.filter(item => 
+      item.type === 'group' && item.selectedMatch
+    ).length
+  }
+})
+
+// Fonctions
+const handleMatchSelection = (itemId: string, selectedMatch: any) => {
+  emit('updateUnmatchedItem', itemId, selectedMatch)
+}
+
+const handleExecuteImport = () => {
+  if (finalMappingConfig.value && props.canExecuteImport) {
+    emit('executeImport', finalMappingConfig.value)
+  }
+}
+
+const getMatchTypeLabel = (type: string) => {
+  switch (type) {
+    case 'subproject': return '🏗️ Sous-projet'
+    case 'group': return '📦 Groupe'
+    default: return '❓ Inconnu'
+  }
+}
+
+const getMatchTypeColor = (type: string) => {
+  switch (type) {
+    case 'subproject': return 'type-subproject'
+    case 'group': return 'type-group'
+    default: return 'type-unknown'
+  }
+}
 </script>
 
 <template>
@@ -58,7 +146,29 @@ const totalUnresolvedItems = computed(() => {
     </div>
     
     <div class="step-body" v-show="visible">
-      <!-- Résolutions manuelles nécessaires -->
+      <!-- Configuration utilisée -->
+      <div v-if="mappingConfigSummary" class="config-summary">
+        <h4>📋 Configuration de mapping utilisée</h4>
+        <div class="config-info">
+          <div class="config-name">{{ mappingConfigSummary.name }}</div>
+          <div class="config-stats">
+            <span class="config-stat">
+              {{ mappingConfigSummary.originalSubprojectColumns }} colonnes sous-projet originales
+            </span>
+            <span class="config-stat">
+              {{ mappingConfigSummary.originalGroups }} groupes originaux
+            </span>
+            <span v-if="mappingConfigSummary.manuallyResolvedSubprojects > 0" class="config-stat resolved">
+              +{{ mappingConfigSummary.manuallyResolvedSubprojects }} sous-projets résolus manuellement
+            </span>
+            <span v-if="mappingConfigSummary.manuallyResolvedGroups > 0" class="config-stat resolved">
+              +{{ mappingConfigSummary.manuallyResolvedGroups }} groupes résolus manuellement
+            </span>
+          </div>
+        </div>
+      </div>
+
+      <!-- Correspondances à valider -->
       <div v-if="unmatchedItems.length > 0" class="unmatched-section">
         <h4>⚠️ Correspondances à valider ({{ unmatchedItems.length }})</h4>
         <div class="unmatched-list">
@@ -69,17 +179,24 @@ const totalUnresolvedItems = computed(() => {
             :class="{ resolved: item.selectedMatch }"
           >
             <div class="unmatched-info">
-              <div class="unmatched-value">{{ item.value }}</div>
+              <div class="match-type" :class="getMatchTypeColor(item.type)">
+                {{ getMatchTypeLabel(item.type) }}
+              </div>
               <div class="unmatched-column">{{ item.column }}</div>
+              <div class="unmatched-value">{{ item.value }}</div>
             </div>
             
             <div class="suggestions-dropdown">
-              <select v-model="item.selectedMatch" class="form-select">
+              <select 
+                :value="item.selectedMatch" 
+                @change="handleMatchSelection(item.id, ($event.target as HTMLSelectElement).selectedOptions[0]?.value ? item.suggestions.find(s => s.id === ($event.target as HTMLSelectElement).value) : null)"
+                class="form-select"
+              >
                 <option value="">Sélectionner une correspondance</option>
                 <option 
                   v-for="suggestion in item.suggestions" 
                   :key="suggestion.id"
-                  :value="suggestion"
+                  :value="suggestion.id"
                 >
                   {{ suggestion.nom }} ({{ suggestion.score }}% de correspondance)
                 </option>
@@ -106,6 +223,39 @@ const totalUnresolvedItems = computed(() => {
         <div class="success-icon">🎉</div>
         <h4>Toutes les correspondances sont validées !</h4>
         <p>Aucune intervention manuelle requise. Vous pouvez procéder à l'import.</p>
+      </div>
+
+      <!-- Aperçu de la configuration finale -->
+      <div v-if="finalMappingConfig" class="final-config-preview">
+        <h4>🔧 Configuration finale qui sera utilisée</h4>
+        <div class="config-preview">
+          <div class="preview-section">
+            <h5>Colonnes Sous-projet ({{ Object.keys(finalMappingConfig.subproject_columns || {}).length }})</h5>
+            <div class="columns-list">
+              <span 
+                v-for="(value, key) in finalMappingConfig.subproject_columns" 
+                :key="key" 
+                class="column-tag subproject"
+              >
+                {{ key }} → {{ value }}
+              </span>
+            </div>
+          </div>
+          
+          <div v-if="finalMappingConfig.groups?.length > 0" class="preview-section">
+            <h5>Groupes ({{ finalMappingConfig.groups.length }})</h5>
+            <div class="groups-list">
+              <div v-for="group in finalMappingConfig.groups" :key="group.group_name" class="group-item">
+                <div class="group-name">{{ group.group_name }}</div>
+                <div class="group-columns">
+                  <span v-for="column in group.columns" :key="column" class="column-tag group">
+                    {{ column }}
+                  </span>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
       </div>
 
       <!-- Résumé de l'import -->
@@ -142,21 +292,6 @@ const totalUnresolvedItems = computed(() => {
           </div>
         </div>
       </div>
-
-      <!-- Prévisualisation des F-Packs -->
-      <div class="fpack-preview">
-        <h4>👁️ Aperçu des F-Packs à importer</h4>
-        <div class="preview-grid">
-          <div 
-            v-for="(fpack, index) in fpackList" 
-            :key="index"
-            class="preview-fpack"
-          >
-            <div class="fpack-number">{{ fpack.FPackNumber }}</div>
-            <div class="fpack-location">📍 {{ fpack.RobotLocationCode }}</div>
-          </div>
-        </div>
-      </div>
       
       <div class="step-actions">
         <button class="btn btn-secondary" @click="emit('previousStep')">
@@ -164,8 +299,8 @@ const totalUnresolvedItems = computed(() => {
         </button>
         <button 
           class="btn btn-success"
-          :disabled="!canExecuteImport || isImporting"
-          @click="emit('executeImport')"
+          :disabled="!canExecuteImport || isImporting || totalUnresolvedItems > 0"
+          @click="handleExecuteImport"
         >
           <span v-if="!isImporting">🚀 Exécuter l'import</span>
           <span v-else>⏳ Import en cours...</span>
@@ -268,6 +403,49 @@ const totalUnresolvedItems = computed(() => {
   }
 }
 
+.config-summary {
+  margin-bottom: 28px;
+  padding: 20px;
+  background: linear-gradient(135deg, rgba(52, 152, 219, 0.02) 0%, rgba(155, 89, 182, 0.02) 100%);
+  border: 1px solid rgba(52, 152, 219, 0.1);
+  border-radius: 12px;
+}
+
+.config-summary h4 {
+  margin: 0 0 16px 0;
+  color: #2c3e50;
+  font-size: 1.15rem;
+  font-weight: 700;
+}
+
+.config-name {
+  font-size: 1.1rem;
+  font-weight: 600;
+  color: #2980b9;
+  margin-bottom: 12px;
+}
+
+.config-stats {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+}
+
+.config-stat {
+  padding: 4px 8px;
+  background: rgba(52, 152, 219, 0.1);
+  border: 1px solid rgba(52, 152, 219, 0.2);
+  border-radius: 6px;
+  font-size: 0.85rem;
+  color: #2980b9;
+}
+
+.config-stat.resolved {
+  background: rgba(39, 174, 96, 0.1);
+  border-color: rgba(39, 174, 96, 0.2);
+  color: #27ae60;
+}
+
 .unmatched-section {
   margin-bottom: 28px;
 }
@@ -307,13 +485,34 @@ const totalUnresolvedItems = computed(() => {
   flex: 1;
 }
 
-.unmatched-value {
+.match-type {
+  font-size: 0.8rem;
+  font-weight: 600;
+  padding: 2px 6px;
+  border-radius: 4px;
+  margin-bottom: 4px;
+  display: inline-block;
+}
+
+.type-subproject {
+  background: rgba(52, 152, 219, 0.1);
+  color: #2980b9;
+  border: 1px solid rgba(52, 152, 219, 0.2);
+}
+
+.type-group {
+  background: rgba(155, 89, 182, 0.1);
+  color: #8e44ad;
+  border: 1px solid rgba(155, 89, 182, 0.2);
+}
+
+.unmatched-column {
   font-weight: 600;
   color: #2c3e50;
   font-size: 1rem;
 }
 
-.unmatched-column {
+.unmatched-value {
   color: #7f8c8d;
   font-size: 0.9rem;
   margin-top: 3px;
@@ -407,6 +606,85 @@ const totalUnresolvedItems = computed(() => {
   color: #7f8c8d;
 }
 
+.final-config-preview {
+  margin-bottom: 28px;
+  padding: 20px;
+  background: linear-gradient(135deg, rgba(39, 174, 96, 0.02) 0%, rgba(46, 204, 113, 0.02) 100%);
+  border: 1px solid rgba(39, 174, 96, 0.15);
+  border-radius: 12px;
+}
+
+.final-config-preview h4 {
+  margin: 0 0 16px 0;
+  color: #27ae60;
+  font-size: 1.15rem;
+  font-weight: 700;
+}
+
+.config-preview {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+}
+
+.preview-section h5 {
+  margin: 0 0 12px 0;
+  color: #2c3e50;
+  font-size: 1rem;
+  font-weight: 600;
+}
+
+.columns-list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.groups-list {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.group-item {
+  padding: 12px;
+  background: rgba(255, 255, 255, 0.6);
+  border-radius: 8px;
+  border: 1px solid rgba(39, 174, 96, 0.1);
+}
+
+.group-name {
+  font-weight: 600;
+  color: #27ae60;
+  margin-bottom: 8px;
+}
+
+.group-columns {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.column-tag {
+  padding: 4px 8px;
+  border-radius: 4px;
+  font-size: 0.8rem;
+  font-weight: 500;
+  white-space: nowrap;
+}
+
+.column-tag.subproject {
+  background: rgba(52, 152, 219, 0.1);
+  border: 1px solid rgba(52, 152, 219, 0.2);
+  color: #2980b9;
+}
+
+.column-tag.group {
+  background: rgba(155, 89, 182, 0.1);
+  border: 1px solid rgba(155, 89, 182, 0.2);
+  color: #8e44ad;
+}
+
 .import-summary {
   margin-bottom: 28px;
 }
@@ -464,69 +742,6 @@ const totalUnresolvedItems = computed(() => {
   font-weight: 600;
   text-transform: uppercase;
   letter-spacing: 0.03em;
-}
-
-.fpack-preview {
-  margin-bottom: 28px;
-}
-
-.fpack-preview h4 {
-  margin-bottom: 20px;
-  color: #2c3e50;
-  font-size: 1.15rem;
-  font-weight: 700;
-}
-
-.preview-grid {
-  display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
-  gap: 12px;
-}
-
-.preview-fpack {
-  background: #ffffff;
-  padding: 16px;
-  border-radius: 8px;
-  border: 1px solid #ecf0f1;
-  transition: all 0.3s ease;
-}
-
-.preview-fpack:hover {
-  box-shadow: 0 4px 15px rgba(52, 73, 94, 0.06);
-  transform: translateY(-1px);
-}
-
-.fpack-number {
-  font-weight: 700;
-  color: #2c3e50;
-  margin-bottom: 4px;
-}
-
-.fpack-location {
-  color: #7f8c8d;
-  font-size: 0.9rem;
-}
-
-.more-fpacks {
-  background: linear-gradient(135deg, #fcfcfc 0%, #f8f9fa 100%);
-  border: 2px dashed #bdc3c7;
-  border-radius: 8px;
-  padding: 16px;
-  text-align: center;
-  display: flex;
-  flex-direction: column;
-  justify-content: center;
-}
-
-.more-count {
-  font-size: 1.5rem;
-  font-weight: 700;
-  color: #7f8c8d;
-}
-
-.more-text {
-  font-size: 0.9rem;
-  color: #95a5a6;
 }
 
 .step-actions {

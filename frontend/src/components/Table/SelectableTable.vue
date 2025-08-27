@@ -637,6 +637,7 @@ const compatibleCount = computed(() =>
   width: 80px;
   padding: 0.4rem 0.6rem;
   border: 2px solid #e5e7eb;
+  color: #000;
   border-radius: 8px;
   font-size: 0.875rem;
   font-weight: 600;

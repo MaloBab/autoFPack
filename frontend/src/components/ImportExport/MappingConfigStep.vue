@@ -1,4 +1,132 @@
+<template>
+  <div class="step-container" :class="{ active, completed }">
+    <div class="step-header">
+      <div class="step-indicator">
+        <div class="step-number">{{ step }}</div>
+        <div class="step-line"></div>
+      </div>
+      <div class="step-content-header">
+        <h3>🔗 Configuration du mapping</h3>
+        <p class="step-description">Sélectionnez le fichier JSON de configuration du mapping F-Pack Matrix</p>
+      </div>
+    </div>
+    
+    <div class="step-body" v-show="visible">
+      <!-- Section de sélection de fichier -->
+      <div class="file-selection-section">
+        <h4 class="section-title">📁 Fichier de configuration JSON</h4>
+        
+        <div class="file-input-area" :class="{ 'has-file': selectedFile, 'has-error': error }">
+          <input 
+            ref="fileInputRef"
+            type="file" 
+            accept=".json"
+            @change="handleFileSelect"
+            class="hidden-file-input"
+          />
+          
+          <div 
+            v-if="!selectedFile" 
+            class="file-drop-zone" 
+            :class="{ 'drag-over': isDragOver }"
+            @click="triggerFileSelect"
+            @dragover="handleDragOver"
+            @dragleave="handleDragLeave"
+            @drop="handleDrop"
+          >
+            <div class="file-drop-icon">📄</div>
+            <p class="file-drop-text">
+              {{ isDragOver ? 'Déposez votre fichier JSON ici' : 'Cliquez ou glissez-déposez votre fichier JSON' }}
+            </p>
+            <p class="file-drop-hint">Format supporté: .json</p>
+          </div>
+          
+          <div v-else class="selected-file-info">
+            <div class="file-icon">✅</div>
+            <div class="file-details">
+              <div class="file-name">{{ selectedFile.name }}</div>
+              <div class="file-size">{{ Math.round(selectedFile.size / 1024) }} KB</div>
+            </div>
+            <button class="remove-file-btn" @click="removeFile" title="Supprimer le fichier">
+              ✕
+            </button>
+          </div>
+        </div>
+        
+        <div v-if="error" class="error-message">
+          ⚠️ {{ error }}
+        </div>
+        
+        <div v-if="isLoading" class="loading-message">
+          <div class="loading-spinner"></div>
+          Chargement du fichier...
+        </div>
+      </div>
+
+      <!-- Informations extraites du JSON -->
+      <div v-if="jsonInfo" class="json-info-section">
+        <h4 class="section-title">ℹ️ Informations du fichier de mapping</h4>
+        
+        <div class="json-stats">
+          <div class="stat-card">
+            <div class="stat-value">{{ jsonInfo.totalMappings }}</div>
+            <div class="stat-label">Total mappings</div>
+          </div>
+          <div class="stat-card">
+            <div class="stat-value">{{ jsonInfo.subprojectColumns }}</div>
+            <div class="stat-label">Colonnes Sous-Projet</div>
+          </div>
+          <div class="stat-card">
+            <div class="stat-value">{{ jsonInfo.groups }}</div>
+            <div class="stat-label">Groupes définis</div>
+          </div>
+        </div>
+        
+        <div class="json-details">
+          <div v-if="jsonInfo.name" class="metadata-item">
+            <span class="metadata-label">Configuration:</span>
+            <span class="metadata-value">{{ jsonInfo.name }}</span>
+          </div>
+          
+          <div v-if="jsonInfo.subprojectColumnsList.length > 0" class="mapping-preview">
+            <h5>🔧 Colonnes Sous-projet configurées</h5>
+            <div class="columns-list">
+              <span v-for="column in jsonInfo.subprojectColumnsList" :key="column" class="column-tag subproject">
+                {{ column }}
+              </span>
+            </div>
+          </div>
+          
+          <div v-if="jsonInfo.groupsList.length > 0" class="mapping-preview">
+            <h5>📦 Groupes configurés</h5>
+            <div class="columns-list">
+              <span v-for="group in jsonInfo.groupsList" :key="group" class="column-tag group">
+                {{ group }}
+              </span>
+            </div>
+          </div>
+        </div>
+      </div>
+      
+      <div class="step-actions">
+        <button class="btn btn-secondary" @click="emit('previousStep')">
+          ← Retour
+        </button>
+        <button 
+          class="btn btn-primary" 
+          :disabled="!canProceed"
+          @click="handleNext"
+        >
+          👁️ Prévisualiser l'import
+        </button>
+      </div>
+    </div>
+  </div>
+</template> 
+
 <script setup lang="ts">
+import { ref, computed } from 'vue'
+
 const props = defineProps<{
   step: number
   active: boolean
@@ -11,69 +139,151 @@ const props = defineProps<{
 }>()
 
 const emit = defineEmits<{
-  mappingConfigured: []
+  mappingConfigured: [config: {
+    jsonConfig: any,
+    fileName: string,
+    fileSize: number
+  }]
   previousStep: []
 }>()
+
+// État pour le fichier JSON
+const selectedFile = ref<File | null>(null)
+const jsonContent = ref<any>(null)
+const fileInputRef = ref<HTMLInputElement>()
+const isLoading = ref(false)
+const error = ref<string>('')
+const isDragOver = ref(false)
+
+// Computed pour vérifier si on peut passer à l'étape suivante
+const canProceed = computed(() => {
+  return selectedFile.value && jsonContent.value && !error.value
+})
+
+// Informations extraites du JSON
+const jsonInfo = computed(() => {
+  if (!jsonContent.value) return null
+  
+  const info = {
+    subprojectColumns: 0,
+    groups: 0,
+    totalMappings: 0,
+    name: null as string | null,
+    subprojectColumnsList: [] as string[],
+    groupsList: [] as string[]
+  }
+  
+  // Analyser la structure du JSON basée sur le format fourni
+  if (jsonContent.value.subproject_columns) {
+    info.subprojectColumns = Object.keys(jsonContent.value.subproject_columns).length
+    info.subprojectColumnsList = Object.keys(jsonContent.value.subproject_columns)
+  }
+  
+  if (jsonContent.value.groups && Array.isArray(jsonContent.value.groups)) {
+    info.groups = jsonContent.value.groups.length
+    info.groupsList = jsonContent.value.groups.map((group: any) => group.group_name || 'Groupe sans nom')
+  }
+  
+  info.totalMappings = info.subprojectColumns + info.groups
+  info.name = jsonContent.value.name || null
+  
+  return info
+})
+
+// Fonction pour traiter un fichier
+const processFile = async (file: File) => {
+  if (!file.name.toLowerCase().endsWith('.json')) {
+    error.value = 'Veuillez sélectionner un fichier JSON valide'
+    return
+  }
+  
+  selectedFile.value = file
+  isLoading.value = true
+  error.value = ''
+  
+  try {
+    const text = await file.text()
+    const parsed = JSON.parse(text)
+    
+    // Validation de la structure JSON
+    if (!parsed.subproject_columns && !parsed.groups) {
+      error.value = 'Le fichier JSON doit contenir au moins "subproject_columns" ou "groups"'
+      selectedFile.value = null
+      jsonContent.value = null
+      return
+    }
+    
+    jsonContent.value = parsed
+  } catch (e) {
+    error.value = 'Erreur lors de la lecture du fichier JSON. Vérifiez que le fichier est valide.'
+    selectedFile.value = null
+    jsonContent.value = null
+  } finally {
+    isLoading.value = false
+  }
+}
+
+// Fonction pour déclencher la sélection de fichier
+const triggerFileSelect = () => {
+  fileInputRef.value?.click()
+}
+
+// Fonction pour gérer la sélection du fichier
+const handleFileSelect = async (event: Event) => {
+  const target = event.target as HTMLInputElement
+  const file = target.files?.[0]
+  
+  if (!file) return
+  
+  await processFile(file)
+}
+
+// Fonctions pour le drag & drop
+const handleDragOver = (event: DragEvent) => {
+  event.preventDefault()
+  isDragOver.value = true
+}
+
+const handleDragLeave = (event: DragEvent) => {
+  event.preventDefault()
+  isDragOver.value = false
+}
+
+const handleDrop = async (event: DragEvent) => {
+  event.preventDefault()
+  isDragOver.value = false
+  
+  const files = event.dataTransfer?.files
+  if (!files || files.length === 0) return
+  
+  const file = files[0]
+  await processFile(file)
+}
+
+// Fonction pour supprimer le fichier sélectionné
+const removeFile = () => {
+  selectedFile.value = null
+  jsonContent.value = null
+  error.value = ''
+  if (fileInputRef.value) {
+    fileInputRef.value.value = ''
+  }
+}
+
+const handleNext = () => {
+  console.log('canProceed', jsonContent.value)
+  if (canProceed.value && selectedFile.value) {
+    emit('mappingConfigured', {
+      jsonConfig: jsonContent.value,
+      fileName: selectedFile.value.name,
+      fileSize: selectedFile.value.size
+    })
+
+  }
+}
 </script>
 
-<template>
-  <div class="step-container" :class="{ active, completed }">
-    <div class="step-header">
-      <div class="step-indicator">
-        <div class="step-number">{{ step }}</div>
-        <div class="step-line"></div>
-      </div>
-      <div class="step-content-header">
-        <h3>🔗 Configuration du mapping</h3>
-        <p class="step-description">Configuration automatique basée sur les standards F-Pack Matrix</p>
-      </div>
-    </div>
-    
-    <div class="step-body" v-show="visible">
-      <div class="mapping-overview">
-        <div class="mapping-stats">
-          <div class="stat-card">
-            <div class="stat-value">{{ mappedColumnsCount }}</div>
-            <div class="stat-label">Colonnes mappées</div>
-          </div>
-          <div class="stat-card">
-            <div class="stat-value">{{ previewColumns.length }}</div>
-            <div class="stat-label">Colonnes détectées</div>
-          </div>
-          <div class="stat-card">
-            <div class="stat-value">{{ uniqueProjectCount }}</div>
-            <div class="stat-label">Projets concernés</div>
-          </div>
-        </div>
-        
-        <div class="mapping-preview">
-          <h5>🎯 Mapping automatique configuré</h5>
-          <div class="mapping-list-compact">
-            <div v-for="(config, column) in mappingConfig.excel_columns" :key="column" class="mapping-item-compact">
-              <span class="column-name">{{ column }}</span>
-              <span class="arrow">→</span>
-              <span class="target-name" :class="config.type">
-                {{ config.target === 'selection' ? `📋 ${config.groupe_nom}` : `📝 ${config.target.split('.')[1]}` }}
-              </span>
-            </div>
-          </div>
-        </div>
-      </div>
-      
-      <div class="step-actions">
-        <button class="btn btn-secondary" @click="emit('previousStep')">
-          ← Retour
-        </button>
-        <button class="btn btn-primary" @click="emit('mappingConfigured')">
-          👁️ Prévisualiser l'import
-        </button>
-      </div>
-    </div>
-  </div>
-</template>
-
 <style scoped>
-/* Conteneur principal avec animation */
 .step-container {
   background: #ffffff;
   border-radius: 16px;
@@ -122,7 +332,6 @@ const emit = defineEmits<{
   }
 }
 
-/* En-tête d'étape */
 .step-header {
   display: flex;
   align-items: center;
@@ -212,7 +421,6 @@ const emit = defineEmits<{
   font-weight: 500;
 }
 
-/* Corps de l'étape */
 .step-body {
   padding: 28px;
   animation: fadeIn 0.4s ease-out 0.2s both;
@@ -229,16 +437,247 @@ const emit = defineEmits<{
   }
 }
 
-/* Vue d'ensemble du mapping */
-.mapping-overview {
+.file-selection-section {
   margin-bottom: 28px;
 }
 
-.mapping-stats {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+.section-title {
+  margin: 0 0 16px 0;
+  font-size: 1.1rem;
+  font-weight: 600;
+  color: #2c3e50;
+}
+
+.file-input-area {
+  margin-bottom: 12px;
+}
+
+.hidden-file-input {
+  display: none;
+}
+
+.file-drop-zone {
+  border: 2px dashed #bdc3c7;
+  border-radius: 12px;
+  padding: 40px 20px;
+  text-align: center;
+  cursor: pointer;
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  background: #fafbfc;
+  position: relative;
+}
+
+.file-drop-zone:hover {
+  border-color: #3498db;
+  background: #f0f8ff;
+  transform: translateY(-2px);
+}
+
+.file-drop-zone.drag-over {
+  border-color: #27ae60;
+  background: #f0fff4;
+  transform: scale(1.02);
+  box-shadow: 0 8px 25px rgba(39, 174, 96, 0.15);
+}
+
+.file-drop-zone.drag-over .file-drop-icon {
+  transform: scale(1.1);
+  filter: drop-shadow(0 4px 8px rgba(39, 174, 96, 0.3));
+}
+
+.file-drop-zone.drag-over .file-drop-text {
+  color: #27ae60;
+}
+
+.file-drop-icon {
+  font-size: 3rem;
+  margin-bottom: 12px;
+  transition: all 0.3s ease;
+}
+
+.file-drop-text {
+  margin: 0 0 8px 0;
+  font-size: 1.1rem;
+  font-weight: 600;
+  color: #34495e;
+}
+
+.file-drop-hint {
+  margin: 0;
+  font-size: 0.9rem;
+  color: #7f8c8d;
+}
+
+.selected-file-info {
+  display: flex;
+  align-items: center;
   gap: 16px;
+  padding: 20px;
+  background: linear-gradient(135deg, rgba(46, 204, 113, 0.05) 0%, rgba(39, 174, 96, 0.05) 100%);
+  border: 1px solid rgba(46, 204, 113, 0.2);
+  border-radius: 12px;
+}
+
+.file-icon {
+  font-size: 1.5rem;
+}
+
+.file-details {
+  flex: 1;
+}
+
+.file-name {
+  font-weight: 600;
+  color: #27ae60;
+  margin-bottom: 4px;
+}
+
+.file-size {
+  font-size: 0.9rem;
+  color: #7f8c8d;
+}
+
+.remove-file-btn {
+  width: 32px;
+  height: 32px;
+  border: none;
+  background: rgba(231, 76, 60, 0.1);
+  color: #e74c3c;
+  border-radius: 50%;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 1rem;
+}
+
+.remove-file-btn:hover {
+  background: rgba(231, 76, 60, 0.2);
+  transform: scale(1.1);
+}
+
+.error-message {
+  padding: 12px 16px;
+  background: rgba(231, 76, 60, 0.1);
+  border: 1px solid rgba(231, 76, 60, 0.2);
+  border-radius: 8px;
+  color: #c0392b;
+  font-weight: 500;
+}
+
+.loading-message {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 12px 16px;
+  background: rgba(52, 152, 219, 0.1);
+  border: 1px solid rgba(52, 152, 219, 0.2);
+  border-radius: 8px;
+  color: #2980b9;
+  font-weight: 500;
+}
+
+.loading-spinner {
+  width: 20px;
+  height: 20px;
+  border: 2px solid rgba(52, 152, 219, 0.3);
+  border-top: 2px solid #3498db;
+  border-radius: 50%;
+  animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+  0% { transform: rotate(0deg); }
+  100% { transform: rotate(360deg); }
+}
+
+.json-info-section {
   margin-bottom: 28px;
+  padding: 20px;
+  background: linear-gradient(135deg, rgba(52, 152, 219, 0.02) 0%, rgba(155, 89, 182, 0.02) 100%);
+  border: 1px solid rgba(52, 152, 219, 0.1);
+  border-radius: 12px;
+}
+
+.json-stats {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+  gap: 12px;
+  margin-bottom: 16px;
+}
+
+.json-details {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.metadata-item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 12px 16px;
+  background: rgba(255, 255, 255, 0.6);
+  border-radius: 8px;
+  border: 1px solid rgba(52, 152, 219, 0.1);
+}
+
+.metadata-label {
+  font-weight: 600;
+  color: #34495e;
+  min-width: 100px;
+}
+
+.metadata-value {
+  color: #2980b9;
+  font-weight: 500;
+}
+
+.mapping-preview {
+  padding: 16px;
+  background: rgba(255, 255, 255, 0.6);
+  border-radius: 8px;
+  border: 1px solid rgba(52, 152, 219, 0.1);
+}
+
+.mapping-preview h5 {
+  margin: 0 0 12px 0;
+  font-size: 1rem;
+  font-weight: 600;
+  color: #2c3e50;
+}
+
+.columns-list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.column-tag {
+  padding: 6px 12px;
+  border-radius: 6px;
+  font-size: 0.85rem;
+  font-weight: 500;
+  white-space: nowrap;
+  transition: all 0.2s ease;
+}
+
+.column-tag.subproject {
+  background: linear-gradient(135deg, rgba(52, 152, 219, 0.1) 0%, rgba(155, 89, 182, 0.1) 100%);
+  border: 1px solid rgba(52, 152, 219, 0.2);
+  color: #2980b9;
+}
+
+.column-tag.group {
+  background: linear-gradient(135deg, rgba(46, 204, 113, 0.1) 0%, rgba(39, 174, 96, 0.1) 100%);
+  border: 1px solid rgba(46, 204, 113, 0.2);
+  color: #27ae60;
+}
+
+.column-tag:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
 }
 
 .stat-card {
@@ -285,60 +724,13 @@ const emit = defineEmits<{
   margin-bottom: 6px;
   line-height: 1.1;
 }
+
 .stat-label {
   font-size: 1rem;
   color: #7f8c8d;
   font-weight: 600;
 }
-.mapping-preview h5 {
-  margin: 0 0 12px 0;
-  font-size: 1.1rem;
-  font-weight: 600;
-  color: #2c3e50;
-}
-.mapping-list-compact {
-  max-height: 200px;
-  overflow-y: auto;
-  border: 1px solid #ecf0f1;
-  border-radius: 10px;
-  padding: 12px;
-  background: #fafafa;
-}
-.mapping-item-compact {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  padding: 6px 0;
-  border-bottom: 1px solid #ecf0f1;
-}
-.mapping-item-compact:last-child {
-  border-bottom: none;
-}
-.column-name {
-  font-weight: 600;
-  color: #34495e;
-  flex: 1;
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-}
-.arrow {
-  color: #bdc3c7;
-}
-.target-name {
-  font-weight: 600;
-  flex: 1;
-  text-align: right;
-}
-.target-name.selection {
-  color: #27ae60;
-}
-.target-name.fpack {
-  color: #2980b9;
-}
-.target-name.unknown {
-  color: #7f8c8d;
-}
+
 .step-actions {
   display: flex;
   justify-content: flex-end;
@@ -347,6 +739,7 @@ const emit = defineEmits<{
   padding-top: 20px;
   border-top: 1px solid #ecf0f1;
 }
+
 .btn {
   display: flex;
   align-items: center;
@@ -357,35 +750,34 @@ const emit = defineEmits<{
   font-size: 1rem;
   cursor: pointer;
   transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  border: none;
 }
+
 .btn-primary {
   background: linear-gradient(135deg, #3498db 0%, #9b59b6 100%);
   color: white;
-  border: none;
   box-shadow: 0 6px 20px rgba(52, 152, 219, 0.3);
 }
-.btn-primary:hover {
+
+.btn-primary:hover:not(:disabled) {
   transform: translateY(-2px);
   box-shadow: 0 8px 25px rgba(52, 152, 219, 0.4);
 }
+
 .btn-secondary {
   background: #ecf0f1;
   color: #34495e;
-  border: none;
 }
+
 .btn-secondary:hover {
   background: #d0d7de;
   transform: translateY(-1px);
 }
+
 .btn:disabled {
-  opacity: 0.6;
+  opacity: 0.5;
   cursor: not-allowed;
   transform: none !important;
-}
-@keyframes slideInUp {
-  to {
-    transform: translateY(0);
-    opacity: 1;
-  }
+  box-shadow: none !important;
 }
 </style>

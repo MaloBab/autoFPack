@@ -1426,6 +1426,7 @@ onMounted(async () => {
 
 .pricing-field {
   display: flex;
+  color: #000;
   flex-direction: column;
 }
 
@@ -1443,6 +1444,7 @@ onMounted(async () => {
 .pricing-input, .pricing-textarea {
   padding: 12px 16px;
   border: 2px solid #e5e7eb;
+  color: #000;
   border-radius: 10px;
   font-size: 16px;
   transition: all 0.3s ease;

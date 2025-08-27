@@ -37,7 +37,7 @@ const emit = defineEmits([
 const searchQuery = ref('')
 const selectedClient = ref('')
 const statusFilter = ref('')
-const viewDensity = ref('normal')
+const viewDensity = ref('compact')
 const expandedItems = ref(new Set())
 const allExpanded = ref(false)
 
@@ -467,6 +467,7 @@ onUnmounted(() => {
 
 .search-input {
   width: 100%;
+  color: #000;
   padding: 12px 40px 12px 44px;
   border: 2px solid #e2e8f0;
   border-radius: 12px;

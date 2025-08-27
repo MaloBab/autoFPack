@@ -9,7 +9,7 @@ import MappingConfigEditor from '../ImportExport/MappingConfigEditor.vue'
 interface ProjetGlobal {
   id: number
   projet: string
-  client: number // Changed from string to number to match expected type
+  client: number
   sous_projets?: SousProjet[]
 }
 
@@ -58,18 +58,17 @@ interface UnmatchedItem {
   column: string
   suggestions: any[]
   selectedMatch?: any
+  type: 'subproject' | 'group'
 }
 
+// Nouvelle interface pour la configuration de mapping (JSON)
 interface MappingConfig {
-  version: string
-  description: string
-  excel_columns: Record<string, any>
-  matching_rules: Record<string, any>
-  validation_rules: {
-    required_fields: string[]
-    max_suggestions: number
-    min_suggestion_score: number
-  }
+  name: string
+  subproject_columns: Record<string, string>
+  groups: Array<{
+    group_name: string
+    excel_column: string
+  }>
 }
 
 // Props
@@ -91,106 +90,18 @@ const previewData = ref<any[]>([])
 const previewColumns = ref<string[]>([])
 const fpackList = ref<FpackItem[]>([])
 
-const mappingConfig = ref<MappingConfig>({
-  version: '',
-  description: '',
-  excel_columns: {},
-  matching_rules: {},
-  validation_rules: {
-    required_fields: [],
-    max_suggestions: 0,
-    min_suggestion_score: 0
-  }
-})
+// Configuration de mapping JSON (importée depuis l'éditeur)
+const emptyMappingConfig: MappingConfig = {
+  name: '',
+  subproject_columns: {},
+  groups: []
+}
+const mappingConfig = ref<MappingConfig>(emptyMappingConfig)
 
 const unmatchedItems = ref<UnmatchedItem[]>([])
 const isImporting = ref(false)
 const selectedClient = ref<number | null>(null)
-
-
 const showConfigEditor = ref(false)
-
-// Configuration de mapping par défaut
-const defaultMappingConfig = {
-  "excel_columns": {
-    "FPack Number": {
-      "target": "sous_projet_fpack.FPack_number",
-      "type": "direct"
-    },
-    "Plant": {
-      "target": "sous_projet_fpack.plant", 
-      "type": "direct"
-    },
-    "Area/Line": {
-      "target": "sous_projet_fpack.area_line",
-      "type": "direct"
-    },
-    "Station/Mode zone": {
-      "target": "sous_projet_fpack.station_mode_zone",
-      "type": "direct"
-    },
-    "Machine code": {
-      "target": "sous_projet_fpack.machine_code",
-      "type": "direct"
-    },
-    "Robot location code": {
-      "target": "sous_projet_fpack.Robot_Location_Code",
-      "type": "direct"
-    },
-    "Area section": {
-      "target": "sous_projet_fpack.area_section", 
-      "type": "direct"
-    },
-    "Direct Link": {
-      "target": "sous_projet_fpack.direct_link",
-      "type": "direct"
-    },
-    "Contractor": {
-      "target": "sous_projet_fpack.contractor",
-      "type": "direct"
-    },
-    "Required Delivery time": {
-      "target": "sous_projet_fpack.required_delivery_time",
-      "type": "direct"
-    },
-    "Delivery site": {
-      "target": "sous_projet_fpack.delivery_site",
-      "type": "direct"
-    },
-    "Tracking": {
-      "target": "sous_projet_fpack.tracking",
-      "type": "direct"
-    },
-    "Mechanical Unit": {
-      "target": "selection",
-      "groupe_nom": "Mechanical Unit",
-      "search_in": ["robots", "equipements"],
-      "search_fields": ["nom", "model"],
-      "type": "fuzzy_match"
-    },
-    "Robot Controller": {
-      "target": "selection",
-      "groupe_nom": "Robot Controller", 
-      "search_in": ["produits", "equipements"],
-      "search_fields": ["nom", "description"],
-      "type": "fuzzy_match"
-    },
-    "Media Panel (G)": {
-      "target": "selection",
-      "groupe_nom": "Media Panel",
-      "search_in": ["produits"],
-      "search_fields": ["nom"],
-      "type": "exact_match"
-    },
-    "Key Equipment (G)": {
-      "target": "selection", 
-      "groupe_nom": "Key Equipment",
-      "search_in": ["equipements"],
-      "search_fields": ["nom"],
-      "type": "fuzzy_match"
-    }
-  }
-}
 
 // Computed
 const allFPacksHaveProject = computed(() => {
@@ -208,7 +119,9 @@ const allFPacksConfigured = computed(() => {
 })
 
 const mappedColumnsCount = computed(() => {
-  return Object.keys(mappingConfig.value.excel_columns || {}).length
+  const subprojectCount = Object.keys(mappingConfig.value.subproject_columns || {}).length
+  const groupsCount = (mappingConfig.value.groups || []).length
+  return subprojectCount + groupsCount
 })
 
 const uniqueProjectCount = computed(() => {
@@ -217,7 +130,8 @@ const uniqueProjectCount = computed(() => {
 })
 
 const canExecuteImport = computed(() => {
-  return unmatchedItems.value.every(item => item.selectedMatch)
+  return unmatchedItems.value.every(item => item.selectedMatch) &&
+         allFPacksConfigured.value
 })
 
 // Methods
@@ -225,36 +139,53 @@ const onFileAnalyzed = (data: any) => {
   previewData.value = data.preview
   previewColumns.value = data.columns
   
-  // Fixed: Create proper FpackItem objects with all required properties
+  // Créer les objets FpackItem avec toutes les propriétés requises
   fpackList.value = data.preview.map((row: any) => ({
     FPack_number: row['FPack Number'] || '',
     Robot_Location_Code: row['Robot location code'] || '',
     selectedProjetGlobal: null,
     selectedSousProjet: null,
-    selectedFPackTemplate: null, // Add the missing property
+    selectedFPackTemplate: null,
     ...row
   } as FpackItem))
   
   importStep.value = 2
 }
 
-// ✅ Ajout de la méthode manquante
 const toggleConfigEditor = () => {
   showConfigEditor.value = !showConfigEditor.value
+}
+
+// Handler pour recevoir la configuration de mapping depuis l'éditeur
+const onMappingConfigFromEditor = (config: MappingConfig) => {
+  mappingConfig.value = config || emptyMappingConfig
+  emit('addNotification', 'success', `Configuration "${config.name}" appliquée avec succès`)
+  showConfigEditor.value = false
 }
 
 const onProjectsAssigned = () => {
   importStep.value = 3
 }
 
-const onMappingConfigured = async () => {
-  // Vérifier que tous les F-Packs ont un template sélectionné
+const onMappingConfigured = async (payload: { jsonConfig: any, fileName: string, fileSize: number }) => {
+
+  mappingConfig.value = payload.jsonConfig || emptyMappingConfig
+  emit('addNotification', 'success', `Configuration "${payload.fileName}" appliquée avec succès`)
+  showConfigEditor.value = false
+
   const incompletePacksCount = fpackList.value.filter(f => 
     !f.selectedProjetGlobal || !f.selectedSousProjet || !f.selectedFPackTemplate
   ).length
 
   if (incompletePacksCount > 0) {
+    console.log('Incomplete packs:', incompletePacksCount)
     emit('addNotification', 'error', `${incompletePacksCount} F-Pack(s) ne sont pas entièrement configurés`)
+    return
+  }
+
+  if (!mappingConfig.value || !mappingConfig.value.name) {
+    console.log(mappingConfig.value)
+    emit('addNotification', 'error', 'Configuration de mapping manquante')
     return
   }
 
@@ -276,7 +207,7 @@ const onMappingConfigured = async () => {
 
     const requestData = {
       preview_data: previewData.value,
-      mapping_config: mappingConfig.value,
+      mapping_config: mappingConfig.value, // Configuration JSON complète
       fpack_configurations: fpackConfigurations
     }
     
@@ -320,7 +251,16 @@ const getClientIdFromProjet = (projetGlobalId: number | null): number | null => 
   return projet?.client || null
 }
 
-const executeImport = async () => {
+// Handler pour mettre à jour un élément non matché
+const updateUnmatchedItem = (itemId: string, selectedMatch: any) => {
+  const item = unmatchedItems.value.find(item => item.id === itemId)
+  if (item) {
+    item.selectedMatch = selectedMatch
+  }
+}
+
+// Exécution de l'import avec la configuration finale
+const executeImport = async (finalMappingConfig: MappingConfig) => {
   const incompletePacksCount = fpackList.value.filter(f => 
     !f.selectedProjetGlobal || !f.selectedSousProjet || !f.selectedFPackTemplate
   ).length
@@ -362,7 +302,7 @@ const executeImport = async () => {
 
     const requestData = {
       file_data: previewData.value,
-      mapping_config: mappingConfig.value,
+      mapping_config: finalMappingConfig, // Configuration finale avec les résolutions manuelles
       fpack_configurations: fpackConfigurations,
       manual_matches: manualMatches
     }
@@ -418,18 +358,7 @@ const resetImport = () => {
   previewData.value = []
   previewColumns.value = []
   fpackList.value = []
-  mappingConfig.value = {
-  version: '',
-  description: '',
-  excel_columns: {},
-  matching_rules: {},
-  validation_rules: {
-    required_fields: [],
-    max_suggestions: 0,
-    min_suggestion_score: 0
-  }
-}
-
+  mappingConfig.value = emptyMappingConfig
   unmatchedItems.value = []
   importStep.value = 1
 }
@@ -443,7 +372,6 @@ const getAvailableSousProjets = (projetGlobalId: number | null) => {
   const projet = props.projetsGlobaux.find(p => p.id === projetGlobalId)
   return projet?.sous_projets || []
 }
-
 </script>
 
 <template>
@@ -451,7 +379,7 @@ const getAvailableSousProjets = (projetGlobalId: number | null) => {
     <!-- Configuration du mapping -->
     <div class="mapping-config-panel" v-show="showConfigEditor">
       <MappingConfigEditor 
-        v-model="mappingConfig"
+        @mapping-configured="onMappingConfigFromEditor"
       />
     </div>
 
@@ -471,13 +399,14 @@ const getAvailableSousProjets = (projetGlobalId: number | null) => {
     <div class="import-steps">
       <!-- Étape 1: Upload du fichier -->
       <FileUploadStep 
-          :step="1"
-          :active="importStep >= 1"
-          :completed="importStep > 1"
-          :selected-file="selectedFile"
-          @file-analyzed="onFileAnalyzed"
-          @add-notification="emit('addNotification', $event.type, $event.message)"
-          @update:selectedFile="selectedFile = $event"
+        :step="1"
+        :active="importStep >= 1"
+        :completed="importStep > 1"
+        :visible="importStep === 1"
+        :selected-file="selectedFile"
+        @file-analyzed="onFileAnalyzed"
+        @add-notification="emit('addNotification', $event.type, $event.message)"
+        @update:selectedFile="selectedFile = $event"
       />
 
       <!-- Étape 2: Aperçu et sélection des projets -->
@@ -526,12 +455,83 @@ const getAvailableSousProjets = (projetGlobalId: number | null) => {
         :mapped-columns-count="mappedColumnsCount"
         :can-execute-import="canExecuteImport"
         :is-importing="isImporting"
+        :mapping-config="mappingConfig"
         @execute-import="executeImport"
         @previous-step="importStep = 3"
+        @update-unmatched-item="updateUnmatchedItem"
       />
     </div>
   </div>
 </template>
+
+<style scoped>
+.import-section {
+  max-width: 1200px;
+  margin: 0 auto;
+  padding: 20px;
+}
+
+.mapping-config-panel {
+  margin-bottom: 20px;
+  border: 1px solid #e0e0e0;
+  border-radius: 8px;
+  padding: 20px;
+  background-color: #f9f9f9;
+}
+
+.toolbar {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  margin-bottom: 24px;
+  padding: 16px;
+  background-color: #f5f5f5;
+  border-radius: 8px;
+  border: 1px solid #e0e0e0;
+}
+
+.btn-config {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 16px;
+  border: 1px solid #ccc;
+  border-radius: 4px;
+  background: white;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.btn-config:hover {
+  background-color: #f0f0f0;
+}
+
+.btn-config.active {
+  background-color: #007bff;
+  color: white;
+  border-color: #007bff;
+}
+
+.config-loaded {
+  color: #28a745;
+  font-weight: bold;
+}
+
+.current-config {
+  color: #495057;
+  font-size: 14px;
+  padding: 8px 12px;
+  background-color: #e9ecef;
+  border-radius: 4px;
+  border: 1px solid #ced4da;
+}
+
+.import-steps {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+}
+</style>
 
 <style scoped>
 .import-section {

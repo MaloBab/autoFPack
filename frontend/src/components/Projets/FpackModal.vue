@@ -506,6 +506,7 @@ watch(() => props.show, (show) => {
   width: 100%;
   padding: 16px 48px 16px 16px;
   border: 2px solid #e2e8f0;
+  color: #000;
   border-radius: 16px;
   font-size: 15px;
   background: white;
@@ -536,6 +537,7 @@ watch(() => props.show, (show) => {
   width: 100%;
   padding: 16px;
   border: 2px solid #e2e8f0;
+  color: #000;
   border-radius: 16px;
   font-size: 15px;
   background: white;

@@ -38,6 +38,7 @@ watch(() => props.modelValue, (val) => {
 input {
   width: 100%;
   padding: 0.6rem;
+  color: #000;
   border: 1px solid #ccc;
   border-radius: 6px;
   font-size: 1rem;

@@ -437,6 +437,7 @@ onUnmounted(() => {
 .form-input {
   width: 100%;
   padding: 16px 16px 16px 48px;
+  color: #000;
   border: 2px solid #e5e7eb;
   border-radius: 12px;
   font-size: 16px;
@@ -478,6 +479,7 @@ onUnmounted(() => {
 .form-select {
   width: 100%;
   padding: 16px 48px 16px 48px;
+  color: #000;
   border: 2px solid #e5e7eb;
   border-radius: 12px;
   font-size: 16px;

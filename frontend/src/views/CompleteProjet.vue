@@ -678,6 +678,7 @@ h1 {
 
 .groupe-select {
   width: 100%;
+  color: #000;
   padding: 0.6rem 0.8rem;
   border-radius: 8px;
   border: 1px solid #cbd5e1;
