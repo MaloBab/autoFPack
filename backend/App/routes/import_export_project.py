@@ -200,8 +200,8 @@ class MatchingEngine:
     """Moteur de recherche et correspondance d'items"""
     
     SEARCH_TABLES = {
-        'robots': models.Robot,
-        'equipements': models.Equipement,
+        'robots': models.Robots,
+        'equipements': models.Equipements,
         'produits': models.Produit
     }
     
@@ -1030,7 +1030,7 @@ async def get_import_stats(db: Session = Depends(get_db)):
             "total_sous_projets": db.query(models.SousProjet).count(),
             "total_fpack_templates": db.query(models.FPack).count(),
             "total_groups": db.query(models.Groupes).count(),
-            "total_robots": db.query(models.Robot).count(),
+            "total_robots": db.query(models.Robots).count(),
             "total_equipements": db.query(models.Equipement).count(),
             "total_produits": db.query(models.Produit).count()
         }
