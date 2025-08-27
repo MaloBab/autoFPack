@@ -7,21 +7,16 @@ import NotificationContainer from '../components/ImportExport/NotificationContai
 import { useNotifications } from '../composables/useNotifications'
 
 // Types
-interface ProjetGlobal {
-  id: number
-  projet: string
-  client: number 
-  sous_projets?: SousProjet[]
+
+interface Selection {
+  groupe_id: number
+  groupe_nom: string
+  type_item: string
+  ref_id: number
+  item_nom: string
 }
 
-interface SousProjet {
-  id: number
-  id_global: number
-  nom: string
-  fpacks?: FpackData[]
-}
-
-interface FpackData {
+interface SousProjetFpack {
   id: number
   nom: string
   fpack_abbr: string
@@ -34,12 +29,18 @@ interface FpackData {
   selections?: Selection[]
 }
 
-interface Selection {
-  groupe_id: number
-  groupe_nom: string
-  type_item: string
-  ref_id: number
-  item_nom: string
+interface ProjetGlobal {
+  id: number
+  projet: string
+  client: number
+  sous_projets?: SousProjet[]
+}
+
+interface SousProjet {
+  id: number
+  id_global: number
+  nom: string
+  fpacks?: SousProjetFpack[]
 }
 
 // État global
@@ -66,11 +67,8 @@ const importProps = ref({
 // Méthodes
 const loadData = async () => {
   try {
-    const response = await fetch('http://localhost:8000/projets_tree')
-    const data = await response.json()
-    if (data.projets_global) {
-      projetsGlobaux.value = data.projets_global
-    }
+    const response = await axios.get('http://localhost:8000/projets_globaux')
+      projetsGlobaux.value = response.data
 
     const resClient = await axios.get('http://localhost:8000/clients')
     clients.value = resClient.data
@@ -84,27 +82,6 @@ const loadData = async () => {
   }
 }
 
-// Event handlers for ImportSection
-const handleProjetGlobalChange = (fpack: any) => {
-  // Handle projet global change
-  console.log('Projet global changed:', fpack)
-}
-
-const handleFpackTemplateChange = (fpack: any) => {
-  // Handle fpack template change
-  console.log('FPack template changed:', fpack)
-}
-
-const handleConfigurationComplete = () => {
-  // Handle configuration complete
-  console.log('Configuration complete')
-  addNotification('success', 'Configuration terminée avec succès')
-}
-
-const handlePreviousStep = () => {
-  // Handle previous step
-  console.log('Previous step')
-}
 
 // Lifecycle
 onMounted(async () => {
@@ -155,19 +132,15 @@ onMounted(async () => {
       :projets-globaux="projetsGlobaux"
       :fpack-templates="fpackTemplates"
       :all-f-packs-configured="importProps.allFPacksConfigured"
-      @projet-global-change="handleProjetGlobalChange"
-      @fpack-template-change="handleFpackTemplateChange"
-      @configuration-complete="handleConfigurationComplete"
-      @previous-step="handlePreviousStep"
     />
     
     <ExportSection 
       v-if="activeTab === 'export'"
+      :clients="clients"
       :projets-globaux="projetsGlobaux"
       @add-notification="addNotification"
     />
 
-    <!-- Notifications -->
     <NotificationContainer 
       :notifications="notifications"
       @remove-notification="removeNotification"
@@ -177,7 +150,6 @@ onMounted(async () => {
 </template>
 
 <style scoped>
-/* Base styles et reset */
 .project-import-export {
   font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', sans-serif;
   line-height: 1.6;

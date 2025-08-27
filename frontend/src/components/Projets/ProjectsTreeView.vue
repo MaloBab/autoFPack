@@ -248,7 +248,6 @@ const updateContainerHeight = () => {
 }
 
 const handleCompleteFpack = (sousProjetId, fpack_template_Id) => {
-  console.log(sousProjetId)
   emit('complete-fpack', sousProjetId, fpack_template_Id)
 }
 

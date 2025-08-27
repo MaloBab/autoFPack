@@ -87,7 +87,6 @@ const getSelectedClientId = (fpack: FpackItem): number | null => {
   return projet?.client || null
 }
 
-console.log('F-Pack List:', props.fpackTemplates)
 
 </script>
 

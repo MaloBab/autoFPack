@@ -271,7 +271,6 @@ const removeFile = () => {
 }
 
 const handleNext = () => {
-  console.log('canProceed', jsonContent.value)
   if (canProceed.value && selectedFile.value) {
     emit('mappingConfigured', {
       jsonConfig: jsonContent.value,

@@ -291,7 +291,7 @@ async function saveSelections(goBack = true) {
         return acc
       }, {})
     } catch (err:any) {
-      console.log('Aucune sélection existante trouvée ou erreur:', err.message)
+      console.error('Aucune sélection existante trouvée ou erreur:', err.message)
     }
 
     const promises = groupes.value.map(async (groupe) => {

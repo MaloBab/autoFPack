@@ -154,7 +154,6 @@ def list_projets_globaux(
                     "id_global": sp.id_global,
                     "client_nom": projet.client_rel.nom if projet.client_rel else None,
                     "projet_global_nom": projet.projet,
-                    "sous_projet_nom": sp.nom,
                     "complet": complet,
                     "nb_selections": total_selections,
                     "nb_groupes_attendus": total_groupes_attendus,
@@ -168,7 +167,6 @@ def list_projets_globaux(
                     "id_global": sp.id_global,
                     "client_nom": projet.client_rel.nom if projet.client_rel else None,
                     "projet_global_nom": projet.projet,
-                    "sous_projet_nom": sp.nom,
                     "complet": False,
                     "nb_selections": 0,
                     "nb_groupes_attendus": 0,
@@ -219,7 +217,6 @@ def get_projet_global(id: int, db: Session = Depends(get_db)):
             "id_global": sp.id_global,
             "client_nom": projet.client_rel.nom if projet.client_rel else None,
             "projet_global_nom": projet.projet,
-            "sous_projet_nom": sp.nom,
             "complet": nb_selections >= nb_groupes_attendus if nb_groupes_attendus > 0 else False,
             "nb_selections": nb_selections,
             "nb_groupes_attendus": nb_groupes_attendus,
@@ -443,7 +440,6 @@ def list_sous_projets(
             "id_global": sp.id_global,
             "client_nom": client.nom if client else None,
             "projet_global_nom": projet_global.projet if projet_global else None,
-            "sous_projet_nom": sp.nom,
             "complet": nb_selections >= nb_groupes_attendus if nb_groupes_attendus > 0 else False,
             "nb_selections": nb_selections,
             "nb_groupes_attendus": nb_groupes_attendus,
@@ -486,7 +482,6 @@ def get_sous_projet(id: int, db: Session = Depends(get_db)):
         "id_global": sp.id_global,
         "client_nom": client.nom if client else None,
         "projet_global_nom": projet_global.projet if projet_global else None,
-        "sous_projet_nom": sp.nom,
         "complet": nb_selections >= nb_groupes_attendus if nb_groupes_attendus > 0 else False,
         "nb_selections": nb_selections,
         "nb_groupes_attendus": nb_groupes_attendus,
@@ -810,7 +805,6 @@ def delete_selection(sous_projet_id: int, fpack_id: int, groupe_id: int, db: Ses
 def get_projets_tree(client_id: Optional[int] = None, db: Session = Depends(get_db)):
     """Retourne l'arborescence complète : projets -> sous-projets -> fpacks -> sélections"""
     projets_globaux = list_projets_globaux(client_id=client_id, db=db)
-    
     # Enrichir avec les FPacks et sélections
     for projet in projets_globaux:
         for sous_projet in projet["sous_projets"]:

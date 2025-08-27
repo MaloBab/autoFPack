@@ -178,13 +178,11 @@ const onMappingConfigured = async (payload: { jsonConfig: any, fileName: string,
   ).length
 
   if (incompletePacksCount > 0) {
-    console.log('Incomplete packs:', incompletePacksCount)
     emit('addNotification', 'error', `${incompletePacksCount} F-Pack(s) ne sont pas entièrement configurés`)
     return
   }
 
   if (!mappingConfig.value || !mappingConfig.value.name) {
-    console.log(mappingConfig.value)
     emit('addNotification', 'error', 'Configuration de mapping manquante')
     return
   }
@@ -210,8 +208,7 @@ const onMappingConfigured = async (payload: { jsonConfig: any, fileName: string,
       mapping_config: mappingConfig.value, // Configuration JSON complète
       fpack_configurations: fpackConfigurations
     }
-    
-    console.log('Sending request data:', requestData)
+  
     
     const response = await fetch('http://localhost:8000/import/preview', {
       method: 'POST',
@@ -220,7 +217,6 @@ const onMappingConfigured = async (payload: { jsonConfig: any, fileName: string,
     })
     
     const result = await response.json()
-    console.log("Preview result:", result)
     
     if (result.success) {
       unmatchedItems.value = result.unmatched_items || []
@@ -307,7 +303,6 @@ const executeImport = async (finalMappingConfig: MappingConfig) => {
       manual_matches: manualMatches
     }
     
-    console.log('Executing import with data:', requestData)
     
     const response = await fetch('http://localhost:8000/import/execute', {
       method: 'POST',
@@ -316,7 +311,6 @@ const executeImport = async (finalMappingConfig: MappingConfig) => {
     })
     
     const result = await response.json()
-    console.log('Import result:', result)
     
     if (result.success) {
       const stats = result.results || {}
