@@ -1,7 +1,8 @@
-from fastapi import APIRouter, Depends, HTTPException #type: ignore
+from fastapi import APIRouter, Depends, HTTPException, Body #type: ignore
 from sqlalchemy.orm import Session #type: ignore
 from App.database import SessionLocal
 from App import models, schemas
+from typing import List
 
 router = APIRouter()
 
@@ -88,6 +89,16 @@ def get_produit_compatible_robots(produit_id: int, db: Session = Depends(get_db)
     
     return compatible_robots
 
+
+# Supprime toutes les compatibilités robot-produit pour un produit donné
+@router.delete("/produits/{produit_id}/robots-compatibles")
+def delete_all_robot_compatibilites_for_produit(produit_id: int, db: Session = Depends(get_db)):
+    deleted_count = db.query(models.RobotProduitCompatibilite).filter(
+        models.RobotProduitCompatibilite.produit_id == produit_id
+    ).delete(synchronize_session=False)
+    db.commit()
+    return {"deleted": deleted_count}
+
 @router.post("/robots/{robot_id}/batch-compatibilites")
 def add_batch_compatibilites(
     robot_id: int, 
@@ -155,6 +166,24 @@ def delete_all_robot_compatibilites(robot_id: int, db: Session = Depends(get_db)
 @router.get("/produit-incompatibilites", response_model=list[schemas.ProduitIncompatibiliteRead])
 def list_incompatibilites(db: Session = Depends(get_db)):
     return db.query(models.ProduitIncompatibilite).all()
+    
+@router.post("/produits/{produit_id}/incompatibilites/batch", response_model=List[schemas.ProduitIncompatibiliteRead])
+def create_incompatibilites_for_produit_batch(produit_id: int, ids: List[int] = Body(...), db: Session = Depends(get_db)):
+    created = []
+    for pid2 in ids:
+        if not pid2 or pid2 == produit_id:
+            continue
+        existing = db.query(models.ProduitIncompatibilite).filter(
+            ((models.ProduitIncompatibilite.produit_id_1 == produit_id) & (models.ProduitIncompatibilite.produit_id_2 == pid2)) |
+            ((models.ProduitIncompatibilite.produit_id_1 == pid2) & (models.ProduitIncompatibilite.produit_id_2 == produit_id))
+        ).first()
+        if not existing:
+            incompat = models.ProduitIncompatibilite(produit_id_1=produit_id, produit_id_2=pid2)
+            db.add(incompat)
+            db.flush()
+            created.append(incompat)
+    db.commit()
+    return created
 
 @router.post("/produit-incompatibilites", response_model=schemas.ProduitIncompatibiliteRead)
 def create_incompatibilite(incomp: schemas.ProduitIncompatibiliteCreate, db: Session = Depends(get_db)):
@@ -171,3 +200,24 @@ def delete_produit_incompatibilite(inc: schemas.ProduitIncompatibiliteCreate, db
     ).delete()
     db.commit()
     return {"ok": True}
+
+
+# Supprime toutes les incompatibilités d'un produit
+@router.delete("/produits/{produit_id}/incompatibilites")
+def delete_all_incompatibilites_for_produit(produit_id: int, db: Session = Depends(get_db)):
+    deleted = db.query(models.ProduitIncompatibilite).filter(
+        (models.ProduitIncompatibilite.produit_id_1 == produit_id) |
+        (models.ProduitIncompatibilite.produit_id_2 == produit_id)
+    ).delete(synchronize_session=False)
+    db.commit()
+    return {"deleted": deleted}
+
+
+# Liste toutes les incompatibilités d'un produit (symétrique)
+@router.get("/produits/{produit_id}/incompatibilites", response_model=list[schemas.ProduitIncompatibiliteRead])
+def list_incompatibilites_for_produit(produit_id: int, db: Session = Depends(get_db)):
+    return db.query(models.ProduitIncompatibilite).filter(
+        (models.ProduitIncompatibilite.produit_id_1 == produit_id) |
+        (models.ProduitIncompatibilite.produit_id_2 == produit_id)
+    ).all()
+

@@ -46,10 +46,10 @@ class FPackExportService:
             
             for sous_projet_fpack in fpacks_query:
                 selections = self._get_fpack_selections(sous_projet_fpack.id)
-                
+                produits_seuls, equipements_seuls = self._get_fpack_standalone_items(sous_projet_fpack.fpack_id)
                 fpack_data = self._build_base_fpack_data(sous_projet_fpack)
-                
                 fpack_data.update(self._build_selections_data(selections))
+                fpack_data.update(self._build_standalone_items_data(produits_seuls, equipements_seuls))
                 
                 export_data.append(fpack_data)
             
@@ -60,6 +60,41 @@ class FPackExportService:
                 status_code=500,
                 detail=f"Erreur lors de la récupération des données: {str(e)}"
             )
+            
+    def _get_fpack_standalone_items(self, fpack_id: int) -> tuple[List[Dict[str, Any]], List[Dict[str, Any]]]:
+        """Récupère les produits et équipements seuls de la configuration F-Pack"""
+        config_columns = self.db.query(models.FPackConfigColumn)\
+            .filter(
+                models.FPackConfigColumn.fpack_id == fpack_id,
+                models.FPackConfigColumn.type.in_(['produit', 'equipement'])
+            )\
+            .order_by(models.FPackConfigColumn.ordre)\
+            .all()
+        
+        produits_seuls = []
+        equipements_seuls = []
+        
+        for col in config_columns:
+            if col.type == 'produit':
+                produit = self.db.query(models.Produit).filter(models.Produit.id == col.ref_id).first()
+                if produit:
+                    produits_seuls.append({
+                        'id': produit.id,
+                        'nom': produit.nom,
+                        'reference': getattr(produit, 'reference', ''),
+                        'ordre': col.ordre
+                    })
+            elif col.type == 'equipement':
+                equipement = self.db.query(models.Equipements).filter(models.Equipements.id == col.ref_id).first()
+                if equipement:
+                    equipements_seuls.append({
+                        'id': equipement.id,
+                        'nom': equipement.nom,
+                        'reference': getattr(equipement, 'reference', ''),
+                        'ordre': col.ordre
+                    })
+        
+        return produits_seuls, equipements_seuls
     
     def _get_fpack_selections(self, sous_projet_fpack_id: int) -> List[Dict[str, Any]]:
         """Récupère les sélections d'une instance F-Pack"""
@@ -122,6 +157,24 @@ class FPackExportService:
             'FPack_Abbreviation': sous_projet_fpack.fpack.fpack_abbr or '',
         }
     
+    def _build_base_fpack_data(self, sous_projet_fpack) -> Dict[str, Any]:
+        """Construit les données de base de l'instance F-Pack"""
+        return {
+            'Projet': sous_projet_fpack.sous_projet.global_rel.projet,
+            'Client': sous_projet_fpack.sous_projet.global_rel.client_rel.nom,
+            'Sous_Projet': sous_projet_fpack.sous_projet.nom,
+            
+            'FPack_Number': sous_projet_fpack.FPack_number or '',
+            'Robot_Location_Code': sous_projet_fpack.Robot_Location_Code or '',
+            'Contractor': sous_projet_fpack.contractor or '',
+            'Required_Delivery_Time': sous_projet_fpack.required_delivery_time or '',
+            'Delivery_Site': sous_projet_fpack.delivery_site or '',
+            'Tracking': sous_projet_fpack.tracking or '',
+            
+            'FPack_Template': sous_projet_fpack.fpack.nom or '',
+            'FPack_Abbreviation': sous_projet_fpack.fpack.fpack_abbr or '',
+        }
+    
     def _build_selections_data(self, selections: List[Dict[str, Any]]) -> Dict[str, Any]:
         """Construit les données des sélections par groupe"""
         selections_data = {}
@@ -134,11 +187,29 @@ class FPackExportService:
                 selections_data[groupe_nom] = []
             
             selections_data[groupe_nom].append(item_nom)
-        
+            
         for groupe_nom, items in selections_data.items():
             selections_data[groupe_nom] = ', '.join(items)
         
         return selections_data
+    
+    def _build_standalone_items_data(self, produits_seuls: List[Dict[str, Any]], equipements_seuls: List[Dict[str, Any]]) -> Dict[str, Any]:
+        """Construit les données des produits et équipements seuls"""
+        standalone_data = {}
+        
+        if produits_seuls:
+            produits_noms = [p['nom'] for p in sorted(produits_seuls, key=lambda x: x['ordre'])]
+            standalone_data['Produits_Seuls'] = ', '.join(produits_noms)
+        else:
+            standalone_data['Produits_Seuls'] = ''
+        
+        if equipements_seuls:
+            equipements_noms = [e['nom'] for e in sorted(equipements_seuls, key=lambda x: x['ordre'])]
+            standalone_data['Equipements_Seuls'] = ', '.join(equipements_noms)
+        else:
+            standalone_data['Equipements_Seuls'] = ''
+        
+        return standalone_data
     
     def create_excel_export(self, export_data: List[Dict[str, Any]]) -> BytesIO:
         """Crée le fichier Excel formaté selon le modèle F-Pack Matrix"""
@@ -171,7 +242,6 @@ class FPackExportService:
     
     def _setup_excel_styles(self, wb: Workbook, ws):
         """Configure les styles Excel"""
-
         self.header_fill = PatternFill(start_color="366092", end_color="366092", fill_type="solid")
         self.sub_header_fill = PatternFill(start_color="D9E1F2", end_color="D9E1F2", fill_type="solid")
         self.data_fill = PatternFill(start_color="F2F2F2", end_color="F2F2F2", fill_type="solid")
@@ -207,7 +277,7 @@ class FPackExportService:
                 cell.font = self.data_font
                 cell.border = self.thin_border
                 cell.alignment = self.left_alignment
-                
+
                 if row_idx % 2 == 0:
                     cell.fill = self.data_fill
     
@@ -224,7 +294,9 @@ class FPackExportService:
             'Delivery_Site': 20,
             'Tracking': 12,
             'FPack_Template': 25,
-            'FPack_Abbreviation': 15
+            'FPack_Abbreviation': 15,
+            'Produits_Seuls': 30,  
+            'Equipements_Seuls': 30 
         }
         
         for col_idx, column_name in enumerate(df.columns, 1):

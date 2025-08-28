@@ -945,6 +945,7 @@ onMounted(fetchData)
   font-size: 16px;
   border: none;
   border-radius: 15px;
+  color: #000;
   background: rgba(255, 255, 255, 0.95);
   backdrop-filter: blur(20px);
   box-shadow: 0 10px 30px rgba(0, 0, 0, 0.1);

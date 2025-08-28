@@ -4,9 +4,11 @@ import axios from 'axios'
 
 const props = defineProps<{
   isOpen: boolean
-  tableName: string 
+  tableName: string
+  editMode?: boolean
+  editData?: any
 }>()
-const emit = defineEmits(['close', 'added'])
+const emit = defineEmits(['close', 'added', 'updated'])
 
 const form: Ref<Record<string, any>> = ref({})
 const columns: Ref<string[]> = ref([])
@@ -16,9 +18,13 @@ const isLoading = ref(false)
 const isSaving = ref(false)
 const errors: Ref<Record<string, string>> = ref({})
 const showSuccess = ref(false)
-
+const isEditMode = computed(() => props.editMode || false)
 const modalVisible = ref(false)
 const contentVisible = ref(false)
+
+const modalTitle = computed(() => 
+  isEditMode.value ? `Modifier ${props.tableName}` : `Ajouter ${props.tableName}`
+)
 
 const filteredColumns = computed(() => {
   let cols = columns.value.filter(col => col !== 'id')
@@ -276,12 +282,93 @@ async function loadData() {
       }
     }
 
+    if (isEditMode.value && props.editData) {
+      Object.keys(props.editData).forEach(key => {
+        if (columns.value.includes(key)) {
+          form.value[key] = props.editData[key]
+        }
+      })
+
+      if (props.tableName === 'prix_robot') {
+        searchTerms.value['reference'] = props.editData.reference || ''
+        searchTerms.value['robot'] = props.editData.robot || ''
+      } else {
+        columns.value.forEach(col => {
+          if (isForeignKey(col)) {
+            const relatedData = getRelatedData(col, props.editData[col])
+            if (relatedData) {
+              searchTerms.value[col] = getOptionLabel(relatedData, col)
+            }
+          }
+        })
+      }
+
+      if (props.tableName === 'produits' && props.editData.id) {
+        await loadExistingRelations(props.editData.id)
+      } else if (props.tableName === 'robots' && props.editData.id) {
+        await loadExistingRobotRelations(props.editData.id)
+      }
+    }
+
   } catch (error) {
     console.error('Erreur lors du chargement:', error)
   } finally {
     isLoading.value = false
   }
 }
+
+function getRelatedData(columnName: string, id: any) {
+  const options = getSelectOptions(columnName)
+  return options.find(option => option.id === id)
+}
+
+async function loadExistingRelations(itemId: number) {
+  try {
+    if (props.tableName === 'produits') {
+      const incompatRes = await axios.get(`http://localhost:8000/produits/${itemId}/incompatibilites`)
+      incompatibilitesProduits.value = incompatRes.data.map((item: any) =>
+        item.produit_id_1 === itemId ? item.produit_id_2 : item.produit_id_1
+      )
+
+      const compatRes = await axios.get(`http://localhost:8000/produits/${itemId}/robots-compatibles`)
+      compatibilitesRobots.value = compatRes.data.map((item: any) => item.id)
+
+      const prixRes = await axios.get(`http://localhost:8000/prix`)
+      prixRes.data.forEach((p: any) => {
+        if (prix.value[p.client_id]) {
+          prix.value[p.client_id] = {
+            prix_produit: p.prix_produit,
+            prix_transport: p.prix_transport,
+            commentaire: p.commentaire
+          }
+        }
+      })
+    }
+  } catch (error) {
+    console.error('Erreur lors du chargement des relations:', error)
+  }
+}
+
+async function loadExistingRobotRelations(robotId: number) {
+  try {
+    const compatRes = await axios.get(`http://localhost:8000/robots/${robotId}/compatibilites`)
+    compatibilitesProduits.value = compatRes.data.map((item: any) => item.id)
+    const prixRes = await axios.get(`http://localhost:8000/prix_robot/${robotId}`)
+    if (prixRes.data) {
+      prixRobot.value = {
+        prix_robot: prixRes.data.prix_robot,
+        prix_transport: prixRes.data.prix_transport,
+        commentaire: prixRes.data.commentaire
+      }
+    }
+    else {
+      prixRobot.value = {}
+    }
+  } catch (error) {
+    console.error('Erreur lors du chargement des relations robot:', error)
+  }
+}
+
 
 function validateForm() {
   errors.value = {}
@@ -347,54 +434,124 @@ async function save() {
 
   isSaving.value = true
   try {
-    const { data: newItem } = await axios.post(`http://localhost:8000/${props.tableName}`, form.value)
+    let savedItem
+
+    if (isEditMode.value) {
+      const { data: updatedItem } = await axios.put(`http://localhost:8000/${props.tableName}/${props.editData.id}`, form.value)
+      savedItem = updatedItem
+    } else {
+      const { data: newItem } = await axios.post(`http://localhost:8000/${props.tableName}`, form.value)
+      savedItem = newItem
+    }
 
     if (props.tableName === 'produits') {
-      for (const pid of incompatibilitesProduits.value) {
-        await axios.post('http://localhost:8000/produit-incompatibilites', {
-          produit_id_1: newItem.id,
-          produit_id_2: pid
-        })
+      const itemId = savedItem.id
+
+      if (isEditMode.value) {
+        try {
+          await axios.delete(`http://localhost:8000/produits/${itemId}/incompatibilites`)
+          await axios.delete(`http://localhost:8000/produits/${itemId}/robots-compatibles`)
+          await axios.delete(`http://localhost:8000/prix/${itemId}`)
+        } catch (error) {
+          console.warn('Erreur lors de la suppression des relations existantes:', error)
+        }
+      }
+
+      const batchIncompatibilites = incompatibilitesProduits.value
+        .filter(pid => pid && pid !== itemId)
+        .map(pid => ({ produit_id_1: itemId, produit_id_2: pid }));
+      if (batchIncompatibilites.length > 0) {
+        try {
+          await axios.post(`http://localhost:8000/produits/${itemId}/incompatibilites/batch`, incompatibilitesProduits.value.filter(pid => pid && pid !== itemId));
+        } catch (error) {
+          console.warn('Erreur lors de la création batch des incompatibilités produits:', error);
+        }
       }
 
       for (const rid of compatibilitesRobots.value) {
-        await axios.post('http://localhost:8000/robot-produit-compatibilites', {
-          robot_id: rid,
-          produit_id: newItem.id
-        })
+        try {
+          await axios.post('http://localhost:8000/robot-produit-compatibilites', {
+            robot_id: rid,
+            produit_id: itemId
+          })
+        } catch (error) {
+          console.warn(`Erreur lors de la création de la compatibilité avec le robot ${rid}:`, error)
+        }
       }
 
       for (const cid in prix.value) {
-        if (!prix.value[cid].prix_produit && !prix.value[cid].prix_transport) continue
-        await axios.post('http://localhost:8000/prix', {
-          produit_id: newItem.id,
-          client_id: parseInt(cid),
-          prix_produit: prix.value[cid].prix_produit,
-          prix_transport: prix.value[cid].prix_transport,
-          commentaire: prix.value[cid].commentaire
-        })
+        const prixData = prix.value[cid]
+        if (!prixData.prix_produit && !prixData.prix_transport) continue
+        
+        try {
+          await axios.post('http://localhost:8000/prix', {
+            produit_id: itemId,
+            client_id: parseInt(cid),
+            prix_produit: prixData.prix_produit,
+            prix_transport: prixData.prix_transport,
+            commentaire: prixData.commentaire
+          })
+        } catch (error) {
+          console.warn(`Erreur lors de la création du prix pour le client ${cid}:`, error)
+        }
       }
     }
 
     if (props.tableName === 'robots') {
-      if (compatibilitesProduits.value.length) {
-        await axios.post(`http://localhost:8000/robots/${newItem.id}/batch-compatibilites`, compatibilitesProduits.value)
+      const itemId = savedItem.id
+
+      if (isEditMode.value) {
+        try {
+          const prixRes = await axios.get(`http://localhost:8000/prix_robot/${itemId}`);
+          if (prixRes.data && (prixRes.data.prix_robot !== 0.0 || prixRes.data.prix_transport !== 0.0 || prixRes.data.commentaire)) {
+            await axios.delete(`http://localhost:8000/prix_robot/${itemId}`);
+          }
+          const compatRes = await axios.get(`http://localhost:8000/robots/${itemId}/compatibilites`);
+          if (Array.isArray(compatRes.data) && compatRes.data.length > 0) {
+            await axios.delete(`http://localhost:8000/robots/${itemId}/compatibilites`);
+          }
+        } catch (error) {
+          console.warn('Erreur lors de la suppression des relations robot existantes:', error)
+        }
+      }
+
+      if (compatibilitesProduits.value.length > 0) {
+        try {
+          await axios.post(`http://localhost:8000/robots/${itemId}/batch-compatibilites`, compatibilitesProduits.value)
+        } catch (error) {
+          console.warn('Erreur lors de la création des compatibilités produits:', error)
+        }
       }
 
       if (prixRobot.value.prix_robot || prixRobot.value.prix_transport) {
-      await axios.post('http://localhost:8000/prix_robot', {
-        id: newItem.id,
-        reference: newItem.reference,
-        prix_robot: prixRobot.value.prix_robot,
-        prix_transport: prixRobot.value.prix_transport,
-        commentaire: prixRobot.value.commentaire
-      })
-    }
+        try {
+          if (isEditMode.value) {
+            await axios.post('http://localhost:8000/prix_robot', {
+              id: itemId,
+              reference: savedItem.reference,
+              prix_robot: prixRobot.value.prix_robot,
+              prix_transport: prixRobot.value.prix_transport,
+              commentaire: prixRobot.value.commentaire
+            })
+          } else {
+            await axios.post('http://localhost:8000/prix_robot', {
+              id: itemId,
+              reference: savedItem.reference,
+              prix_robot: prixRobot.value.prix_robot,
+              prix_transport: prixRobot.value.prix_transport,
+              commentaire: prixRobot.value.commentaire
+            })
+          }
+        } catch (error) {
+
+          console.warn('Erreur lors de la sauvegarde du prix robot:', error)
+        }
+      }
     }
 
     showSuccess.value = true
     setTimeout(() => {
-      emit('added', newItem)
+      emit(isEditMode.value ? 'updated' : 'added', savedItem)
       closeModal()
     }, 1500)
 
@@ -442,8 +599,8 @@ onMounted(async () => {
             <div class="modal-header">
               <div class="header-content">
                 <h2 class="modal-title">
-                  <span class="title-icon">➕</span>
-                  Ajouter {{ tableName }}
+                  <span class="title-icon">{{ isEditMode ? '✏️' : '➕' }}</span>
+                  {{ modalTitle }}
                 </h2>
                 <button @click="closeModal" class="close-btn">X</button>
               </div>
@@ -848,10 +1005,10 @@ onMounted(async () => {
                 <button @click="closeModal" class="cancel-btn">
                   Annuler
                 </button>
-                <button @click="save" class="save-btn" :disabled="isSaving">
-                  <span v-if="isSaving" class="save-spinner"></span>
-                  {{ isSaving ? 'Enregistrement...' : 'Enregistrer' }}
-                </button>
+                  <button @click="save" class="save-btn" :disabled="isSaving">
+                    <span v-if="isSaving" class="save-spinner"></span>
+                    {{ isSaving ? 'Enregistrement...' : (isEditMode ? 'Modifier' : 'Enregistrer') }}
+                  </button>
               </div>
             </div>
           </div>

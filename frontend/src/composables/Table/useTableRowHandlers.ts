@@ -8,13 +8,6 @@ export function useTableRowHandlers(tableData: any, tableName: string) {
     return tableData.editingId.value === row.id ? tableData.editingId.value : null
   }
 
-  function handleStartEdit(row: any) {
-    if (tableName === 'prix') {
-      tableData.startEditPrix({ produit_id: row.produit_id, client_id: row.client_id })
-    } else {
-      tableData.startEdit(row.id)
-    }
-  }
 
   function handleValidateEdit(row: any) {
     if (tableName === 'prix') {
@@ -34,7 +27,6 @@ export function useTableRowHandlers(tableData: any, tableName: string) {
 
   return {
     getEditingId,
-    handleStartEdit,
     handleValidateEdit,
     handleDeleteRow
   }

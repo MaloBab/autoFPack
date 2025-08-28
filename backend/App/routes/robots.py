@@ -46,10 +46,22 @@ def delete_robot(id: int, db: Session = Depends(get_db)):
     return {"ok": True}
 
 
+@router.get("/prix_robot/{id}", response_model=schemas.PrixRobotRead)
+def get_robot_price(id: int, db: Session = Depends(get_db)):
+    prix = db.query(models.PrixRobot).filter(models.PrixRobot.id == id).first()
+    if not prix:
+        return {
+            "id": -1,
+            "reference": "-",
+            "prix_robot": 0,
+            "prix_transport": 0,
+            "commentaire": None
+        }
+    return prix
+
 @router.get("/prix_robot", response_model=list[schemas.PrixRobotRead])
 def get_all_prices(db: Session = Depends(get_db)):
     return db.query(models.PrixRobot).all()
-
 
 @router.post("/prix_robot", response_model=schemas.PrixRobotRead)
 def create_prix(prixRobot: schemas.PrixRobotCreate, db: Session = Depends(get_db)):
@@ -87,3 +99,6 @@ def delete_price(id: int, db: Session = Depends(get_db)):
     db.delete(prix)
     db.commit()
     return {"message": "Prix supprimé avec succès"}
+
+
+

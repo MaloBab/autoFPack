@@ -8,7 +8,6 @@ import { useTableNavigation } from '../../composables/Table/useTableNavigation'
 import { useTableRowHandlers } from '../../composables/Table/useTableRowHandlers'
 import Filters from '../Searching/Filters.vue'
 import TableRowAddModal from './TableRowAddModal.vue'
-import TableRowEdit from './TableRowEdit.vue'
 import TableRowDisplay from './TableRowDisplay.vue'
 import TableActions from './TableActions.vue'
 
@@ -19,6 +18,8 @@ const bodyTable = ref<HTMLElement | null>(null)
 const isLoading = ref(true)
 const hoveredRow = ref<string | null>(null)
 const showAddModal = ref(false)
+const showEditModal = ref(false)
+const editingData = ref(null)
 
 const props = defineProps<{
   tableName: string
@@ -43,7 +44,7 @@ const { columnValues, filteredRows, updateFilter } = useTableFilters(tableData, 
 
 const { sortOrders, onSortChange, filteredAndSortedRows } = useTableSorting(filteredRows, tableData.valueLabels)
 const { remplirEquipement, remplirFPack, remplirProjet } = useTableNavigation(props.tableName)
-const { getEditingId, handleStartEdit, handleValidateEdit, handleDeleteRow } = useTableRowHandlers(tableData, props.tableName)
+const { getEditingId, handleValidateEdit, handleDeleteRow } = useTableRowHandlers(tableData, props.tableName)
 
 const orderedColumns = computed(() => {
   if (!tableData.columns.value) return []
@@ -68,6 +69,23 @@ const orderedColumns = computed(() => {
   
   return cols
 })
+
+function handleStartEdit(row: any) {
+  editingData.value = { ...row }
+  console.log('Editing data:', editingData.value)
+  showEditModal.value = true
+}
+
+function closeEditModal() {
+  showEditModal.value = false
+  editingData.value = null
+}
+
+async function handleModalUpdated() {
+  showEditModal.value = false
+  editingData.value = null
+  tableData.refresh()
+}
 
 function getColumnLabel(col: string): string {
   const mappings: Record<string, Record<string, string>> = {
@@ -257,27 +275,12 @@ function handleRowHover(rowId: string | null) {
               @mouseenter="handleRowHover(getRowId(row, props.tableName))"
               @mouseleave="handleRowHover(null)"
             >
-              
-              <template v-if="getEditingId(row)">
-                <TableRowEdit
-                  :row="row"
-                  :columns="orderedColumns"
-                  :table-name="props.tableName"
-                  :edit-row="tableData.editRow.value"
-                  :table-data="tableData"
-                  :column-values="columnValues"
-                  @validate="handleValidateEdit(row)"
-                  @cancel="tableData.cancelEdit"
-                />
-              </template>
-              <template v-else>
-                <TableRowDisplay
-                  :row="row"
-                  :columns="orderedColumns"
-                  :table-name="props.tableName"
-                  :table-data="tableData"
-                />
-              </template>
+              <TableRowDisplay
+                :row="row"
+                :columns="orderedColumns"
+                :table-name="props.tableName"
+                :table-data="tableData"
+              />
 
               <td class="actions-cell">
                 <TableActions
@@ -306,6 +309,14 @@ function handleRowHover(rowId: string | null) {
       :table-name="props.tableName" 
       @close="closeAddModal"
       @added="handleModalCreated"
+    />
+    <TableRowAddModal 
+      :isOpen="showEditModal"
+      :table-name="props.tableName"
+      :edit-mode="true"
+      :edit-data="editingData"
+      @close="closeEditModal"
+      @updated="handleModalUpdated"
     />
     
     <div v-if="isLoading" class="loading-overlay">

@@ -70,3 +70,11 @@ def get_prix(produit_id: int, client_id: int, db: Session = Depends(get_db)):
         raise HTTPException(status_code=404, detail="Prix non trouvé")
     return db_prix
 
+
+# Supprime tous les prix d'un produit quel que soit le client
+@router.delete("/prix/{produit_id}")
+def delete_all_prix_for_produit(produit_id: int, db: Session = Depends(get_db)):
+    deleted = db.query(models.Prix).filter(models.Prix.produit_id == produit_id).delete(synchronize_session=False)
+    db.commit()
+    return {"deleted": deleted}
+
