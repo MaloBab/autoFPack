@@ -9,10 +9,6 @@ import traceback
 from openpyxl import Workbook #type: ignore
 from openpyxl.styles import Font, PatternFill, Border, Side, Alignment #type: ignore
 from fastapi.responses import StreamingResponse #type: ignore
-import logging
-
-# Configuration du logger
-logger = logging.getLogger(__name__)
 
 router = APIRouter()
 
@@ -32,7 +28,6 @@ class FPackExportService:
     def get_fpack_data_for_export(self, sous_projet_fpack_ids: List[int]) -> List[Dict[str, Any]]:
         """Récupère les données des instances F-Pack (SousProjetFpack) pour l'export"""
         try:
-            # CORRECTION: Requête sur SousProjetFpack directement (pas sur models.FPack)
             fpacks_query = self.db.query(models.SousProjetFpack)\
                 .join(models.SousProjet, models.SousProjetFpack.sous_projet_id == models.SousProjet.id)\
                 .join(models.ProjetGlobal, models.SousProjet.id_global == models.ProjetGlobal.id)\
@@ -50,13 +45,10 @@ class FPackExportService:
             export_data = []
             
             for sous_projet_fpack in fpacks_query:
-                # Récupération des sélections pour cette instance F-Pack
                 selections = self._get_fpack_selections(sous_projet_fpack.id)
                 
-                # Construction des données de base
                 fpack_data = self._build_base_fpack_data(sous_projet_fpack)
                 
-                # Ajout des sélections par groupe
                 fpack_data.update(self._build_selections_data(selections))
                 
                 export_data.append(fpack_data)
@@ -64,7 +56,6 @@ class FPackExportService:
             return export_data
             
         except Exception as e:
-            logger.error(f"Erreur lors de la récupération des données F-Pack: {str(e)}")
             raise HTTPException(
                 status_code=500,
                 detail=f"Erreur lors de la récupération des données: {str(e)}"
@@ -72,7 +63,6 @@ class FPackExportService:
     
     def _get_fpack_selections(self, sous_projet_fpack_id: int) -> List[Dict[str, Any]]:
         """Récupère les sélections d'une instance F-Pack"""
-        # CORRECTION: Ajout des informations de nom depuis les tables liées
         selections_query = self.db.query(
             models.ProjetSelection.groupe_id,
             models.Groupes.nom.label('groupe_nom'),
@@ -85,7 +75,6 @@ class FPackExportService:
         
         selections = []
         for selection in selections_query:
-            # Récupération du nom de l'item selon son type
             item_nom = self._get_item_name(selection.type_item, selection.ref_id)
             
             selections.append({
@@ -113,18 +102,15 @@ class FPackExportService:
             else:
                 return f"Item {ref_id}"
         except Exception as e:
-            logger.warning(f"Erreur lors de la récupération du nom de l'item {type_item}:{ref_id}: {str(e)}")
             return f"{type_item} {ref_id}"
     
     def _build_base_fpack_data(self, sous_projet_fpack) -> Dict[str, Any]:
         """Construit les données de base de l'instance F-Pack"""
         return {
-            # Informations du projet
             'Projet': sous_projet_fpack.sous_projet.global_rel.projet,
             'Client': sous_projet_fpack.sous_projet.global_rel.client_rel.nom,
             'Sous_Projet': sous_projet_fpack.sous_projet.nom,
             
-            # Informations de l'instance F-Pack (SousProjetFpack)
             'FPack_Number': sous_projet_fpack.FPack_number or '',
             'Robot_Location_Code': sous_projet_fpack.Robot_Location_Code or '',
             'Contractor': sous_projet_fpack.contractor or '',
@@ -132,7 +118,6 @@ class FPackExportService:
             'Delivery_Site': sous_projet_fpack.delivery_site or '',
             'Tracking': sous_projet_fpack.tracking or '',
             
-            # Informations du template F-Pack
             'FPack_Template': sous_projet_fpack.fpack.nom or '',
             'FPack_Abbreviation': sous_projet_fpack.fpack.fpack_abbr or '',
         }
@@ -145,13 +130,11 @@ class FPackExportService:
             groupe_nom = selection['groupe_nom']
             item_nom = selection['item_nom']
             
-            # Utilise le nom du groupe comme clé de colonne
             if groupe_nom not in selections_data:
                 selections_data[groupe_nom] = []
             
             selections_data[groupe_nom].append(item_nom)
         
-        # Convertit les listes en chaînes pour l'export Excel
         for groupe_nom, items in selections_data.items():
             selections_data[groupe_nom] = ', '.join(items)
         
@@ -160,30 +143,20 @@ class FPackExportService:
     def create_excel_export(self, export_data: List[Dict[str, Any]]) -> BytesIO:
         """Crée le fichier Excel formaté selon le modèle F-Pack Matrix"""
         try:
-            # Création du DataFrame
             df = pd.DataFrame(export_data)
             
             if df.empty:
                 raise ValueError("Aucune donnée à exporter")
             
-            # Création du workbook Excel
             wb = Workbook()
             ws = wb.active
             ws.title = "F-Pack Matrix"
             
-            # Configuration des styles
             self._setup_excel_styles(wb, ws)
-            
-            # Ajout des en-têtes et données
             self._add_headers_and_data(ws, df)
-            
-            # Application des styles et formatage
             self._apply_formatting(ws, df)
-            
-            # Ajustement automatique des colonnes
             self._auto_adjust_columns(ws)
             
-            # Sauvegarde dans un buffer
             excel_buffer = BytesIO()
             wb.save(excel_buffer)
             excel_buffer.seek(0)
@@ -191,7 +164,6 @@ class FPackExportService:
             return excel_buffer
             
         except Exception as e:
-            logger.error(f"Erreur lors de la création du fichier Excel: {str(e)}")
             raise HTTPException(
                 status_code=500,
                 detail=f"Erreur lors de la génération du fichier Excel: {str(e)}"
@@ -199,7 +171,7 @@ class FPackExportService:
     
     def _setup_excel_styles(self, wb: Workbook, ws):
         """Configure les styles Excel"""
-        # Couleurs et styles basés sur le modèle fourni
+
         self.header_fill = PatternFill(start_color="366092", end_color="366092", fill_type="solid")
         self.sub_header_fill = PatternFill(start_color="D9E1F2", end_color="D9E1F2", fill_type="solid")
         self.data_fill = PatternFill(start_color="F2F2F2", end_color="F2F2F2", fill_type="solid")
@@ -220,10 +192,8 @@ class FPackExportService:
     
     def _add_headers_and_data(self, ws, df: pd.DataFrame):
         """Ajoute les en-têtes et données au worksheet"""
-        # Ajout des en-têtes de colonne
         headers = list(df.columns)
         
-        # En-tête principal (ligne 1)
         for col_idx, header in enumerate(headers, 1):
             cell = ws.cell(row=1, column=col_idx, value=header)
             cell.fill = self.header_fill
@@ -231,7 +201,6 @@ class FPackExportService:
             cell.border = self.thin_border
             cell.alignment = self.center_alignment
         
-        # Ajout des données
         for row_idx, (_, row_data) in enumerate(df.iterrows(), 2):
             for col_idx, value in enumerate(row_data, 1):
                 cell = ws.cell(row=row_idx, column=col_idx, value=value)
@@ -239,13 +208,11 @@ class FPackExportService:
                 cell.border = self.thin_border
                 cell.alignment = self.left_alignment
                 
-                # Alternance de couleurs pour les lignes
                 if row_idx % 2 == 0:
                     cell.fill = self.data_fill
     
     def _apply_formatting(self, ws, df: pd.DataFrame):
         """Applique le formatage spécifique au modèle F-Pack Matrix"""
-        # Ajustement des largeurs de colonnes selon le modèle
         column_widths = {
             'FPack_Number': 15,
             'Robot_Location_Code': 20,
@@ -260,16 +227,13 @@ class FPackExportService:
             'FPack_Abbreviation': 15
         }
         
-        # Application des largeurs personnalisées
         for col_idx, column_name in enumerate(df.columns, 1):
             column_letter = ws.cell(row=1, column=col_idx).column_letter
             width = column_widths.get(column_name, 12)
             ws.column_dimensions[column_letter].width = width
         
-        # Hauteur des lignes
-        ws.row_dimensions[1].height = 30  # En-tête plus haut
+        ws.row_dimensions[1].height = 30 
         
-        # Figer la première ligne
         ws.freeze_panes = 'A2'
     
     def _auto_adjust_columns(self, ws):
@@ -285,7 +249,6 @@ class FPackExportService:
                 except:
                     pass
             
-            # Limite la largeur maximale
             adjusted_width = min(max_length + 2, 50)
             ws.column_dimensions[column_letter].width = max(adjusted_width, 10)
 
@@ -303,7 +266,6 @@ async def export_fpack_matrix(
     }
     """
     try:
-        # Validation des données d'entrée
         if "fpack_ids" not in request_data:
             raise HTTPException(
                 status_code=400,
@@ -318,7 +280,6 @@ async def export_fpack_matrix(
                 detail="'fpack_ids' doit être une liste non vide d'identifiants"
             )
         
-        # Validation que tous les IDs sont des entiers
         try:
             fpack_ids = [int(fpack_id) for fpack_id in fpack_ids]
         except (ValueError, TypeError):
@@ -327,11 +288,7 @@ async def export_fpack_matrix(
                 detail="Tous les 'fpack_ids' doivent être des entiers valides"
             )
         
-        # Initialisation du service d'export
         export_service = FPackExportService(db)
-        
-        # CORRECTION: Nom de paramètre plus explicite
-        logger.info(f"Début de l'export pour {len(fpack_ids)} instances F-Pack")
         export_data = export_service.get_fpack_data_for_export(fpack_ids)
         
         if not export_data:
@@ -340,17 +297,12 @@ async def export_fpack_matrix(
                 detail="Aucune donnée trouvée pour les instances F-Pack spécifiées"
             )
         
-        # Génération du fichier Excel
         excel_buffer = export_service.create_excel_export(export_data)
         
-        # Nom du fichier avec timestamp
         from datetime import datetime
         timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
         filename = f"fpack_matrix_export_{timestamp}.xlsx"
-        
-        logger.info(f"Export terminé avec succès: {len(export_data)} instances F-Pack exportées")
-        
-        # Retour du fichier
+                
         return StreamingResponse(
             BytesIO(excel_buffer.getvalue()),
             media_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
@@ -360,8 +312,6 @@ async def export_fpack_matrix(
     except HTTPException:
         raise
     except Exception as e:
-        logger.error(f"Erreur inattendue lors de l'export: {str(e)}")
-        logger.error(traceback.format_exc())
         raise HTTPException(
             status_code=500,
             detail=f"Erreur interne du serveur: {str(e)}"
@@ -375,7 +325,6 @@ async def preview_fpack_export(fpack_id: int, db: Session = Depends(get_db)):
     try:
         export_service = FPackExportService(db)
         
-        # CORRECTION: Récupération des données pour une seule instance F-Pack
         export_data = export_service.get_fpack_data_for_export([fpack_id])
         
         if not export_data:
@@ -397,7 +346,6 @@ async def preview_fpack_export(fpack_id: int, db: Session = Depends(get_db)):
     except HTTPException:
         raise
     except Exception as e:
-        logger.error(f"Erreur lors de l'aperçu instance F-Pack {fpack_id}: {str(e)}")
         raise HTTPException(
             status_code=500,
             detail=f"Erreur lors de la génération de l'aperçu: {str(e)}"
@@ -409,28 +357,23 @@ async def get_export_stats(db: Session = Depends(get_db)):
     Statistiques générales sur les données exportables
     """
     try:
-        # CORRECTION: Statistiques sur les instances F-Pack (SousProjetFpack)
         total_fpacks = db.query(models.SousProjetFpack).count()
         
-        # Instances F-Pack avec sélections
         fpacks_with_selections = db.query(models.SousProjetFpack.id)\
             .join(models.ProjetSelection)\
             .distinct().count()
         
-        # Clients avec instances F-Pack
         clients_with_fpacks = db.query(models.Client.id)\
             .join(models.ProjetGlobal)\
             .join(models.SousProjet)\
             .join(models.SousProjetFpack)\
             .distinct().count()
         
-        # Projets avec instances F-Pack
         projets_with_fpacks = db.query(models.ProjetGlobal.id)\
             .join(models.SousProjet)\
             .join(models.SousProjetFpack)\
             .distinct().count()
         
-        # Templates utilisés
         templates_used = db.query(models.FPack.id)\
             .join(models.SousProjetFpack)\
             .distinct().count()
@@ -452,7 +395,6 @@ async def get_export_stats(db: Session = Depends(get_db)):
         }
         
     except Exception as e:
-        logger.error(f"Erreur lors de la récupération des statistiques: {str(e)}")
         raise HTTPException(
             status_code=500,
             detail=f"Erreur lors de la récupération des statistiques: {str(e)}"
@@ -467,7 +409,6 @@ async def validate_export_request(
     Valide une demande d'export avant exécution
     """
     try:
-        logger.info(f"Validation request: {request_data}")
         
         if "fpack_ids" not in request_data:
             return {
@@ -495,20 +436,12 @@ async def validate_export_request(
             .filter(models.SousProjetFpack.id.in_(fpack_ids)).all()
         
         existing_ids = {fp.id for fp in existing_fpacks}
-        
-        print("\n\n\n\n\n\n")
-        print(existing_ids)
-        print("\n\n\n\n\n\n")
-                
-        logger.info(f"Instances F-Pack trouvées: {existing_ids}")
-        
         missing_ids = set(fpack_ids) - existing_ids
         
         warnings = []
         if missing_ids:
             warnings.append(f"Instances F-Pack non trouvées: {list(missing_ids)}")
         
-        # Vérification des sélections
         fpacks_with_selections = db.query(models.SousProjetFpack.id)\
             .filter(models.SousProjetFpack.id.in_(list(existing_ids)))\
             .join(models.ProjetSelection)\
@@ -533,7 +466,6 @@ async def validate_export_request(
         }
         
     except Exception as e:
-        logger.error(f"Erreur lors de la validation: {str(e)}")
         return {
             "valid": False,
             "errors": [f"Erreur de validation: {str(e)}"]

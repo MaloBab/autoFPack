@@ -21,7 +21,6 @@ interface FpackItem {
   [key: string]: any
 }
 
-// Props
 const props = defineProps<{
   step: number
   active: boolean
@@ -32,17 +31,15 @@ const props = defineProps<{
   mappedColumnsCount: number
   canExecuteImport: boolean
   isImporting: boolean
-  mappingConfig: Record<string, any> // Configuration JSON du mapping
+  mappingConfig: Record<string, any> 
 }>()
 
-// Emits
 const emit = defineEmits<{
   executeImport: [finalConfig: any]
   previousStep: []
   updateUnmatchedItem: [itemId: string, selectedMatch: any]
 }>()
 
-// Computed
 const totalUnresolvedItems = computed(() => {
   return props.unmatchedItems.filter(item => !item.selectedMatch).length
 })
@@ -50,25 +47,20 @@ const totalUnresolvedItems = computed(() => {
 const finalMappingConfig = computed(() => {
   if (!props.mappingConfig) return null
   
-  // Clone la configuration originale
   const finalConfig = JSON.parse(JSON.stringify(props.mappingConfig))
   
-  // Ajoute les mappings résolus manuellement
   props.unmatchedItems.forEach(item => {
     if (item.selectedMatch) {
       if (item.type === 'subproject') {
-        // Ajouter à subproject_columns
         if (!finalConfig.subproject_columns) {
           finalConfig.subproject_columns = {}
         }
         finalConfig.subproject_columns[item.column] = item.selectedMatch.nom
       } else if (item.type === 'group') {
-        // Ajouter aux groupes
         if (!finalConfig.groups) {
           finalConfig.groups = []
         }
         
-        // Chercher le groupe existant ou en créer un nouveau
         let existingGroup = finalConfig.groups.find((g: any) => g.group_name === item.selectedMatch.nom)
         if (!existingGroup) {
           existingGroup = {
@@ -78,7 +70,6 @@ const finalMappingConfig = computed(() => {
           finalConfig.groups.push(existingGroup)
         }
         
-        // Ajouter la colonne au groupe si elle n'y est pas déjà
         if (!existingGroup.columns.includes(item.column)) {
           existingGroup.columns.push(item.column)
         }
@@ -105,7 +96,6 @@ const mappingConfigSummary = computed(() => {
   }
 })
 
-// Fonctions
 const handleMatchSelection = (itemId: string, selectedMatch: any) => {
   emit('updateUnmatchedItem', itemId, selectedMatch)
 }

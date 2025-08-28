@@ -65,7 +65,6 @@ watch(() => props.show, (show) => {
       <div v-if="show" class="modal-overlay" @click="handleOverlayClick">
         <div class="modal-container" @click.stop>
           <div class="modal-content">
-            <!-- Header avec icône animée -->
             <div class="modal-header">
               <div class="header-content">
                 <div class="header-icon">
@@ -86,9 +85,7 @@ watch(() => props.show, (show) => {
               </button>
             </div>
 
-            <!-- Corps du modal avec formulaire élégant -->
             <form @submit.prevent="handleSubmit" class="modal-body">
-              <!-- Sélection FPack avec recherche -->
               <div class="form-section">
                 <label class="form-label">
                   <span class="label-icon">📦</span>
@@ -122,7 +119,6 @@ watch(() => props.show, (show) => {
                 </div>
               </div>
 
-              <!-- Champs de base avec design moderne -->
               <div class="form-section">
                 <div class="form-grid">
                   <div class="field-group">
@@ -159,7 +155,6 @@ watch(() => props.show, (show) => {
                 </div>
               </div>
 
-              <!-- Nouveaux champs de livraison -->
               <div class="form-section">
                 <h4 class="section-title">
                   <span class="section-icon">🚚</span>
@@ -250,8 +245,6 @@ watch(() => props.show, (show) => {
                   </div>
                 </div>
               </div>
-
-              <!-- Actions -->
               <div class="modal-actions">
                 <button type="button" @click="$emit('close')" class="btn btn-secondary">
                   <span class="btn-icon">↶</span>
@@ -284,7 +277,6 @@ watch(() => props.show, (show) => {
 </template>
 
 <style scoped>
-/* Transitions */
 .modal-fade-enter-active,
 .modal-fade-leave-active {
   transition: all 0.3s cubic-bezier(0.25, 0.8, 0.25, 1);
@@ -300,7 +292,6 @@ watch(() => props.show, (show) => {
   transform: scale(0.9) translateY(-50px);
 }
 
-/* Modal Structure */
 .modal-overlay {
   position: fixed;
   inset: 0;
@@ -329,7 +320,6 @@ watch(() => props.show, (show) => {
     0 0 0 1px rgba(255, 255, 255, 0.05);
 }
 
-/* Header */
 .modal-header {
   background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
   padding: 24px;
@@ -434,7 +424,6 @@ watch(() => props.show, (show) => {
   font-weight: 300;
 }
 
-/* Form Body */
 .modal-body {
   padding: 32px 24px;
   max-height: calc(90vh - 140px);
@@ -449,7 +438,6 @@ watch(() => props.show, (show) => {
   margin-bottom: 0;
 }
 
-/* Section Title */
 .section-title {
   display: flex;
   align-items: center;
@@ -466,7 +454,6 @@ watch(() => props.show, (show) => {
   font-size: 18px;
 }
 
-/* Form Labels */
 .form-label {
   display: flex;
   align-items: center;
@@ -486,7 +473,6 @@ watch(() => props.show, (show) => {
   font-size: 16px;
 }
 
-/* Grid Layout */
 .form-grid {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
@@ -497,7 +483,6 @@ watch(() => props.show, (show) => {
   width: 100%;
 }
 
-/* Select Field */
 .select-container {
   position: relative;
 }
@@ -527,7 +512,6 @@ watch(() => props.show, (show) => {
   background: rgba(16, 185, 129, 0.02);
 }
 
-/* Input Fields */
 .input-container {
   position: relative;
   width: 100%;
@@ -572,7 +556,6 @@ watch(() => props.show, (show) => {
   opacity: 0.3;
 }
 
-/* Warning */
 .no-fpacks-warning {
   display: flex;
   align-items: center;
@@ -602,7 +585,6 @@ watch(() => props.show, (show) => {
   font-size: 14px;
 }
 
-/* FPack Preview */
 .fpack-preview {
   background: rgba(102, 126, 234, 0.03);
   border: 1px solid rgba(102, 126, 234, 0.1);
@@ -667,7 +649,6 @@ watch(() => props.show, (show) => {
   font-size: 14px;
 }
 
-/* Actions */
 .modal-actions {
   display: flex;
   gap: 12px;

@@ -87,14 +87,12 @@ const getTypeLabel = (type) => {
           :class="['toast', `toast-${notification.type}`]"
           @click="removeNotification(notification.id)"
         >
-          <!-- Indicateur visuel et icône -->
           <div class="toast-indicator" :class="`indicator-${notification.type}`">
             <div class="toast-icon">
               <component :is="getIconComponent(notification.type)" />
             </div>
           </div>
 
-          <!-- Contenu du toast -->
           <div class="toast-content">
             <div class="toast-title">
               {{ getTypeLabel(notification.type) }}
@@ -104,7 +102,6 @@ const getTypeLabel = (type) => {
             </div>
           </div>
 
-          <!-- Barre de progression -->
           <div class="toast-progress" :class="`progress-${notification.type}`">
             <div class="progress-bar"></div>
           </div>
@@ -133,7 +130,6 @@ const getTypeLabel = (type) => {
   gap: 12px;
 }
 
-/* Toast Base */
 .toast {
   position: relative;
   background: white;
@@ -160,7 +156,6 @@ const getTypeLabel = (type) => {
     0 0 0 1px rgba(255, 255, 255, 0.1);
 }
 
-/* Types de toast */
 .toast-success {
   border-left-color: #10b981;
   background: rgba(255, 255, 255, 0.95);
@@ -181,7 +176,6 @@ const getTypeLabel = (type) => {
   background: rgba(255, 255, 255, 0.95);
 }
 
-/* Indicateur et icône */
 .toast-indicator {
   position: relative;
   flex-shrink: 0;

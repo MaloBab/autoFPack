@@ -1,8 +1,156 @@
+<script setup lang="ts">
+import { ref, computed } from 'vue'
+
+const props = defineProps<{
+  step: number
+  active: boolean
+  completed: boolean
+  visible: boolean
+  mappingConfig: Record<string, any>
+  previewColumns: string[]
+  mappedColumnsCount: number
+  uniqueProjectCount: number
+}>()
+
+const emit = defineEmits<{
+  mappingConfigured: [config: {
+    jsonConfig: any,
+    fileName: string,
+    fileSize: number
+  }]
+  previousStep: []
+}>()
+
+const selectedFile = ref<File | null>(null)
+const jsonContent = ref<any>(null)
+const fileInputRef = ref<HTMLInputElement>()
+const isLoading = ref(false)
+const error = ref<string>('')
+const isDragOver = ref(false)
+
+const canProceed = computed(() => {
+  return selectedFile.value && jsonContent.value && !error.value
+})
+
+const jsonInfo = computed(() => {
+  if (!jsonContent.value) return null
+  
+  const info = {
+    subprojectColumns: 0,
+    groups: 0,
+    totalMappings: 0,
+    name: null as string | null,
+    subprojectColumnsList: [] as string[],
+    groupsList: [] as string[]
+  }
+  
+  if (jsonContent.value.subproject_columns) {
+    info.subprojectColumns = Object.keys(jsonContent.value.subproject_columns).length
+    info.subprojectColumnsList = Object.keys(jsonContent.value.subproject_columns)
+  }
+  
+  if (jsonContent.value.groups && Array.isArray(jsonContent.value.groups)) {
+    info.groups = jsonContent.value.groups.length
+    info.groupsList = jsonContent.value.groups.map((group: any) => group.group_name || 'Groupe sans nom')
+  }
+  
+  info.totalMappings = info.subprojectColumns + info.groups
+  info.name = jsonContent.value.name || null
+  
+  return info
+})
+
+const processFile = async (file: File) => {
+  if (!file.name.toLowerCase().endsWith('.json')) {
+    error.value = 'Veuillez sélectionner un fichier JSON valide'
+    return
+  }
+  
+  selectedFile.value = file
+  isLoading.value = true
+  error.value = ''
+  
+  try {
+    const text = await file.text()
+    const parsed = JSON.parse(text)
+    
+    if (!parsed.subproject_columns && !parsed.groups) {
+      error.value = 'Le fichier JSON doit contenir au moins "subproject_columns" ou "groups"'
+      selectedFile.value = null
+      jsonContent.value = null
+      return
+    }
+    
+    jsonContent.value = parsed
+  } catch (e) {
+    error.value = 'Erreur lors de la lecture du fichier JSON. Vérifiez que le fichier est valide.'
+    selectedFile.value = null
+    jsonContent.value = null
+  } finally {
+    isLoading.value = false
+  }
+}
+
+const triggerFileSelect = () => {
+  fileInputRef.value?.click()
+}
+
+const handleFileSelect = async (event: Event) => {
+  const target = event.target as HTMLInputElement
+  const file = target.files?.[0]
+  
+  if (!file) return
+  
+  await processFile(file)
+}
+
+const handleDragOver = (event: DragEvent) => {
+  event.preventDefault()
+  isDragOver.value = true
+}
+
+const handleDragLeave = (event: DragEvent) => {
+  event.preventDefault()
+  isDragOver.value = false
+}
+
+const handleDrop = async (event: DragEvent) => {
+  event.preventDefault()
+  isDragOver.value = false
+  
+  const files = event.dataTransfer?.files
+  if (!files || files.length === 0) return
+  
+  const file = files[0]
+  await processFile(file)
+}
+
+const removeFile = () => {
+  selectedFile.value = null
+  jsonContent.value = null
+  error.value = ''
+  if (fileInputRef.value) {
+    fileInputRef.value.value = ''
+  }
+}
+
+const handleNext = () => {
+  if (canProceed.value && selectedFile.value) {
+    emit('mappingConfigured', {
+      jsonConfig: jsonContent.value,
+      fileName: selectedFile.value.name,
+      fileSize: selectedFile.value.size
+    })
+
+  }
+}
+</script>
+
 <template>
   <div class="step-container" :class="{ active, completed }">
     <div class="step-header">
       <div class="step-indicator">
-        <div class="step-number">{{ step }}</div>
+        <div class="step-number">{{ props.step }}</div>
         <div class="step-line"></div>
       </div>
       <div class="step-content-header">
@@ -11,8 +159,7 @@
       </div>
     </div>
     
-    <div class="step-body" v-show="visible">
-      <!-- Section de sélection de fichier -->
+    <div class="step-body" v-show="props.visible">
       <div class="file-selection-section">
         <h4 class="section-title">📁 Fichier de configuration JSON</h4>
         
@@ -62,8 +209,6 @@
           Chargement du fichier...
         </div>
       </div>
-
-      <!-- Informations extraites du JSON -->
       <div v-if="jsonInfo" class="json-info-section">
         <h4 class="section-title">ℹ️ Informations du fichier de mapping</h4>
         
@@ -123,164 +268,6 @@
     </div>
   </div>
 </template> 
-
-<script setup lang="ts">
-import { ref, computed } from 'vue'
-
-const props = defineProps<{
-  step: number
-  active: boolean
-  completed: boolean
-  visible: boolean
-  mappingConfig: Record<string, any>
-  previewColumns: string[]
-  mappedColumnsCount: number
-  uniqueProjectCount: number
-}>()
-
-const emit = defineEmits<{
-  mappingConfigured: [config: {
-    jsonConfig: any,
-    fileName: string,
-    fileSize: number
-  }]
-  previousStep: []
-}>()
-
-// État pour le fichier JSON
-const selectedFile = ref<File | null>(null)
-const jsonContent = ref<any>(null)
-const fileInputRef = ref<HTMLInputElement>()
-const isLoading = ref(false)
-const error = ref<string>('')
-const isDragOver = ref(false)
-
-// Computed pour vérifier si on peut passer à l'étape suivante
-const canProceed = computed(() => {
-  return selectedFile.value && jsonContent.value && !error.value
-})
-
-// Informations extraites du JSON
-const jsonInfo = computed(() => {
-  if (!jsonContent.value) return null
-  
-  const info = {
-    subprojectColumns: 0,
-    groups: 0,
-    totalMappings: 0,
-    name: null as string | null,
-    subprojectColumnsList: [] as string[],
-    groupsList: [] as string[]
-  }
-  
-  // Analyser la structure du JSON basée sur le format fourni
-  if (jsonContent.value.subproject_columns) {
-    info.subprojectColumns = Object.keys(jsonContent.value.subproject_columns).length
-    info.subprojectColumnsList = Object.keys(jsonContent.value.subproject_columns)
-  }
-  
-  if (jsonContent.value.groups && Array.isArray(jsonContent.value.groups)) {
-    info.groups = jsonContent.value.groups.length
-    info.groupsList = jsonContent.value.groups.map((group: any) => group.group_name || 'Groupe sans nom')
-  }
-  
-  info.totalMappings = info.subprojectColumns + info.groups
-  info.name = jsonContent.value.name || null
-  
-  return info
-})
-
-// Fonction pour traiter un fichier
-const processFile = async (file: File) => {
-  if (!file.name.toLowerCase().endsWith('.json')) {
-    error.value = 'Veuillez sélectionner un fichier JSON valide'
-    return
-  }
-  
-  selectedFile.value = file
-  isLoading.value = true
-  error.value = ''
-  
-  try {
-    const text = await file.text()
-    const parsed = JSON.parse(text)
-    
-    // Validation de la structure JSON
-    if (!parsed.subproject_columns && !parsed.groups) {
-      error.value = 'Le fichier JSON doit contenir au moins "subproject_columns" ou "groups"'
-      selectedFile.value = null
-      jsonContent.value = null
-      return
-    }
-    
-    jsonContent.value = parsed
-  } catch (e) {
-    error.value = 'Erreur lors de la lecture du fichier JSON. Vérifiez que le fichier est valide.'
-    selectedFile.value = null
-    jsonContent.value = null
-  } finally {
-    isLoading.value = false
-  }
-}
-
-// Fonction pour déclencher la sélection de fichier
-const triggerFileSelect = () => {
-  fileInputRef.value?.click()
-}
-
-// Fonction pour gérer la sélection du fichier
-const handleFileSelect = async (event: Event) => {
-  const target = event.target as HTMLInputElement
-  const file = target.files?.[0]
-  
-  if (!file) return
-  
-  await processFile(file)
-}
-
-// Fonctions pour le drag & drop
-const handleDragOver = (event: DragEvent) => {
-  event.preventDefault()
-  isDragOver.value = true
-}
-
-const handleDragLeave = (event: DragEvent) => {
-  event.preventDefault()
-  isDragOver.value = false
-}
-
-const handleDrop = async (event: DragEvent) => {
-  event.preventDefault()
-  isDragOver.value = false
-  
-  const files = event.dataTransfer?.files
-  if (!files || files.length === 0) return
-  
-  const file = files[0]
-  await processFile(file)
-}
-
-// Fonction pour supprimer le fichier sélectionné
-const removeFile = () => {
-  selectedFile.value = null
-  jsonContent.value = null
-  error.value = ''
-  if (fileInputRef.value) {
-    fileInputRef.value.value = ''
-  }
-}
-
-const handleNext = () => {
-  if (canProceed.value && selectedFile.value) {
-    emit('mappingConfigured', {
-      jsonConfig: jsonContent.value,
-      fileName: selectedFile.value.name,
-      fileSize: selectedFile.value.size
-    })
-
-  }
-}
-</script>
 
 <style scoped>
 .step-container {

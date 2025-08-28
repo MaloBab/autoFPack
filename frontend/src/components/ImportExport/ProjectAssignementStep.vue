@@ -48,7 +48,6 @@ const emit = defineEmits<{
 
 
 const onProjetGlobalChange = (fpack: FpackItem) => {
-  // Reset sous-projet when projet global changes
   fpack.selectedSousProjet = null
   emit('projetGlobalChange', fpack)
 }
@@ -66,7 +65,6 @@ const getAvailableSousProjets = (projetGlobalId: number | null) => {
 const getAvailableFPackTemplates = (projetGlobalId: number | null) => {
   if (!projetGlobalId) return []
   
-  // Get client ID from selected projet global
   const projet = props.projetsGlobaux.find(p => p.id === projetGlobalId)
   if (!projet) return []
   
@@ -104,7 +102,6 @@ const getSelectedClientId = (fpack: FpackItem): number | null => {
     </div>
     
     <div class="step-body" v-show="visible">
-      <!-- Aperçu des données -->
       <div v-if="previewData.length > 0" class="data-preview">
         <div class="preview-header">
           <h4>Aperçu des données</h4>
@@ -135,7 +132,6 @@ const getSelectedClientId = (fpack: FpackItem): number | null => {
         </div>
       </div>
 
-      <!-- Configuration des F-Packs -->
       <div class="fpack-configuration">
         <div class="config-header">
           <h4>Configuration des F-Packs</h4>
@@ -163,7 +159,6 @@ const getSelectedClientId = (fpack: FpackItem): number | null => {
             </div>
             
             <div class="config-selectors">
-              <!-- Projet Global -->
               <div class="selector-group">
                 <label class="selector-label">Projet Global</label>
                 <select 
@@ -181,7 +176,6 @@ const getSelectedClientId = (fpack: FpackItem): number | null => {
                 </select>
               </div>
               
-              <!-- Sous-projet -->
               <div class="selector-group">
                 <label class="selector-label">Sous-projet</label>
                 <select 
@@ -199,7 +193,6 @@ const getSelectedClientId = (fpack: FpackItem): number | null => {
                 </select>
               </div>
 
-              <!-- Template F-Pack -->
               <div class="selector-group">
                 <label class="selector-label">Template F-Pack</label>
                 <select 
@@ -219,7 +212,6 @@ const getSelectedClientId = (fpack: FpackItem): number | null => {
               </div>
             </div>
 
-            <!-- Status indicator -->
             <div class="status-indicator">
               <div class="status-dot" :class="{ 
                 'complete': fpack.selectedProjetGlobal && fpack.selectedSousProjet && fpack.selectedFPackTemplate,
@@ -233,7 +225,6 @@ const getSelectedClientId = (fpack: FpackItem): number | null => {
         </div>
       </div>
 
-      <!-- Progress summary -->
       <div class="progress-summary">
         <div class="progress-info">
           <span class="progress-text">

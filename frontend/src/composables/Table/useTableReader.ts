@@ -32,7 +32,7 @@ export function useTableReader(
   const isDeleting = ref(false)
   const isDuplicating = ref(false)
 
-  const baseUrl = props.apiUrl || 'http://localhost:8000'
+  const baseUrl = 'http://localhost:8000'
 
   const valueLabels = computed(() => {
     const labels: Record<string, Record<any, string>> = {}

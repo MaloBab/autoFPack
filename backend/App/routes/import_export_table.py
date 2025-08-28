@@ -8,11 +8,9 @@ from fastapi.responses import StreamingResponse # type: ignore
 from io import BytesIO
 import os
 from openpyxl import Workbook # type: ignore
-from openpyxl.styles import Font, Alignment, PatternFill # type: ignore
+from openpyxl.styles import Font, PatternFill # type: ignore
 from reportlab.lib.pagesizes import A4 # type: ignore
 from reportlab.platypus import SimpleDocTemplate, Table, TableStyle, Image, Paragraph, Spacer # type: ignore
-from reportlab.lib import colors # type: ignore
-from reportlab.lib.styles import getSampleStyleSheet # type: ignore
 import openpyxl # type: ignore
 from openpyxl.worksheet.datavalidation import DataValidation # type: ignore
 from openpyxl.utils import get_column_letter # type: ignore

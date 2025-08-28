@@ -1,10 +1,10 @@
 import importlib
 import pkgutil
-from fastapi import APIRouter, Depends, HTTPException 
-from sqlalchemy.orm import Session 
+from fastapi import APIRouter, Depends, HTTPException # type: ignore
+from sqlalchemy.orm import Session  # type: ignore
 from App.database import SessionLocal
 from App import models
-from sqlalchemy import inspect 
+from sqlalchemy import inspect  # type: ignore
 import os
 from App.routes import __path__ as routes_path
 
@@ -16,7 +16,6 @@ def get_db():
         yield db
     finally:
         db.close()
-
 
 @router.get("/table-columns/{table_name}", response_model=list[str])
 def get_table_columns(table_name: str, db: Session = Depends(get_db)):
@@ -48,16 +47,6 @@ def get_table_columns(table_name: str, db: Session = Depends(get_db)):
     columns = inspector.get_columns(actual_name)
     return [col["name"] for col in columns]
 
-for module_info in pkgutil.iter_modules(routes_path):
-    module_name = module_info.name
-    full_module_name = f"App.routes.{module_name}"
-    module = importlib.import_module(full_module_name)
-
-    if hasattr(module, "router"):
-        sub_router = getattr(module, "router")
-        router.include_router(sub_router)
-
-
 @router.get("/dashboard/stats")
 def dashboard_stats(db: Session = Depends(get_db)):
     return {
@@ -70,4 +59,11 @@ def dashboard_stats(db: Session = Depends(get_db)):
         "projets": db.query(models.SousProjet).count(),
     }
 
+for module_info in pkgutil.iter_modules(routes_path):
+    module_name = module_info.name
+    full_module_name = f"App.routes.{module_name}"
+    module = importlib.import_module(full_module_name)
 
+    if hasattr(module, "router"):
+        sub_router = getattr(module, "router")
+        router.include_router(sub_router)

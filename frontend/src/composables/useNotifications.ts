@@ -1,4 +1,3 @@
-// composables/useNotifications.ts
 import { ref } from 'vue'
 
 interface Notification {
@@ -16,7 +15,6 @@ export function useNotifications() {
     const id = ++notificationId
     notifications.value.push({ id, type, message })
     
-    // Auto-remove after 5 seconds
     setTimeout(() => {
       removeNotification(id)
     }, 5000)

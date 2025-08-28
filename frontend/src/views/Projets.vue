@@ -3,7 +3,6 @@ import { ref, onMounted, computed, reactive } from 'vue'
 import axios from 'axios'
 import { useRouter } from 'vue-router'
 
-// Composants
 import ProjetHeader from '../components/Projets/ProjetHeader.vue'
 import NavigationTabs from '../components/Projets/NavigationTabs.vue'
 import StatsView from '../components/Projets/StatsView.vue'
@@ -20,7 +19,6 @@ const api = axios.create({
   baseURL: 'http://localhost:8000'
 })
 
-// États réactifs
 const activeTab = ref('stats')
 const loading = reactive({
   stats: false,
@@ -28,13 +26,11 @@ const loading = reactive({
   saving: false
 })
 
-// Données
 const stats = ref(null)
 const projetsGlobaux = ref([])
 const clients = ref([])
 const fpacks = ref([])
 
-// États des modals
 const showProjectModal = ref(false)
 const showSubprojectModal = ref(false)
 const showFpackModal = ref(false)
@@ -43,10 +39,8 @@ const editingSubproject = ref(null)
 const selectedProjectForSubproject = ref(null)
 const selectedSubprojectForFpack = ref(null)
 
-// Système de notifications
 const notifications = ref([])
 
-// Computed
 const availableFpacks = computed(() => {
   if (!selectedSubprojectForFpack.value || !fpacks.value.length) return []
   
@@ -65,7 +59,6 @@ const clientForAvailableFpacks = computed(() => {
    
 });
 
-// Méthodes API
 const fetchStats = async () => {
   try {
     loading.stats = true
@@ -108,7 +101,6 @@ const fetchFpacks = async () => {
   }
 }
 
-// Gestionnaires d'événements
 const handleCreateProject = () => {
   editingProject.value = null
   showProjectModal.value = true
@@ -223,7 +215,6 @@ const handleFpackSubmit = async (fpackData) => {
 }
 
 const remplirFpack = (sousProjetFpackId) => {
-  // Validation du paramètre
   if (!sousProjetFpackId) {
     showNotification('ID de l\'association sous-projet/FPack manquant', 'error')
     return
@@ -237,7 +228,6 @@ const remplirFpack = (sousProjetFpackId) => {
   })
 }
 
-// Gestion des modals
 const closeProjectModal = () => {
   showProjectModal.value = false
   editingProject.value = null
@@ -254,7 +244,6 @@ const closeFpackModal = () => {
   selectedSubprojectForFpack.value = null
 }
 
-// Système de notifications
 const showNotification = (message, type = 'info') => {
   const id = Date.now()
   notifications.value.push({ id, message, type })
@@ -266,7 +255,6 @@ const removeNotification = (id) => {
   if (index > -1) notifications.value.splice(index, 1)
 }
 
-// Initialisation
 onMounted(async () => {
   await Promise.all([
     fetchClients(),
@@ -279,14 +267,12 @@ onMounted(async () => {
 
 <template>
   <div class="project-manager">
-    <!-- Header dynamique avec particules -->
     <ProjetHeader 
       :stats="stats" 
       :loading="loading.stats" 
       @refresh="fetchStats"
     />
 
-    <!-- Navigation fluide -->
     <NavigationTabs 
       :active-tab="activeTab" 
       @tab-change="activeTab = $event"
@@ -322,7 +308,6 @@ onMounted(async () => {
       </Transition>
     </main>
 
-    <!-- Modals avec animations -->
     <ProjectModal
       :show="showProjectModal"
       :project="editingProject"
@@ -351,12 +336,10 @@ onMounted(async () => {
       @close="closeFpackModal"
     />
 
-    <!-- Toast notifications -->
     <NotificationToast
       :notifications="notifications"
     />
 
-    <!-- Loading overlay global -->
     <LoadingOverlay :show="Object.values(loading).some(Boolean)" />
   </div>
 </template>
@@ -379,7 +362,6 @@ onMounted(async () => {
   min-height: 0;
 }
 
-/* Transitions */
 .slide-fade-enter-active,
 .slide-fade-leave-active {
   transition: all 0.3s cubic-bezier(0.25, 0.8, 0.25, 1);

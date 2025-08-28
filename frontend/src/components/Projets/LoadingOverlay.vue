@@ -23,7 +23,6 @@ const props = defineProps({
 
 const loadingText = ref('Chargement en cours')
 
-// Style des particules
 const getParticleStyle = (index) => {
   const angle = (index * 30) - 90
   const distance = 80 + (index % 3) * 20
@@ -58,19 +57,13 @@ onMounted(() => {
               <div class="ring ring-2"></div>
               <div class="ring ring-3"></div>
             </div>
-            
-            <!-- Icône centrale -->
             <div class="spinner-icon">
               ⏳
             </div>
-            
-            <!-- Particules flottantes -->
             <div class="particles">
               <div v-for="i in 12" :key="i" class="particle" :style="getParticleStyle(i)"></div>
             </div>
           </div>
-          
-          <!-- Texte de chargement -->
           <div class="loading-content">
             <h3 class="loading-title">
               <span class="loading-text">{{ loadingText }}</span>
@@ -81,8 +74,6 @@ onMounted(() => {
               </span>
             </h3>
           </div>
-          
-          <!-- Barre de progression (optionnelle) -->
           <div v-if="showProgress" class="progress-container">
             <div class="progress-bar">
               <div class="progress-fill" :style="`width: ${progress}%`"></div>
@@ -98,7 +89,6 @@ onMounted(() => {
 
 
 <style scoped>
-/* Overlay principal */
 .loading-overlay {
   position: fixed;
   inset: 0;
@@ -117,7 +107,6 @@ onMounted(() => {
   -webkit-backdrop-filter: blur(12px);
 }
 
-/* Animations d'entrée/sortie */
 .overlay-fade-enter-active,
 .overlay-fade-leave-active {
   transition: all 0.4s cubic-bezier(0.25, 0.8, 0.25, 1);
@@ -133,7 +122,6 @@ onMounted(() => {
   transform: scale(0.8) translateY(40px);
 }
 
-/* Conteneur principal */
 .loading-container {
   position: relative;
   display: flex;
@@ -151,7 +139,6 @@ onMounted(() => {
   z-index: 10;
 }
 
-/* Spinner principal */
 .loading-spinner-container {
   position: relative;
   width: 120px;
@@ -161,7 +148,6 @@ onMounted(() => {
   justify-content: center;
 }
 
-/* Anneaux animés */
 .spinner-rings {
   position: absolute;
   width: 100%;
@@ -208,7 +194,6 @@ onMounted(() => {
   to { transform: rotate(360deg); }
 }
 
-/* Icône centrale */
 .spinner-icon {
   font-size: 2.5rem;
   position: relative;
@@ -224,7 +209,6 @@ onMounted(() => {
 }
 
 
-/* Particules */
 .particles {
   position: absolute;
   width: 100%;
@@ -259,7 +243,6 @@ onMounted(() => {
   }
 }
 
-/* Contenu texte */
 .loading-content {
   text-align: center;
   max-width: 300px;
@@ -310,8 +293,6 @@ onMounted(() => {
   }
 }
 
-
-/* Barre de progression */
 .progress-container {
   width: 100%;
   max-width: 280px;

@@ -6,8 +6,6 @@ import ExportSection from '../components/ImportExport/ExportSection.vue'
 import NotificationContainer from '../components/ImportExport/NotificationContainer.vue'
 import { useNotifications } from '../composables/useNotifications'
 
-// Types
-
 interface Selection {
   groupe_id: number
   groupe_nom: string
@@ -43,16 +41,13 @@ interface SousProjet {
   fpacks?: SousProjetFpack[]
 }
 
-// État global
 const activeTab = ref<'import' | 'export'>('import')
 const projetsGlobaux = ref<ProjetGlobal[]>([])
 const clients = ref<any[]>([])
 const fpackTemplates = ref<any[]>([]) 
 
-// Composable pour les notifications
 const { notifications, addNotification, removeNotification, getNotificationIcon } = useNotifications()
 
-// Props for the step-based ImportSection component
 const importProps = ref({
   step: 1,
   active: true,
@@ -64,7 +59,6 @@ const importProps = ref({
   allFPacksConfigured: false
 })
 
-// Méthodes
 const loadData = async () => {
   try {
     const response = await axios.get('http://localhost:8000/projets_globaux')
@@ -83,7 +77,6 @@ const loadData = async () => {
 }
 
 
-// Lifecycle
 onMounted(async () => {
   await loadData()
 })
@@ -91,7 +84,6 @@ onMounted(async () => {
 
 <template>
   <div class="project-import-export">
-    <!-- Header avec onglets -->
     <div class="header">
       <div class="header-content">
         <div class="title-section">
@@ -118,7 +110,6 @@ onMounted(async () => {
       </div>
     </div>
 
-    <!-- Sections -->
     <ImportSection 
       v-if="activeTab === 'import'"
       :step="importProps.step"

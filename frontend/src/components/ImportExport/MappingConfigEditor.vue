@@ -12,8 +12,6 @@ export default {
   },
   mounted() {
     this.createNewMapping()
-    
-    // Load dark mode preference
     const darkMode = localStorage.getItem('darkMode') === 'true'
     this.isDarkMode = darkMode
   },
@@ -136,7 +134,6 @@ export default {
 
 <template>
   <div class="mapping-editor" :class="{ 'dark-mode': isDarkMode }">
-    <!-- Header simplifié -->
     <div class="header">
       <div class="title-section">
         <h1 class="main-title">📝 Éditeur de Mapping F-Pack</h1>
@@ -169,12 +166,8 @@ export default {
         </button>
       </div>
     </div>
-
-    <!-- Content avec animation simple -->
     <transition name="fade" mode="out-in">
       <div class="mapping-content" v-if="mappingData" key="content">
-        
-        <!-- Configuration générale -->
         <div class="section">
           <h3 class="section-title">🎯 Configuration générale</h3>
           <div class="form-group">
@@ -187,8 +180,6 @@ export default {
             >
           </div>
         </div>
-
-        <!-- Colonnes système -->
         <div class="section">
           <h3 class="section-title">🔧 Colonnes Sous-projet</h3>
           <div class="subproroject-columns">
@@ -207,8 +198,6 @@ export default {
             </div>
           </div>
         </div>
-
-        <!-- Groupes -->
         <div class="section">
           <div class="section-header">
             <h3 class="section-title">👥 Groupes</h3>
@@ -255,8 +244,6 @@ export default {
             </button>
           </div>
         </div>
-
-        <!-- Prévisualisation JSON -->
         <div class="section">
           <div class="section-header">
             <h3 class="section-title">👁️ Prévisualisation JSON</h3>
@@ -275,8 +262,6 @@ export default {
         </div>
       </div>
     </transition>
-
-    <!-- Toast notifications simples -->
     <transition-group name="toast" tag="div" class="toast-container">
       <div 
         v-for="toast in toasts" 
@@ -307,8 +292,6 @@ export default {
   background: #1a1a1a;
   color: #e0e0e0;
 }
-
-/* Mode Toggle */
 .mode-toggle {
   border: none;
   border-radius: 60%;
@@ -333,7 +316,6 @@ export default {
   outline: none;
 }
 
-/* Header */
 .header {
   display: flex;
   justify-content: space-between;
@@ -369,7 +351,6 @@ export default {
   gap: 10px;
 }
 
-/* Buttons */
 .btn {
   padding: 12px 20px;
   border: none;
@@ -402,7 +383,6 @@ export default {
   color: white;
 }
 
-/* Sections */
 .section {
   margin-bottom: 25px;
   background: white;
@@ -453,7 +433,6 @@ export default {
   font-weight: 600;
 }
 
-/* Form Elements */
 .form-group {
   margin-bottom: 20px;
 }
@@ -492,7 +471,6 @@ export default {
   box-shadow: 0 0 0 3px rgba(52, 152, 219, 0.1);
 }
 
-/* Subproroject Columns */
 .subproroject-columns {
   display: flex;
   flex-direction: column;
@@ -522,7 +500,6 @@ export default {
   color: #bdc3c7;
 }
 
-/* Groups */
 .groups-container {
   position: relative;
 }
@@ -626,7 +603,6 @@ export default {
   border-style: solid;
 }
 
-/* JSON Preview */
 .json-preview {
   background: #2d3748;
   border-radius: 8px;
@@ -665,7 +641,6 @@ export default {
   color: white;
 }
 
-/* Toast Notifications */
 .toast-container {
   position: fixed;
   top: 20px;
@@ -703,7 +678,6 @@ export default {
   color: #ecf0f1;
 }
 
-/* Animations */
 .fade-enter-active, .fade-leave-active {
   transition: all 0.3s ease;
 }

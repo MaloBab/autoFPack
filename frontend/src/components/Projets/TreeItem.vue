@@ -27,13 +27,11 @@ const emit = defineEmits([
 const showActions = ref(false)
 const actionsDropdown = ref(null)
 
-// Computed
 const hasChildren = computed(() => {
   if (props.item.type === 'project') {
     return props.item.data.sous_projets && props.item.data.sous_projets.length > 0
   }
   if (props.item.type === 'subproject') {
-    // Vérifier le nouveau format avec tableau fpacks
     return props.item.data.fpacks && Array.isArray(props.item.data.fpacks) && props.item.data.fpacks.length > 0
   }
   return false
@@ -69,24 +67,19 @@ const progressValue = computed(() => {
   if (props.item.type === 'project') {
     const sousProjects = props.item.data.sous_projets
     if (!sousProjects || !sousProjects.length) return 0
-    
-    // Calcul de la progression moyenne de tous les sous-projets
     let totalProgress = 0
     
     sousProjects.forEach(sousProject => {
       if (sousProject.complet) {
-        // Si le sous-projet est marqué comme complet, il vaut 100%
         totalProgress += 100
       } else {
-        // Sinon, calculer sa progression basée sur les groupes/sélections
         const total = sousProject.nb_groupes_attendus || 1
         const current = sousProject.nb_selections || 0
         const subProgress = Math.round((current / total) * 100)
-        totalProgress += Math.min(subProgress, 100) // Plafonner à 100%
+        totalProgress += Math.min(subProgress, 100)
       }
     })
     
-    // Moyenne de la progression de tous les sous-projets
     return Math.round(totalProgress / sousProjects.length)
   }
   
@@ -148,7 +141,6 @@ const statusClass = computed(() => {
   return 'pending'
 })
 
-// Methods
 const handleItemClick = () => {
   if (hasChildren.value) {
     emit('toggle-expand', props.item.uniqueId)
@@ -273,7 +265,6 @@ onUnmounted(() => {
     </div>
       </div>
 
-      <!-- Informations principales -->
       <div class="item-info" @click="handleItemClick">
         <div class="primary-info">
           <h3 class="item-title">{{ itemTitle }}</h3>
@@ -281,7 +272,6 @@ onUnmounted(() => {
         </div>
 
         <div class="secondary-info">
-          <!-- Badges et métadonnées -->
           <div class="item-badges">
             <span v-if="item.type === 'project'" class="badge badge-client">
               <svg class="badge-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor">
@@ -313,7 +303,6 @@ onUnmounted(() => {
               {{ item.data.fpacks.length }} FPacks
             </span>
 
-            <!-- Badges FPack existants -->
             <span v-if="item.type === 'fpack' && item.data.FPack_number" class="badge badge-number">
               # {{ item.data.FPack_number }}
             </span>
@@ -326,7 +315,6 @@ onUnmounted(() => {
               {{ item.data.Robot_Location_Code }}
             </span>
 
-            <!-- Nouveaux badges FPack -->
             <span v-if="item.type === 'fpack'" class="badge badge-contractor">
               <svg class="badge-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor">
                 <path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/>
@@ -371,7 +359,6 @@ onUnmounted(() => {
             </span>
           </div>
 
-          <!-- Indicateur de progression -->
           <div v-if="item.type !== 'fpack' || (item.type === 'fpack' && (item.data.nb_groupes_attendus > 0))" class="progress-indicator">
             <div class="progress-ring" :class="progressClass">
               <svg viewBox="0 0 36 36">
@@ -391,7 +378,6 @@ onUnmounted(() => {
         </div>
       </div>
 
-      <!-- Actions rapides -->
       <div class="item-actions" @click.stop>
         <div class="actions-dropdown" ref="actionsDropdown">
           <button 
@@ -404,7 +390,6 @@ onUnmounted(() => {
 
           <Transition name="actions-slide">
             <div v-if="showActions" class="actions-menu">
-              <!-- Actions Projet -->
               <template v-if="item.type === 'project'">
                 <button @click="handleEdit" class="action-item action-edit">
                   <svg viewBox="0 0 24 24" fill="none" stroke="currentColor">
@@ -433,7 +418,6 @@ onUnmounted(() => {
                 </button>
               </template>
 
-              <!-- Actions Sous-projet -->
               <template v-else-if="item.type === 'subproject'">
                 <button @click="handleEdit" class="action-item action-edit">
                   <svg viewBox="0 0 24 24" fill="none" stroke="currentColor">
@@ -461,7 +445,6 @@ onUnmounted(() => {
                 </button>
               </template>
 
-              <!-- Actions FPack -->
               <template v-else-if="item.type === 'fpack'">
                 <button @click="handleCompleteFpack" class="action-item action-complete">
                   <svg viewBox="0 0 24 24" fill="none" stroke="currentColor">
@@ -483,7 +466,6 @@ onUnmounted(() => {
         </div>
       </div>
 
-      <!-- Statut visuel -->
       <div class="status-indicator">
         <div :class="['status-dot', statusClass]">
           <svg v-if="isComplete" class="status-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor">
@@ -518,7 +500,6 @@ onUnmounted(() => {
   background: rgba(14, 165, 233, 0.02);
 }
 
-/* Densité */
 .tree-item--compact .tree-content {
   min-height: 60px;
   padding: 8px 16px;
@@ -534,7 +515,6 @@ onUnmounted(() => {
   padding: 16px 24px;
 }
 
-/* Ligne de connexion */
 .tree-line {
   position: absolute;
   left: 0;
@@ -554,7 +534,6 @@ onUnmounted(() => {
   background: linear-gradient(to bottom, #8390a3, #526072);
 }
 
-/* Contenu */
 .tree-content {
   display: flex;
   align-items: center;
@@ -593,7 +572,6 @@ onUnmounted(() => {
   background: linear-gradient(135deg, #3be3f6, #5ca4f6);
 }
 
-/* Icônes */
 .item-icon {
   flex-shrink: 0;
 }
@@ -678,7 +656,6 @@ onUnmounted(() => {
   height: 16px;
 }
 
-/* Informations */
 .item-info {
   flex: 1;
   display: flex;
@@ -736,7 +713,6 @@ onUnmounted(() => {
   gap: 16px;
 }
 
-/* Badges */
 .item-badges {
   display: flex;
   gap: 8px;
@@ -813,7 +789,6 @@ onUnmounted(() => {
   border: 1px solid rgba(99, 102, 241, 0.2);
 }
 
-/* Indicateur de progression */
 .progress-indicator {
   position: relative;
 }
@@ -891,7 +866,6 @@ onUnmounted(() => {
   font-size: 0.8rem;
 }
 
-/* Actions */
 .item-actions {
   flex-shrink: 0;
   position: relative;
@@ -996,7 +970,6 @@ onUnmounted(() => {
   margin: 4px 0;
 }
 
-/* Statut */
 .status-indicator {
   flex-shrink: 0;
 }
@@ -1034,7 +1007,6 @@ onUnmounted(() => {
   stroke-width: 2.5;
 }
 
-/* Transitions */
 .actions-slide-enter-active,
 .actions-slide-leave-active {
   transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);

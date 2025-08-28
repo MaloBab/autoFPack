@@ -8,17 +8,13 @@ const props = defineProps({
 })
 
 
-// Animation du logo
 const logoAnimated = ref(false)
 const triggerLogoAnimation = () => {
   logoAnimated.value = true
   setTimeout(() => logoAnimated.value = false, 600)
 }
-
-// Titre animé
 const titleWords = ['Gestionnaire', 'de', 'Projets']
 
-// Particules
 const particles = ref([])
 const createParticles = () => {
   particles.value = Array.from({ length: 20 }, (_, i) => ({
@@ -32,7 +28,6 @@ const createParticles = () => {
   }))
 }
 
-// Stats formatées
 const displayStats = computed(() => {
   if (!props.stats) return []
   
@@ -65,7 +60,6 @@ const displayStats = computed(() => {
   ]
 })
 
-// Animation des stats
 const animateStat = (key) => {
   const stat = displayStats.value.find(s => s.key === key)
   if (stat) {
@@ -82,7 +76,6 @@ onMounted(() => {
 
 <template>
   <header class="header-section">
-    <!-- Particules d'arrière-plan -->
     <div class="particles-container">
       <div 
         v-for="particle in particles" 
@@ -92,9 +85,7 @@ onMounted(() => {
       ></div>
     </div>
 
-    <!-- Contenu principal -->
     <div class="header-content">
-      <!-- Logo et titre avec animation -->
       <div class="brand-section">        
         <div class="title-section">
           <h1 class="main-title">
@@ -105,7 +96,6 @@ onMounted(() => {
         </div>
       </div>
 
-      <!-- Statistiques animées -->
       <div class="stats-showcase" v-if="stats">
         <div class="stats-grid">
           <div 
@@ -148,7 +138,6 @@ onMounted(() => {
   box-shadow: 0 25px 50px rgba(0,0,0,0.1);
 }
 
-/* Particules */
 .particles-container {
   position: absolute;
   inset: 0;
@@ -180,7 +169,6 @@ onMounted(() => {
   }
 }
 
-/* Header content */
 .header-content {
   position: relative;
   z-index: 2;
@@ -191,7 +179,6 @@ onMounted(() => {
   flex-wrap: wrap;
 }
 
-/* Brand section */
 .brand-section {
   display: flex;
   align-items: center;
@@ -236,7 +223,6 @@ onMounted(() => {
   }
 }
 
-/* Stats showcase */
 .stats-showcase {
   flex: 1;
   max-width: 600px;
@@ -327,10 +313,8 @@ onMounted(() => {
   
 }
 
-
 @keyframes spin {
   from { transform: rotate(0deg); }
   to { transform: rotate(360deg); }
 }
-
 </style>

@@ -1,24 +1,16 @@
 import logging
-from openpyxl import Workbook
-from openpyxl.styles import Alignment, Font, PatternFill
-from openpyxl.worksheet.datavalidation import DataValidation
-from openpyxl.utils import get_column_letter
-from sqlalchemy.orm import Session
+from openpyxl import Workbook # type: ignore
+from openpyxl.styles import Alignment, Font, PatternFill # type: ignore
+from openpyxl.worksheet.datavalidation import DataValidation # type: ignore
+from openpyxl.utils import get_column_letter  # type: ignore
+from sqlalchemy.orm import Session # type: ignore
 from App import models
 
-# === Configuration du logger ===
-logger = logging.getLogger("fpack_export")
-logger.setLevel(logging.DEBUG)
 
 file_handler = logging.FileHandler("export_fpack.log", mode="w", encoding="utf-8")
 formatter = logging.Formatter('%(asctime)s - %(levelname)s - %(message)s')
 file_handler.setFormatter(formatter)
 
-if not logger.hasHandlers():
-    logger.addHandler(file_handler)
-
-
-# === Utilitaire pour récupérer le nom lisible d’un item ===
 def get_item_label(type_: str, ref_id: int, db: Session) -> str:
     try:
         if type_ == "produit":
@@ -33,11 +25,8 @@ def get_item_label(type_: str, ref_id: int, db: Session) -> str:
         else:
             return f"{type_} {ref_id}"
     except Exception as e:
-        logger.error(f"[ERREUR get_item_label] type={type_}, ref_id={ref_id} → {e}")
         return f"{type_} {ref_id}"
 
-
-# === Fonction interne d’export vers un onglet ===
 def export_fpack_to_sheet(fpack_id: int, db: Session, ws):
     fpack = db.query(models.FPack).filter(models.FPack.id == fpack_id).first()
     ws.title = f"{fpack.nom[:31]} - {fpack.fpack_abbr}"
@@ -119,16 +108,12 @@ def export_fpack_to_sheet(fpack_id: int, db: Session, ws):
 
     ws.freeze_panes = "A6"
 
-
-# === Export d'une seule FPack (pour export individuel, bouton) ===
 def export_fpack_config(fpack_id: int, db: Session) -> Workbook:
     wb = Workbook()
     ws = wb.active
     export_fpack_to_sheet(fpack_id, db, ws)
     return wb
 
-
-# === Export de toutes les FPack dans un seul fichier ===
 def export_all_fpacks(db: Session) -> Workbook:
     wb = Workbook()
     wb.remove(wb.active)
@@ -137,6 +122,4 @@ def export_all_fpacks(db: Session) -> Workbook:
     for fpack in fpacks:
         ws = wb.create_sheet()
         export_fpack_to_sheet(fpack.id, db, ws)
-
-    logger.info(f"Export multiple terminé : {len(fpacks)} FPack dans un seul fichier.")
     return wb

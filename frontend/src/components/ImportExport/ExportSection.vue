@@ -1,8 +1,7 @@
 <script setup lang="ts">
-import { ref, computed, onMounted, watch } from 'vue'
+import { ref, computed, watch } from 'vue'
 import axios from 'axios'
 
-// Types
 interface Client {
   id: number
   nom: string
@@ -55,34 +54,28 @@ interface ExportValidationResponse {
   }
 }
 
-// Props
 const props = defineProps<{
   projetsGlobaux: ProjetGlobal[],
   clients: Client[]
 }>()
 
 
-// Emits
 const emit = defineEmits<{
   'add-notification': [type: 'success' | 'warning' | 'error' | 'info', message: string]
 }>()
 
-// État local
 const loading = ref(false)
 const isExporting = ref(false)
 const isValidating = ref(false)
 const selectedClientFilter = ref<number | string>('')
 const exportValidation = ref<ExportValidationResponse | null>(null)
 
-// États de sélection
 const selectedFpacks = ref(new Set<number>())
 const expandedProjets = ref(new Set<number>())
 const expandedSousProjets = ref(new Set<number>())
 
-// Configuration API
 const API_BASE_URL = 'http://localhost:8000'
 
-// Computed
 const filteredProjets = computed(() => {
   if (!selectedClientFilter.value) {
     return props.projetsGlobaux
@@ -94,7 +87,6 @@ const totalSelectedFpacks = computed(() => {
   return selectedFpacks.value.size
 })
 
-// Méthodes utilitaires
 const getClientName = (clientId: number): string => {
   const client = props.clients.find(c => c.id === clientId)
   return client ? client.nom : `Client ${clientId}`
@@ -104,7 +96,6 @@ const getTotalFpacksForProjet = (projet: ProjetGlobal): number => {
   return projet.sous_projets?.reduce((total, sp) => total + (sp.fpacks?.length || 0), 0) || 0
 }
 
-// Méthodes de sélection - Projets
 const isProjetSelected = (projetId: number): boolean => {
   const projet = props.projetsGlobaux.find(p => p.id === projetId)
   if (!projet?.sous_projets) return false
@@ -137,7 +128,6 @@ const toggleProjetSelection = (projetId: number) => {
   }
 }
 
-// Méthodes de sélection - Sous-projets
 const isSousProjetSelected = (sousProjetId: number): boolean => {
   const sousProjet = findSousProjet(sousProjetId)
   if (!sousProjet?.fpacks) return false
@@ -170,7 +160,6 @@ const toggleSousProjetSelection = (sousProjetId: number) => {
   }
 }
 
-// Méthodes de sélection - F-Packs
 const toggleFpackSelection = (fpackId: number) => {
   if (selectedFpacks.value.has(fpackId)) {
     selectedFpacks.value.delete(fpackId)
@@ -179,7 +168,6 @@ const toggleFpackSelection = (fpackId: number) => {
   }
 }
 
-// Méthodes d'expansion/contraction
 const toggleProjet = (projetId: number) => {
   if (expandedProjets.value.has(projetId)) {
     expandedProjets.value.delete(projetId)
@@ -196,7 +184,6 @@ const toggleSousProjet = (sousProjetId: number) => {
   }
 }
 
-// Méthodes de contrôle globales
 const selectAll = () => {
   const allFpackIds = getAllFpackIdsFromProjets(filteredProjets.value)
   allFpackIds.forEach(id => selectedFpacks.value.add(id))
@@ -207,7 +194,6 @@ const deselectAll = () => {
   exportValidation.value = null
 }
 
-// Méthodes utilitaires
 const getAllFpackIds = (projet: ProjetGlobal): number[] => {
   const ids: number[] = []
   projet.sous_projets?.forEach(sp => {
@@ -256,7 +242,6 @@ const findProjetByFpackId = (fpackId: number): ProjetGlobal | undefined => {
   return undefined
 }
 
-// Nouvelles méthodes pour l'intégration backend
 const validateExportRequest = async (): Promise<boolean> => {
   if (selectedFpacks.value.size === 0) {
     emit('add-notification', 'warning', 'Aucun F-Pack sélectionné pour la validation')
@@ -271,7 +256,6 @@ const validateExportRequest = async (): Promise<boolean> => {
     
     exportValidation.value = response.data
     
-    // Affichage des messages de validation
     if (response.data.errors.length > 0) {
       response.data.errors.forEach((error: string) => {
         emit('add-notification', 'error', error)
@@ -304,14 +288,12 @@ const validateExportRequest = async (): Promise<boolean> => {
   }
 }
 
-// Export avec validation intégrée
 const executeExport = async () => {
   if (selectedFpacks.value.size === 0) {
     emit('add-notification', 'warning', 'Aucun F-Pack sélectionné pour l\'export')
     return
   }
   
-  // Validation avant export si pas déjà fait
   if (!exportValidation.value) {
     const isValid = await validateExportRequest()
     if (!isValid) {
@@ -325,10 +307,9 @@ const executeExport = async () => {
       fpack_ids: Array.from(selectedFpacks.value)
     }, {
       responseType: 'blob',
-      timeout: 300000 // 5 minutes timeout pour les gros exports
+      timeout: 300000 
     })
     
-    // Extraction du nom de fichier depuis les en-têtes si disponible
     const contentDisposition = response.headers['content-disposition']
     let filename = `fpack-matrix-export-${new Date().toISOString().slice(0, 10)}.xlsx`
     
@@ -339,7 +320,6 @@ const executeExport = async () => {
       }
     }
     
-    // Téléchargement du fichier
     const blob = new Blob([response.data], { 
       type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' 
     })
@@ -352,7 +332,6 @@ const executeExport = async () => {
     window.URL.revokeObjectURL(url)
     document.body.removeChild(a)
     
-    // Message de succès avec détails
     const validationSummary = exportValidation.value?.summary
     const successMessage = validationSummary 
       ? `Export réalisé avec succès: ${validationSummary.fpacks_with_data} F-Packs exportés`
@@ -366,7 +345,6 @@ const executeExport = async () => {
     let errorMessage = 'Erreur lors de l\'export'
     if (error.response?.data) {
       try {
-        // Tentative de lecture du message d'erreur depuis le blob
         const errorText = await error.response.data.text()
         const errorData = JSON.parse(errorText)
         errorMessage = errorData.detail || errorMessage
@@ -381,7 +359,6 @@ const executeExport = async () => {
   }
 }
 
-// Méthode pour prévisualiser les données d'un F-Pack
 const previewFpackData = async (fpackId: number) => {
   try {
     const response = await axios.get(`${API_BASE_URL}/export/fpack-matrix/preview/${fpackId}`)
@@ -393,29 +370,15 @@ const previewFpackData = async (fpackId: number) => {
   }
 }
 
-// Méthode pour récupérer les statistiques d'export
-const loadExportStats = async () => {
-  try {
-    const response = await axios.get(`${API_BASE_URL}/export/fpack-matrix/stats`)
-    return response.data.stats
-  } catch (error: any) {
-    console.error('Erreur lors du chargement des statistiques:', error)
-    return null
-  }
-}
-
-// Surveillance des changements avec réinitialisation de la validation
 watch(selectedClientFilter, () => {
   selectedFpacks.value.clear()
   exportValidation.value = null
 })
 
 watch(selectedFpacks, () => {
-  // Réinitialiser la validation si la sélection change
   exportValidation.value = null
 }, { deep: true })
 
-// Gestion des erreurs d'axios globales
 axios.interceptors.response.use(
   response => response,
   error => {
@@ -431,7 +394,6 @@ axios.interceptors.response.use(
 
 <template>
   <div class="export-container">
-    <!-- En-tête avec titre et statistiques -->
     <div class="export-header">
       <div class="header-content">
         <div class="title-section">
@@ -459,7 +421,6 @@ axios.interceptors.response.use(
       </div>
     </div>
 
-    <!-- Contrôles de sélection -->
     <div class="selection-controls">
       <div class="control-group">
         <button 
@@ -506,7 +467,6 @@ axios.interceptors.response.use(
         </button>
       </div>
 
-      <!-- Filtre par client -->
       <div class="filter-section">
         <label class="filter-label">Filtrer par client :</label>
         <select 
@@ -525,8 +485,6 @@ axios.interceptors.response.use(
         </select>
       </div>
     </div>
-
-    <!-- Message de validation -->
     <div v-if="exportValidation && exportValidation.warnings.length > 0" class="validation-warnings">
       <div class="warning-header">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor">
@@ -542,15 +500,8 @@ axios.interceptors.response.use(
         </li>
       </ul>
     </div>
-
-    <!-- Arborescence des projets -->
     <div class="projects-tree" v-if="!loading">
-      <div 
-        v-for="projet in filteredProjets" 
-        :key="projet.id" 
-        class="project-node"
-      >
-        <!-- Projet Global -->
+      <div v-for="projet in filteredProjets" :key="projet.id" class="project-node">
         <div class="tree-item project-item">
           <div class="item-content" @click="toggleProjet(projet.id)">
             <div class="expand-icon" :class="{ expanded: expandedProjets.has(projet.id) }">
@@ -592,8 +543,6 @@ axios.interceptors.response.use(
               </span>
             </div>
           </div>
-          
-          <!-- Sous-projets -->
           <div v-if="expandedProjets.has(projet.id)" class="tree-children">
             <div
               v-for="sousProjet in projet.sous_projets"
@@ -633,8 +582,6 @@ axios.interceptors.response.use(
                   </div>
                 </div>
               </div>
-              
-              <!-- F-Packs -->
               <div v-if="expandedSousProjets.has(sousProjet.id)" class="tree-children">
                 <div
                   v-for="fpack in sousProjet.fpacks"
@@ -700,14 +647,10 @@ axios.interceptors.response.use(
         </div>
       </div>
     </div>
-
-    <!-- État de chargement -->
     <div v-if="loading" class="loading-state">
       <div class="loading-spinner"></div>
       <p>Chargement des projets...</p>
     </div>
-
-    <!-- État vide -->
     <div v-if="!loading && filteredProjets.length === 0" class="empty-state">
       <svg class="empty-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor">
         <circle cx="12" cy="12" r="10"/>
@@ -718,8 +661,6 @@ axios.interceptors.response.use(
       <h3>Aucun projet trouvé</h3>
       <p>Aucun projet ne correspond aux critères de filtrage actuels.</p>
     </div>
-
-    <!-- Actions d'export -->
     <div class="export-actions" v-if="totalSelectedFpacks > 0">
       <div class="export-summary">
         <h4>Résumé de l'export</h4>
@@ -737,8 +678,6 @@ axios.interceptors.response.use(
             <span class="detail-value">{{ exportValidation.summary.fpacks_with_data }}</span>
           </div>
         </div>
-        
-        <!-- Affichage des avertissements de validation -->
         <div v-if="exportValidation && exportValidation.summary.missing_fpacks > 0" class="validation-info">
           <div class="info-item">
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor">
@@ -791,7 +730,7 @@ axios.interceptors.response.use(
 
 .header-content {
   display: flex;
-  justify-content: space-between;
+  justify-content: space-between; 
   align-items: center;
   max-width: 1400px;
   margin: 0 auto;
@@ -1368,7 +1307,6 @@ axios.interceptors.response.use(
   stroke-width: 2;
 }
 
-/* Responsive Design */
 @media (max-width: 1200px) {
   .export-container {
     padding: 0 16px;
@@ -1439,7 +1377,6 @@ axios.interceptors.response.use(
   }
 }
 
-/* Scrollbar personnalisée */
 .projects-tree::-webkit-scrollbar {
   width: 8px;
 }
@@ -1458,7 +1395,6 @@ axios.interceptors.response.use(
   background: linear-gradient(135deg, #2980b9, #1c5aa0);
 }
 
-/* Animations d'entrée */
 .project-node {
   animation: slideInUp 0.3s ease-out;
 }
@@ -1489,7 +1425,6 @@ axios.interceptors.response.use(
   }
 }
 
-/* États focus et accessibilité */
 .control-btn:focus,
 .filter-select:focus,
 .export-btn:focus,
@@ -1503,7 +1438,6 @@ axios.interceptors.response.use(
   outline-offset: 2px;
 }
 
-/* Indicateurs de sélection */
 .tree-item.selected {
   border-left-color: #27ae60;
   border-left-width: 4px;
@@ -1513,7 +1447,6 @@ axios.interceptors.response.use(
   background: rgba(52, 152, 219, 0.05);
 }
 
-/* États de désactivation pour préserver l'UX */
 .export-container.loading * {
   pointer-events: none;
 }

@@ -10,27 +10,22 @@ const props = defineProps({
 
 const emit = defineEmits(['close', 'save'])
 
-// Données du formulaire
 const formData = ref({
   projet: '',
   client: ''
 })
 
-// Gestion des erreurs
 const errors = ref({
   projet: '',
   client: ''
 })
 
-// Références
 const projectNameInput = ref(null)
 
-// Computed
 const isFormValid = computed(() => {
   return formData.value.projet.trim() && formData.value.client && !Object.values(errors.value).some(error => error)
 })
 
-// Watchers
 watch(() => props.show, (newValue) => {
   if (newValue) {
     resetForm()
@@ -41,7 +36,6 @@ watch(() => props.show, (newValue) => {
       }
     }
     
-    // Focus sur le premier champ après ouverture
     nextTick(() => {
       if (projectNameInput.value) {
         projectNameInput.value.focus()
@@ -50,7 +44,6 @@ watch(() => props.show, (newValue) => {
   }
 })
 
-// Méthodes
 const resetForm = () => {
   formData.value = {
     projet: '',
@@ -109,7 +102,6 @@ const cleanup = () => {
   document.body.style.overflow = ''
 }
 
-// Gérer la fermeture avec Escape
 const handleKeydown = (e) => {
   if (e.key === 'Escape' && props.show) {
     emit('close')
@@ -131,7 +123,6 @@ onUnmounted(() => {
     <Transition name="modal" appear>
       <div v-if="show" class="modal-overlay" @click="handleOverlayClick">
         <div class="modal-container" @click.stop>
-          <!-- Header avec gradient -->
           <div class="modal-header">
             <div class="header-content">
               <div class="modal-icon">
@@ -149,10 +140,8 @@ onUnmounted(() => {
                         <stop offset="1" stop-color="#a5b4fc"/>
                       </linearGradient>
                     </defs>
-                    <!-- Reflet verre flottant -->
                     <ellipse cx="32" cy="22" rx="14" ry="6" fill="#fff" opacity="0.18"/>
                     <ellipse cx="40" cy="38" rx="6" ry="2" fill="#fff" opacity="0.12"/>
-                    <!-- Plus stylisé, effet 3D -->
                     <g filter="url(#plusShadow)">
                       <rect x="29" y="18" width="6" height="28" rx="3" fill="#fff"/>
                       <rect x="18" y="29" width="28" height="6" rx="3" fill="#fff"/>
@@ -160,7 +149,6 @@ onUnmounted(() => {
                     <filter id="plusShadow" x="0" y="0" width="64" height="64" filterUnits="userSpaceOnUse">
                       <feDropShadow dx="0" dy="2" stdDeviation="2" flood-color="#6366f1" flood-opacity="0.15"/>
                     </filter>
-                    <!-- Glow et sparkles -->
                     <circle cx="32" cy="32" r="13" fill="#a5b4fc" opacity="0.12"/>
                     <circle cx="44" cy="20" r="2" fill="#fff" opacity="0.7"/>
                     <circle cx="20" cy="44" r="1.5" fill="#fff" opacity="0.5"/>
@@ -177,10 +165,8 @@ onUnmounted(() => {
             <button @click="$emit('close')" class="close-btn">X</button>
           </div>
 
-          <!-- Formulaire -->
           <form @submit.prevent="handleSubmit" class="modal-form">
             <div class="form-content">
-              <!-- Nom du projet -->
               <div class="form-group">
                 <label class="form-label">
                   <span class="label-text">Nom du projet</span>
@@ -206,7 +192,6 @@ onUnmounted(() => {
                 </div>
               </div>
 
-              <!-- Client -->
               <div class="form-group">
                 <label class="form-label">
                   <span class="label-text">Client</span>
@@ -239,7 +224,6 @@ onUnmounted(() => {
                 </div>
               </div>
 
-              <!-- Informations supplémentaires si édition -->
               <div v-if="project" class="info-section">
                 <div class="info-header">
                   <h3>Informations du projet</h3>
@@ -263,7 +247,6 @@ onUnmounted(() => {
               </div>
             </div>
 
-            <!-- Footer avec actions -->
             <div class="modal-footer">
               <button 
                 type="button" 
@@ -321,7 +304,6 @@ onUnmounted(() => {
     0 0 0 1px rgba(255, 255, 255, 0.1);
 }
 
-/* Header */
 .modal-header {
   background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
   padding: 32px;
@@ -384,7 +366,6 @@ onUnmounted(() => {
   transform: scale(1.05);
 }
 
-/* Formulaire */
 .modal-form {
   display: flex;
   flex-direction: column;
@@ -419,7 +400,6 @@ onUnmounted(() => {
   font-size: 14px;
 }
 
-/* Input wrapper */
 .input-wrapper {
   position: relative;
   display: flex;
@@ -461,7 +441,6 @@ onUnmounted(() => {
   background: #fef2f2;
 }
 
-/* Select wrapper */
 .select-wrapper {
   position: relative;
   display: flex;
@@ -527,7 +506,6 @@ onUnmounted(() => {
   gap: 4px;
 }
 
-/* Section d'informations */
 .info-section {
   background: #f8fafc;
   border-radius: 12px;
@@ -590,7 +568,6 @@ onUnmounted(() => {
   border: 1px solid rgba(59, 130, 246, 0.2);
 }
 
-/* Footer */
 .modal-footer {
   padding: 24px 32px;
   background: #f9fafb;
@@ -657,7 +634,6 @@ onUnmounted(() => {
   100% { transform: rotate(360deg); }
 }
 
-/* Transitions */
 .modal-enter-active,
 .modal-leave-active {
   transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
@@ -673,32 +649,4 @@ onUnmounted(() => {
   transform: scale(0.95) translateY(20px);
 }
 
-/* Responsive */
-@media (max-width: 640px) {
-  .modal-container {
-    margin: 20px;
-    max-width: calc(100vw - 40px);
-  }
-  
-  .modal-header {
-    padding: 24px;
-  }
-  
-  .form-content {
-    padding: 24px;
-  }
-  
-  .modal-footer {
-    padding: 20px 24px;
-    flex-direction: column;
-  }
-  
-  .btn {
-    width: 100%;
-  }
-  
-  .info-grid {
-    grid-template-columns: 1fr;
-  }
-}
 </style>

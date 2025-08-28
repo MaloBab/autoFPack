@@ -10,38 +10,21 @@ const props = defineProps({
 
 const emit = defineEmits(['close', 'save'])
 
-// Données du formulaire
 const formData = ref({
   nom: '',
   id_global: ''
 })
 
-// Gestion des erreurs
 const errors = ref({
   nom: ''
 })
 
-// Références
 const subprojectNameInput = ref(null)
 
-// Suggestions de noms basées sur des patterns courants
-const nameSuggestions = computed(() => {
-  if (!props.project) return []
-  
-  const existingNames = props.project.sous_projets?.map(sp => sp.nom.toLowerCase()) || []
-
-  
-  return suggestions.filter(suggestion => 
-    !existingNames.includes(suggestion.toLowerCase())
-  ).slice(0, 6)
-})
-
-// Computed
 const isFormValid = computed(() => {
   return formData.value.nom.trim() && !Object.values(errors.value).some(error => error)
 })
 
-// Watchers
 watch(() => props.show, (newValue) => {
   if (newValue) {
     resetForm()
@@ -62,7 +45,6 @@ watch(() => props.show, (newValue) => {
   }
 })
 
-// Méthodes
 const resetForm = () => {
   formData.value = {
     nom: '',
@@ -83,8 +65,6 @@ const handleOverlayClick = (e) => {
     emit('close')
   }
 }
-
-// Gérer la fermeture avec Escape
 const handleKeydown = (e) => {
   if (e.key === 'Escape' && props.show) {
     emit('close')
@@ -109,7 +89,6 @@ onUnmounted(() => {
     <Transition name="modal" appear>
       <div v-if="show" class="modal-overlay" @click="handleOverlayClick">
         <div class="modal-container" @click.stop>
-          <!-- Header avec design moderne -->
           <div class="modal-header">
             <div class="header-content">
               <div class="modal-icon">
@@ -128,11 +107,8 @@ onUnmounted(() => {
             </div>
             <button @click="$emit('close')" class="close-btn">X</button>
           </div>
-
-          <!-- Formulaire -->
           <form @submit.prevent="handleSubmit" class="modal-form">
             <div class="form-content">
-              <!-- Contexte du projet -->
               <div v-if="project" class="project-context">
                 <div class="context-header">
                   <div class="context-icon">🎯</div>
@@ -148,7 +124,6 @@ onUnmounted(() => {
                 </div>
               </div>
 
-              <!-- Nom du sous-projet -->
               <div class="form-group">
                 <label class="form-label">
                   <span class="label-text">Nom du sous-projet</span>
@@ -179,7 +154,6 @@ onUnmounted(() => {
                 </div>
               </div>
 
-              <!-- Informations supplémentaires si édition -->
               <div v-if="subproject" class="info-section">
                 <div class="info-header">
                   <h3>Informations du sous-projet</h3>
@@ -206,8 +180,6 @@ onUnmounted(() => {
                 </div>
               </div>
             </div>
-
-            <!-- Footer avec actions -->
             <div class="modal-footer">
               <button 
                 type="button" 
@@ -265,7 +237,6 @@ onUnmounted(() => {
     0 0 0 1px rgba(255, 255, 255, 0.1);
 }
 
-/* Header */
 .modal-header {
   background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
   padding: 32px;
@@ -335,7 +306,6 @@ onUnmounted(() => {
   transform: scale(1.05);
 }
 
-/* Formulaire */
 .modal-form {
   display: flex;
   flex-direction: column;
@@ -348,7 +318,6 @@ onUnmounted(() => {
   overflow-y: auto;
 }
 
-/* Contexte du projet */
 .project-context {
   background: linear-gradient(135deg, #f8fafc 0%, #e2e8f0 100%);
   border-radius: 16px;
@@ -402,7 +371,6 @@ onUnmounted(() => {
   letter-spacing: 0.5px;
 }
 
-/* Form group */
 .form-group {
   margin-bottom: 24px;
 }
@@ -420,7 +388,6 @@ onUnmounted(() => {
   font-size: 14px;
 }
 
-/* Input wrapper */
 .input-wrapper {
   position: relative;
   display: flex;
@@ -471,7 +438,6 @@ onUnmounted(() => {
   gap: 4px;
 }
 
-/* Info section */
 .info-section {
   background: #f8fafc;
   border-radius: 16px;
@@ -541,7 +507,6 @@ onUnmounted(() => {
   letter-spacing: 0.5px;
 }
 
-/* Footer */
 .modal-footer {
   padding: 24px 32px;
   background: #f9fafb;
@@ -603,7 +568,6 @@ onUnmounted(() => {
   100% { transform: rotate(360deg); }
 }
 
-/* Transitions */
 .modal-enter-active,
 .modal-leave-active {
   transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);

@@ -34,10 +34,8 @@ const emit = defineEmits([
   'complete-fpack'
 ])
 
-// État du plein écran
 const isFullscreen = ref(false)
 
-// Méthodes - simplifiées
 const handleDeleteProject = (projectId) => {
   emit('delete-project', projectId)
 }
@@ -80,7 +78,6 @@ const handleCompleteFpack = (sousProjetId, fpackId) => {
       </div>
     </div>
 
-    <!-- Zone de contenu avec état de chargement -->
     <div class="content-area">
       <template v-if="loading">
         <div class="loading-state">
@@ -138,7 +135,6 @@ const handleCompleteFpack = (sousProjetId, fpackId) => {
   z-index: 1;
 }
 
-/* Mode plein écran */
 .projects-view.fullscreen {
   position: fixed;
   top: 0;
@@ -155,7 +151,6 @@ const handleCompleteFpack = (sousProjetId, fpackId) => {
   border: none;
 }
 
-/* Header */
 .view-header {
   display: flex;
   justify-content: space-between;
@@ -204,7 +199,6 @@ const handleCompleteFpack = (sousProjetId, fpackId) => {
   font-weight: 500;
 }
 
-/* Bouton plein écran */
 .fullscreen-btn {
   display: flex;
   align-items: center;
@@ -315,26 +309,22 @@ const handleCompleteFpack = (sousProjetId, fpackId) => {
   font-weight: 700;
 }
 
-/* Content Area */
 .content-area {
   flex: 1;
   min-height: 0;
   position: relative;
 }
 
-/* Container pour la vue TreeView */
 .tree-view-container {
   height: 100%;
   border-radius: 16px;
   overflow: hidden;
 }
 
-/* En mode plein écran, ajuster le container */
 .projects-view.fullscreen .tree-view-container {
   border-radius: 12px;
 }
 
-/* Loading State */
 .loading-state {
   display: flex;
   flex-direction: column;
@@ -363,7 +353,6 @@ const handleCompleteFpack = (sousProjetId, fpackId) => {
   font-weight: 500;
 }
 
-/* Empty State */
 .empty-state {
   display: flex;
   flex-direction: column;
@@ -408,7 +397,6 @@ const handleCompleteFpack = (sousProjetId, fpackId) => {
   box-shadow: 0 8px 25px rgba(102, 126, 234, 0.3);
 }
 
-/* Animation d'entrée en plein écran */
 @keyframes fullscreenEnter {
   from {
     transform: scale(0.95);
@@ -419,9 +407,7 @@ const handleCompleteFpack = (sousProjetId, fpackId) => {
     opacity: 1;
   }
 }
-
 .projects-view.fullscreen {
   animation: fullscreenEnter 0.4s cubic-bezier(0.25, 0.8, 0.25, 1);
 }
-
 </style>

@@ -183,14 +183,12 @@ function goToNextUnfilled() {
 async function fetchData() {
   loading.value = true
   try {
-    // Récupérer les données de base
     const resProduits = await axios.get('http://localhost:8000/produits')
     produits.value = resProduits.data
 
     const resRobots = await axios.get('http://localhost:8000/robots')
     robots.value = resRobots.data
 
-    // NOUVEAU: Récupérer les données de l'association sous_projet_fpack
     const resFpackAssoc = await axios.get(`http://localhost:8000/sous_projet_fpack/${sousProjetFpackId.value}`)
     fpackData.value = resFpackAssoc.data
     
@@ -198,21 +196,17 @@ async function fetchData() {
       throw new Error('Association sous-projet/FPack non trouvée')
     }
 
-    // Récupérer le sous-projet via l'association
     const resSousProjet = await axios.get(`http://localhost:8000/sous_projets/${fpackData.value.sous_projet_id}`)
     sousProjet.value = resSousProjet.data
 
-    // Récupérer la configuration du FPack basée sur le fpack_id
     const resConfig = await axios.get(`http://localhost:8000/fpack_config_columns/${fpackData.value.fpack_id}`)
     configColumns.value = resConfig.data.columns ?? []
     allConfig.value = resConfig.data
 
-    // Séparer les différents types d'éléments
     produitsSeuls.value = configColumns.value.filter(c => c.type === 'produit' && !c.group_items)
     equipementsSeuls.value = configColumns.value.filter(c => c.type === 'equipement' && !c.group_items)
     groupes.value = configColumns.value.filter(c => c.type === 'group')
 
-    // NOUVEAU: Récupérer les sélections basées sur l'ID unique de l'association
     const resSelections = await axios.get(
       `http://localhost:8000/sous_projet_fpack/${sousProjetFpackId.value}/selections`
     )
@@ -228,7 +222,6 @@ async function fetchData() {
       expandedGroups.value.add(groupesRestants.value[0].ref_id)
     }
 
-    // Récupérer la carte équipement-produits
     const resEqProd = await axios.get('http://localhost:8000/equipementproduits')
     equipementProduitsMap.value = {}
     for (const [eqId, produitsArr] of Object.entries(resEqProd.data)) {
@@ -243,10 +236,6 @@ async function fetchData() {
     loading.value = false
     stopLoading()
   }
-}
-
-function handleExport() {
-  showToast("Fonction Export en cours de développement", "#2563eb")
 }
 
 async function handleShowBill() {
@@ -264,7 +253,6 @@ async function handleShowBill() {
 onMounted(async () => {
   startLoading()
   try {
-    // Récupérer les incompatibilités et compatibilités
     const resProdInc = await axios.get('http://localhost:8000/produit-incompatibilites')
     produitIncompatibilites.value = resProdInc.data
     
@@ -443,9 +431,6 @@ async function saveSelections(goBack = true) {
       </button>
       <button @click="resetSelections" class="btn-reset">
         🔄 Réinitialiser
-      </button>
-      <button @click="handleExport" class="btn-export">
-        📤 Exporter
       </button>
       <button @click="handleShowBill" class="btn-bill">
         🪙 Voir la facture

@@ -1,6 +1,6 @@
 from __future__ import annotations
 from pydantic import BaseModel  # type: ignore
-from typing import Any, List, Optional, Dict
+from typing import List, Optional, Dict
 
 
 class ProduitBase(BaseModel):
@@ -249,7 +249,7 @@ class SousProjetRead(SousProjetBase):
 class SousProjetReadExtended(SousProjetRead):
     complet: bool
 
-# SOUS-PROJET FPACK (table de liaison)
+# SOUS-PROJET FPACKS
 class SousProjetFpackBase(BaseModel):
     fpack_id: int
     FPack_number: Optional[str] = None
@@ -276,7 +276,6 @@ class ProjetSelectionBase(BaseModel):
     ref_id: int
 
 class ProjetSelectionCreate(BaseModel):
-    # Ne pas hériter de Base pour éviter d'exiger sous_projet_fpack_id
     groupe_id: int
     type_item: str 
     ref_id: int
@@ -286,7 +285,6 @@ class ProjetSelectionRead(ProjetSelectionBase):
     class Config:
         from_attributes = True
 
-# SCHÉMAS ÉTENDUS POUR LES VUES
 class SousProjetReadWithDetails(SousProjetRead):
     """Schema pour afficher un projet avec ses détails complets"""
     client_nom: Optional[str] = None
@@ -311,7 +309,6 @@ class ProjetTree(BaseModel):
     """Schema pour l'arbre complet des projets"""
     projets_global: List[ProjetGlobalReadWithSousProjets] = []
 
-# SCHÉMAS AVEC RELATIONS COMPLÈTES
 class ProduitReadWithRelations(ProduitRead):
     """Produit avec toutes ses relations"""
     fournisseur: Optional[FournisseurRead] = None

@@ -26,7 +26,6 @@ const animateValue = (start, end, duration) => {
     const elapsed = now - startTime
     const progress = Math.min(elapsed / duration, 1)
     
-    // Easing function (ease-out)
     const easedProgress = 1 - Math.pow(1 - progress, 3)
     
     displayValue.value = Math.round(start + (end - start) * easedProgress)

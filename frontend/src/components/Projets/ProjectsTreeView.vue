@@ -33,7 +33,6 @@ const emit = defineEmits([
   'complete-fpack'
 ])
 
-// État local
 const searchQuery = ref('')
 const selectedClient = ref('')
 const statusFilter = ref('')
@@ -41,7 +40,6 @@ const viewDensity = ref('compact')
 const expandedItems = ref(new Set())
 const allExpanded = ref(false)
 
-// Virtualisation
 const scrollContainer = ref(null)
 const scrollTop = ref(0)
 const containerHeight = ref(600)
@@ -53,12 +51,10 @@ const itemHeight = computed(() => {
 })
 const visibleCount = computed(() => Math.ceil(containerHeight.value / itemHeight.value) + 2)
 
-// Construction de l'arbre hiérarchique - Version corrigée
 const treeItems = computed(() => {
   const items = []
   
   filteredProjects.value.forEach(project => {
-    // Élément projet
     const projectItem = {
       id: project.id,
       uniqueId: `project-${project.id}`,
@@ -70,8 +66,7 @@ const treeItems = computed(() => {
     }
     
     items.push(projectItem)
-    
-    // Si le projet est étendu, ajouter ses sous-projets
+
     if (projectItem.expanded) {
       project.sous_projets.forEach(subproject => {
         const subprojectItem = {
@@ -87,14 +82,12 @@ const treeItems = computed(() => {
         
         items.push(subprojectItem)
         
-        // Si le sous-projet est étendu, ajouter les FPacks
         if (subprojectItem.expanded) {
-          // Nouveau format avec tableau fpacks
           if (subproject.fpacks && Array.isArray(subproject.fpacks) && subproject.fpacks.length > 0) {
             subproject.fpacks.forEach((fpack) => {
               const fpackItem = {
-                id: fpack.id, // ID unique de l'enregistrement fpack
-                uniqueId: `fpack-${fpack.id}`, // Utiliser l'ID unique
+                id: fpack.id, 
+                uniqueId: `fpack-${fpack.id}`, 
                 type: 'fpack',
                 level: 2,
                 data: {
@@ -117,21 +110,16 @@ const treeItems = computed(() => {
   return items
 })
 
-// Éléments filtrés
 const filteredProjects = computed(() => {
   let filtered = props.projets
 
-  // Filtre par recherche
   if (searchQuery.value) {
     const query = searchQuery.value.toLowerCase()
     filtered = filtered.filter(project => 
       project.projet.toLowerCase().includes(query) ||
       project.client_nom.toLowerCase().includes(query) ||
       project.sous_projets.some(sp => {
-        // Recherche dans le nom du sous-projet
         if (sp.nom.toLowerCase().includes(query)) return true
-        
-        // Recherche dans les FPacks
         if (sp.fpacks && sp.fpacks.length > 0) {
           return sp.fpacks.some(fpack => 
             (fpack.fpack_nom && fpack.fpack_nom.toLowerCase().includes(query)) ||
@@ -139,18 +127,15 @@ const filteredProjects = computed(() => {
             (fpack.FPack_number && fpack.FPack_number.toString().toLowerCase().includes(query))
           )
         }
-        
         return false
       })
     )
   }
 
-  // Filtre par client
   if (selectedClient.value) {
     filtered = filtered.filter(project => project.client_nom === selectedClient.value)
   }
 
-  // Filtre par statut
   if (statusFilter.value) {
     filtered = filtered.filter(project => {
       const completedSubs = project.sous_projets.filter(sp => sp.complet).length
@@ -172,14 +157,12 @@ const filteredProjects = computed(() => {
   return filtered
 })
 
-// Virtualisation
 const virtualHeight = computed(() => treeItems.value.length * itemHeight.value)
 const startIndex = computed(() => Math.floor(scrollTop.value / itemHeight.value))
 const endIndex = computed(() => Math.min(startIndex.value + visibleCount.value, treeItems.value.length))
 const visibleItems = computed(() => treeItems.value.slice(startIndex.value, endIndex.value))
 const offsetY = computed(() => startIndex.value * itemHeight.value)
 
-// Statistiques
 const totalSubprojects = computed(() => 
   filteredProjects.value.reduce((sum, p) => sum + p.sous_projets.length, 0)
 )
@@ -187,7 +170,6 @@ const totalSubprojects = computed(() =>
 const totalFpacks = computed(() =>
   filteredProjects.value.reduce((sum, p) => 
     sum + p.sous_projets.reduce((subSum, sp) => {
-      // Compter les FPacks dans le nouveau format
       if (sp.fpacks && Array.isArray(sp.fpacks)) {
         return subSum + sp.fpacks.length
       }
@@ -207,7 +189,6 @@ const overallProgress = computed(() => {
   return (completed / total) * 100
 })
 
-// Méthodes
 const handleScroll = (event) => {
   scrollTop.value = event.target.scrollTop
 }
@@ -255,7 +236,6 @@ const handleRemoveFpack = (fpackAssociationId) => {
   emit('remove-fpack', fpackAssociationId)
 }
 
-// Watchers
 watch(searchQuery, () => {
   scrollTop.value = 0
   if (scrollContainer.value) {
@@ -263,7 +243,6 @@ watch(searchQuery, () => {
   }
 })
 
-// Lifecycle
 onMounted(() => {
   updateContainerHeight()
   window.addEventListener('resize', updateContainerHeight)
@@ -346,7 +325,6 @@ onUnmounted(() => {
       </div>
     </div>
 
-    <!-- Statistiques rapides -->
     <div class="quick-stats">
       <div class="stat-item">
         <span class="stat-value">{{ filteredProjects.length }}</span>
@@ -369,7 +347,6 @@ onUnmounted(() => {
       </div>
     </div>
 
-    <!-- Liste virtualisée -->
     <div 
       ref="scrollContainer" 
       class="scroll-container"
@@ -403,7 +380,6 @@ onUnmounted(() => {
       </div>
     </div>
 
-    <!-- Indicateur de chargement -->
     <div v-if="loading" class="loading-overlay">
       <div class="loading-spinner">
         <svg class="spin" viewBox="0 0 24 24" fill="none" stroke="currentColor">
@@ -432,7 +408,6 @@ onUnmounted(() => {
   box-shadow: 0 8px 32px rgba(0, 0, 0, 0.1);
 }
 
-/* Toolbar */
 .toolbar {
   display: flex;
   align-items: center;
@@ -613,7 +588,6 @@ onUnmounted(() => {
   color: white;
 }
 
-/* Quick Stats */
 .quick-stats {
   display: flex;
   gap: 12px;
@@ -662,7 +636,6 @@ onUnmounted(() => {
   transition: width 0.3s ease;
 }
 
-/* Virtual List */
 .scroll-container {
   flex: 1;
   overflow-y: auto;
@@ -698,7 +671,6 @@ onUnmounted(() => {
   right: 0;
 }
 
-/* Density Classes */
 .density-compact {
   font-size: 14px;
 }

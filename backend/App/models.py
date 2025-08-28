@@ -110,9 +110,9 @@ class FPack(Base):
     __table_args__ = {'schema': 'dbo'}
     
     id = Column(Integer, primary_key=True, index=True)
-    nom = Column(String(255), nullable=True)  # Spécifié la longueur
+    nom = Column(String(255), nullable=True)  
     client = Column(Integer, ForeignKey("dbo.FPM_clients.id", ondelete="CASCADE"), nullable=False)
-    fpack_abbr = Column(String(255), unique=True, nullable=True)  # Spécifié la longueur
+    fpack_abbr = Column(String(25), unique=True, nullable=True)  
     
     client_relfpack = relationship("Client", back_populates="fpacks", passive_deletes=True)
     config_columns = relationship("FPackConfigColumn", back_populates="fpack", cascade="all, delete-orphan", passive_deletes=True)
@@ -178,7 +178,7 @@ class ProjetGlobal(Base):
     __table_args__ = {'schema': 'dbo'}
 
     id = Column(Integer, primary_key=True, autoincrement=True)
-    projet = Column(String(255), nullable=True)  # Spécifié la longueur
+    projet = Column(String(255), nullable=True)  
     client = Column(Integer, ForeignKey("dbo.FPM_clients.id", ondelete="CASCADE"), nullable=False)
 
     projets = relationship("SousProjet", back_populates="global_rel", cascade="all, delete-orphan", passive_deletes=True)

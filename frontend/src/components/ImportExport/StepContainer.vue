@@ -186,7 +186,6 @@ defineProps<{
   }
 }
 
-/* Animation d'apparition en cascade */
 .step-container:nth-child(1) { animation-delay: 0.1s; }
 .step-container:nth-child(2) { animation-delay: 0.15s; }
 .step-container:nth-child(3) { animation-delay: 0.2s; }

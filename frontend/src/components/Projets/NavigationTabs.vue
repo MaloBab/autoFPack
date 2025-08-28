@@ -70,7 +70,6 @@ onBeforeUnmount(() => {
         </button>
       </div>
       
-      <!-- Indicateur de fond mobile -->
       <div 
         class="background-indicator"
         :style="indicatorStyle"

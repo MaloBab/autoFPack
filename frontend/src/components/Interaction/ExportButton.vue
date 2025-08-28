@@ -15,7 +15,7 @@ function exportFile() {
 
   fetch(props.exportUrl)
     .then(response => {
-      if (!response.ok) throw new Error('Erreur lors de l’export')
+      if (!response.ok) throw new Error("Erreur lors de l'export")
       return response.blob()
     })
     .then(blob => {

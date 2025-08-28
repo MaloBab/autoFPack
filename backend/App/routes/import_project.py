@@ -12,15 +12,13 @@ from dataclasses import dataclass
 
 router = APIRouter()
 
-# Configuration et constantes
 REQUIRED_SHEET_NAME = "F-Pack Matrix"
 HEADER_ROW = 4
-SUPPORTED_EXTENSIONS = ('.xlsx', '.xls')
+SUPPORTED_EXTENSIONS = ('.xlsx', '.xls', '.xlsm')
 MAX_PREVIEW_ROWS = 5
 MAX_SUGGESTIONS = 5
 MAX_MATCHES = 10
 
-# Classes de données pour une meilleure structure
 @dataclass
 class ProcessingResult:
     status: str = "success"
@@ -47,9 +45,8 @@ class ImportStats:
         if self.warnings is None:
             self.warnings = []
 
-# Utilitaires de base réutilisables
+
 def get_db():
-    """Générateur de session de base de données"""
     db = SessionLocal()
     try:
         yield db
@@ -87,19 +84,16 @@ def validate_required_fields(data: Dict[str, Any], required_fields: List[str]) -
             detail=f"Champs requis manquants: {', '.join(missing_fields)}"
         )
 
-# Utilitaires de mapping et recherche
 class DataMapper:
     """Classe utilitaire pour le mapping des données"""
     
     @staticmethod
     def get_field_value_case_insensitive(row_data: Dict[str, Any], field_name: str) -> str:
         """Récupère une valeur de champ insensible à la casse"""
-        # Recherche exacte d'abord
         if field_name in row_data:
             value = row_data[field_name]
             return str(value).strip() if value else ""
         
-        # Recherche insensible à la casse
         field_name_lower = field_name.lower()
         for key, value in row_data.items():
             if key.lower() == field_name_lower:
@@ -109,12 +103,10 @@ class DataMapper:
     @staticmethod
     def get_mapped_field_value(row_data: Dict[str, Any], mapping: Dict[str, str], field_name: str) -> str:
         """Récupère la valeur d'un champ mappé depuis la configuration"""
-        # Recherche exacte
         if field_name in mapping:
             excel_column = mapping[field_name]
             return DataMapper.get_field_value_case_insensitive(row_data, excel_column)
         
-        # Recherche insensible à la casse pour le nom du champ
         field_name_lower = field_name.lower()
         for dest_field, excel_column in mapping.items():
             if dest_field.lower() == field_name_lower:
@@ -132,10 +124,9 @@ class DataMapper:
                 mapping[excel_col.lower()] = group_name
         return mapping
 
-# Cache et optimisations de requêtes
+
 class DatabaseCache:
-    """Gestionnaire de cache pour les requêtes fréquentes"""
-    
+    """Gestionnaire de cache pour les requêtes fréquentes"""  
     def __init__(self, db: Session):
         self.db = db
         self._templates_cache = {}
@@ -195,16 +186,14 @@ class DatabaseCache:
         
         return {tid: self._templates_cache[tid] for tid in template_ids if tid in self._templates_cache}
 
-# Moteur de recherche et correspondance
+
 class MatchingEngine:
     """Moteur de recherche et correspondance d'items"""
-    
     SEARCH_TABLES = {
         'robots': models.Robots,
         'equipements': models.Equipements,
         'produits': models.Produit
-    }
-    
+    }    
     def __init__(self, db: Session):
         self.db = db
     
@@ -286,7 +275,7 @@ class MatchingEngine:
         
         return matches[:MAX_SUGGESTIONS]
 
-# Processeurs de données
+
 class DataProcessor:
     """Processeur principal des données d'import"""
     
@@ -311,25 +300,20 @@ class DataProcessor:
         template_id = fpack_config["selectedFPackTemplate"]
         client_id = fpack_config["clientId"]
         
-        # Récupération des groupes du template
         fpack_groups = self.db_cache.get_fpack_template_groups(template_id)
-        
-        # Configuration de mapping
+
         subproject_columns = mapping_config.get("subproject_columns", {})
         groups_config = mapping_config.get("groups", [])
         excel_column_to_group = self.mapper.build_excel_to_group_mapping(groups_config)
         
-        # Traitement des colonnes
         self._process_columns_for_preview(
             row_data, row_index, excel_column_to_group, 
             subproject_columns, fpack_groups, client_id, 
             template_id, result, unmatched_items
         )
         
-        # Validation des champs obligatoires
         self._validate_required_fields(row_data, subproject_columns, result)
         
-        # Finalisation du statut
         if result.warnings and result.status == "success":
             result.status = "warning"
         
@@ -363,11 +347,9 @@ class DataProcessor:
             cell_value = str(cell_value).strip()
             excel_column_lower = excel_column.lower()
             
-            # Vérification colonne de sous-projet
             if self._is_subproject_column(excel_column_lower, subproject_columns):
                 continue
             
-            # Vérification colonne de groupe
             if excel_column_lower in excel_column_to_group:
                 self._process_group_column(
                     excel_column, cell_value, excel_column_to_group[excel_column_lower],
@@ -434,7 +416,6 @@ class DataProcessor:
         fpack_number = self.mapper.get_mapped_field_value(row_data, subproject_columns, 'fpack_number')
         
         if not fpack_number:
-            # Essayer avec des variantes
             for variant in ['FPack_number', 'fpack_Number', 'FPACK_NUMBER']:
                 fpack_number = self.mapper.get_mapped_field_value(row_data, subproject_columns, variant)
                 if fpack_number:
@@ -444,19 +425,16 @@ class DataProcessor:
             result.status = "error"
             result.errors.append("FPack Number est requis mais non trouvé dans le mapping")
 
-# Routes principales optimisées
 @router.post("/import/upload")
 async def upload_import_file(file: UploadFile = File(...), db: Session = Depends(get_db)):
     """Étape 1 : Upload et analyse initiale du fichier Excel"""
     try:
-        # Validation du fichier
         if not file.filename.endswith(SUPPORTED_EXTENSIONS):
             raise HTTPException(
                 status_code=400,
                 detail=f"Format non supporté. Utilisez: {', '.join(SUPPORTED_EXTENSIONS)}"
             )
-        
-        # Lecture du fichier
+
         content = await file.read()
         
         try:
@@ -467,7 +445,6 @@ async def upload_import_file(file: UploadFile = File(...), db: Session = Depends
                 detail=f"L'onglet '{REQUIRED_SHEET_NAME}' est introuvable"
             )
         
-        # Traitement des données
         df = clean_dataframe_data(df)
         valid_rows = get_valid_rows(df)
         preview_rows = valid_rows[:MAX_PREVIEW_ROWS]
@@ -489,14 +466,12 @@ async def upload_import_file(file: UploadFile = File(...), db: Session = Depends
 async def preview_import(data: Dict[str, Any], db: Session = Depends(get_db)):
     """Étape 2 : Aperçu avec mapping et validation"""
     try:
-        # Validation des champs requis
         validate_required_fields(data, ["preview_data", "mapping_config", "fpack_configurations"])
         
         preview_data = data["preview_data"]
         mapping_config = data["mapping_config"]
         fpack_configurations = data["fpack_configurations"]
         
-        # Validations supplémentaires
         if not isinstance(mapping_config, dict):
             raise HTTPException(status_code=400, detail="mapping_config doit être un dictionnaire")
         
@@ -509,7 +484,6 @@ async def preview_import(data: Dict[str, Any], db: Session = Depends(get_db)):
                 detail=f"Nombre de configurations ({len(fpack_configurations)}) != nombre de lignes ({len(preview_data)})"
             )
         
-        # Traitement avec le processeur optimisé
         processor = DataProcessor(db)
         processed_data = []
         all_unmatched_items = []
@@ -521,7 +495,6 @@ async def preview_import(data: Dict[str, Any], db: Session = Depends(get_db)):
             processed_data.append(processed_row)
             all_unmatched_items.extend(unmatched_items)
         
-        # Calcul des statistiques
         summary = calculate_preview_summary(processed_data, fpack_configurations, mapping_config, processor.db_cache)
         
         return {
@@ -571,7 +544,6 @@ def build_mappable_columns_info(subproject_columns: Dict, groups_config: List[Di
     """Construit les informations sur les colonnes mappables"""
     mappable_columns = []
     
-    # Colonnes de sous-projet
     for dest_field, excel_column in subproject_columns.items():
         mappable_columns.append({
             "column": excel_column,
@@ -580,7 +552,6 @@ def build_mappable_columns_info(subproject_columns: Dict, groups_config: List[Di
             "mapped_via": "json_config"
         })
     
-    # Colonnes de groupe
     for group_config in groups_config:
         if "excel_column" in group_config and "group_name" in group_config:
             mappable_columns.append({
@@ -596,25 +567,20 @@ def build_mappable_columns_info(subproject_columns: Dict, groups_config: List[Di
 async def execute_import(data: Dict[str, Any], db: Session = Depends(get_db)):
     """Exécution de l'import avec optimisations"""
     try:
-        # Validation des champs requis
         validate_required_fields(data, ["file_data", "mapping_config", "fpack_configurations"])
         
-        # Nettoyage des données
         file_data = clean_import_data(data["file_data"])
         mapping_config = data["mapping_config"]
         fpack_configurations = data["fpack_configurations"]
         manual_matches = data.get("manual_matches", [])
         
-        # Validation des configurations
         validate_fpack_configurations(fpack_configurations)
         
-        # Traitement de l'import
         executor = ImportExecutor(db)
         stats = executor.execute_import(
             file_data, mapping_config, fpack_configurations, manual_matches
         )
         
-        # Résultat final
         if stats.errors:
             db.rollback()
             return {
@@ -657,15 +623,12 @@ class ImportExecutor:
         """Exécute l'import complet"""
         stats = ImportStats()
         
-        # Préparation des données
         subproject_columns = mapping_config.get("subproject_columns", {})
         excel_column_to_group = self.mapper.build_excel_to_group_mapping(mapping_config.get("groups", []))
         manual_matches_dict = self._build_manual_matches_dict(manual_matches)
         
-        # Cache des groupes de templates
         self._preload_template_groups([config["selectedFPackTemplate"] for config in fpack_configurations])
         
-        # Traitement ligne par ligne
         for row_index, (row_data, fpack_config) in enumerate(zip(file_data, fpack_configurations)):
             try:
                 self._process_import_row(
@@ -676,7 +639,6 @@ class ImportExecutor:
                 stats.errors.append(f"Ligne {row_index + 1}: {str(e)}")
                 continue
         
-        # Calcul des projets uniques
         stats.created_projects = len(set(config["selectedProjetGlobal"] for config in fpack_configurations))
         
         return stats
@@ -712,7 +674,6 @@ class ImportExecutor:
         template_id = fpack_config["selectedFPackTemplate"]
         client_id = fpack_config["clientId"]
         
-        # Vérification du sous-projet
         sous_projet = self.db.query(models.SousProjet).filter(
             models.SousProjet.id == sous_projet_id
         ).first()
@@ -720,7 +681,6 @@ class ImportExecutor:
         if not sous_projet:
             raise Exception(f"Sous-projet {sous_projet_id} non trouvé")
         
-        # Création du F-Pack
         fpack_data = self._build_fpack_data(row_data, subproject_columns)
         new_fpack = models.SousProjetFpack(
             **fpack_data,
@@ -732,7 +692,6 @@ class ImportExecutor:
         self.db.flush()
         stats.created_fpacks += 1
         
-        # Traitement des sélections
         self._process_selections(
             row_index, row_data, new_fpack.id, template_id, client_id,
             excel_column_to_group, manual_matches_dict, stats
@@ -742,11 +701,9 @@ class ImportExecutor:
         """Construit les données F-Pack depuis le mapping"""
         fpack_data = {}
         
-        # Mapping des champs de sous-projet
         for dest_field, excel_column in subproject_columns.items():
             value = self.mapper.get_field_value_case_insensitive(row_data, excel_column)
             if value:
-                # Conversion des noms de champs pour le modèle
                 if dest_field == "fpack_number":
                     fpack_data["FPack_number"] = value
                 elif dest_field == "robot_location_code":
@@ -754,7 +711,6 @@ class ImportExecutor:
                 else:
                     fpack_data[dest_field] = value
         
-        # Valeurs par défaut pour les champs requis
         return {
             "FPack_number": fpack_data.get("FPack_number", ""),
             "Robot_Location_Code": fpack_data.get("Robot_Location_Code", ""),
@@ -780,7 +736,6 @@ class ImportExecutor:
         template_groups = self.db_cache.get_fpack_template_groups(template_id)
         
         for excel_column_lower, group_name in excel_column_to_group.items():
-            # Trouver la colonne Excel originale
             original_excel_column = self._find_original_column(row_data, excel_column_lower)
             if not original_excel_column:
                 continue
@@ -789,7 +744,6 @@ class ImportExecutor:
             if not cell_value:
                 continue
             
-            # Recherche de correspondance
             selected_item = self._get_selected_item(
                 row_index, original_excel_column, cell_value, group_name,
                 template_groups, client_id, manual_matches_dict
@@ -825,11 +779,9 @@ class ImportExecutor:
         """Récupère l'item sélectionné (manuel ou automatique)"""
         match_key = f"{row_index}_{excel_column}"
         
-        # Vérification correspondance manuelle
         if match_key in manual_matches_dict:
             return manual_matches_dict[match_key]
         
-        # Recherche automatique
         matches = self.matching_engine.find_matching_items_for_group(
             cell_value, group_name, template_groups, client_id
         )
@@ -865,7 +817,6 @@ class ImportExecutor:
         except Exception as e:
             stats.warnings.append(f"Erreur création sélection groupe '{group_name}': {str(e)}")
 
-# Fonctions utilitaires optimisées
 def clean_import_data(file_data: List[Dict]) -> List[Dict]:
     """Nettoie les données d'import"""
     if not isinstance(file_data, list):
@@ -900,15 +851,12 @@ def validate_fpack_configurations(fpack_configurations: List[Dict]) -> None:
                     detail=f"Configuration F-Pack {i}: champ requis manquant '{field}'"
                 )
 
-# Routes utilitaires optimisées avec cache
 @router.get("/import/sous-projets")
 async def get_available_sous_projets(db: Session = Depends(get_db)):
     """Récupère la liste des sous-projets avec jointure optimisée"""
     try:
         # Requête optimisée avec jointure
-        sous_projets = db.query(models.SousProjet)\
-            .join(models.SousProjet.global_rel, isouter=True)\
-            .all()
+        sous_projets = db.query(models.SousProjet).join(models.SousProjet.global_rel, isouter=True).all()
         
         return {
             "success": True,
@@ -928,10 +876,7 @@ async def get_available_sous_projets(db: Session = Depends(get_db)):
 async def get_available_fpack_templates(db: Session = Depends(get_db)):
     """Récupère la liste des templates F-Pack avec jointure optimisée"""
     try:
-        # Requête optimisée avec jointure
-        fpacks = db.query(models.FPack)\
-            .join(models.FPack.client_relfpack, isouter=True)\
-            .all()
+        fpacks = db.query(models.FPack).join(models.FPack.client_relfpack, isouter=True).all()
         
         return {
             "success": True,
@@ -962,7 +907,6 @@ async def get_fpack_template_groups_endpoint(fpack_id: int, db: Session = Depend
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Erreur : {str(e)}")
 
-# Nouvelles routes pour optimiser les performances
 @router.post("/import/validate-config")
 async def validate_import_config(config_data: Dict[str, Any], db: Session = Depends(get_db)):
     """Valide une configuration d'import sans traiter les données"""
@@ -972,13 +916,11 @@ async def validate_import_config(config_data: Dict[str, Any], db: Session = Depe
         mapping_config = config_data["mapping_config"]
         fpack_configurations = config_data["fpack_configurations"]
         
-        # Validations rapides
         if not isinstance(mapping_config, dict):
             raise HTTPException(status_code=400, detail="mapping_config invalide")
         
         validate_fpack_configurations(fpack_configurations)
         
-        # Vérification des templates et sous-projets
         validation_results = await _validate_references(fpack_configurations, db)
         
         return {
@@ -994,23 +936,15 @@ async def validate_import_config(config_data: Dict[str, Any], db: Session = Depe
 
 async def _validate_references(fpack_configurations: List[Dict], db: Session) -> Dict:
     """Valide les références vers les sous-projets et templates"""
-    # Extraire les IDs uniques
     sous_projet_ids = list(set(config["selectedSousProjet"] for config in fpack_configurations))
     template_ids = list(set(config["selectedFPackTemplate"] for config in fpack_configurations))
     
-    # Vérification en batch des sous-projets
-    existing_sous_projets = db.query(models.SousProjet.id)\
-        .filter(models.SousProjet.id.in_(sous_projet_ids))\
-        .all()
+    existing_sous_projets = db.query(models.SousProjet.id).filter(models.SousProjet.id.in_(sous_projet_ids)).all()
     existing_sous_projet_ids = {sp.id for sp in existing_sous_projets}
     
-    # Vérification en batch des templates
-    existing_templates = db.query(models.FPack.id)\
-        .filter(models.FPack.id.in_(template_ids))\
-        .all()
+    existing_templates = db.query(models.FPack.id).filter(models.FPack.id.in_(template_ids)).all()
     existing_template_ids = {t.id for t in existing_templates}
     
-    # Identification des références manquantes
     missing_sous_projets = set(sous_projet_ids) - existing_sous_projet_ids
     missing_templates = set(template_ids) - existing_template_ids
     

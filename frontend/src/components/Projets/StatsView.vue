@@ -71,7 +71,6 @@ const clientsData = computed(() => {
   })
 })
 
-// Animations
 const animateCard = (event) => {
   const card = event.currentTarget
   card.style.transform = 'scale(1.05) rotateY(5deg)'
@@ -116,7 +115,6 @@ const animateCard = (event) => {
         </div>
       </div>
 
-      <!-- Client Distribution -->
       <div class="client-section">
         <div class="section-header">
           <h3>Répartition par Client</h3>
@@ -151,7 +149,6 @@ const animateCard = (event) => {
       </div>
     </div>
 
-    <!-- Empty State -->
     <div v-else class="empty-state">
       <div class="empty-illustration">📊</div>
       <h3>Aucune donnée disponible</h3>
@@ -172,7 +169,6 @@ const animateCard = (event) => {
   box-shadow: 0 25px 50px rgba(0, 0, 0, 0.1);
 }
 
-/* Stats Content */
 .stats-content {
   display: flex;
   flex-direction: column;
@@ -180,7 +176,6 @@ const animateCard = (event) => {
   height: 100%;
 }
 
-/* Metrics Grid */
 .metrics-grid {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
@@ -296,7 +291,6 @@ const animateCard = (event) => {
   to { transform: scaleY(1); }
 }
 
-/* Client Section */
 .client-section {
   background: white;
   border-radius: 20px;
@@ -318,7 +312,6 @@ const animateCard = (event) => {
   margin: 0;
 }
 
-/* Bars Chart */
 .bars-chart {
   display: flex;
   flex-direction: column;

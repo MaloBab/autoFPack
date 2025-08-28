@@ -24,17 +24,7 @@ const exportFactureExcel = async () => {
       return
     }
     
-    // Choisir l'endpoint selon le type de route
-    let endpoint
-    if (route.params.sous_projet_fpack_id) {
-      // Pour sous-projet-fpack, utiliser l'endpoint sous-projets
-      // Note: L'API n'a peut-être pas d'endpoint Excel pour sous_projet_fpack
-      endpoint = `http://localhost:8000/sous_projet_fpack/${projetId}/facture-excel`
-    } else {
-      endpoint = `http://localhost:8000/sous_projets/${projetId}/facture-excel`
-    }
-    
-    const response = await axios.get(endpoint, {
+    const response = await axios.get(`http://localhost:8000/sous_projet_fpack/${projetId}/facture-excel`, {
       responseType: 'blob'
     })
 
@@ -65,17 +55,7 @@ const exportFacturePDF = async () => {
       return
     }
     
-    // Choisir l'endpoint selon le type de route
-    let endpoint
-    if (route.params.sous_projet_fpack_id) {
-      // Pour sous-projet-fpack, utiliser l'endpoint sous-projets
-      // Note: L'API n'a peut-être pas d'endpoint PDF pour sous_projet_fpack
-      endpoint = `http://localhost:8000/sous_projet_fpack/${projetId}/facture-pdf`
-    } else {
-      endpoint = `http://localhost:8000/sous_projets/${projetId}/facture-pdf`
-    }
-    
-    const response = await axios.get(endpoint, {
+    const response = await axios.get(`http://localhost:8000/sous_projet_fpack/${projetId}/facture-pdf`, {
       responseType: 'blob'
     })
 
@@ -99,24 +79,13 @@ const exportFacturePDF = async () => {
 async function fetchFacture() {
   loading.value = true
   try {
-    // Handle both route parameter names
     const id = route.params.id || route.params.sous_projet_fpack_id
     
     if (!id) {
       throw new Error('Aucun ID de projet trouvé dans la route')
     }
     
-    // Choisir l'endpoint selon le type de route
-    let endpoint
-    if (route.params.sous_projet_fpack_id) {
-      // Route /facture/sous-projet-fpack/:sous_projet_fpack_id
-      endpoint = `http://localhost:8000/sous_projet_fpack/${id}/facture`
-    } else {
-      // Route /facture/:id (sous-projet)
-      endpoint = `http://localhost:8000/sous_projets/${id}/facture`
-    }
-    
-    const res = await axios.get(endpoint)
+    const res = await axios.get(`http://localhost:8000/sous_projet_fpack/${id}/facture`)
     if (res.data) {
       facture.value = res.data
       console.log("Facture lignes", facture.value)

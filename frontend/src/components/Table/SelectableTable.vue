@@ -1,4 +1,3 @@
-<!-- SelectableTable.vue -->
 <script setup lang="ts">
 import { ref, computed, defineProps, defineEmits, onMounted, watch, reactive, nextTick } from 'vue'
 import axios from 'axios'
@@ -32,10 +31,9 @@ const bodyTable = ref<HTMLElement | null>(null)
 const produitIncompatibilites = ref<{ produit_id_1: number, produit_id_2: number }[]>([])
 const isLoading = ref(true)
 const hoveredRow = ref<number | null>(null)
+const urlBase = 'http://localhost:8000'
 
 async function fetchData() {
-  const urlBase = props.apiUrl || 'http://localhost:8000'
-
   const colRes = await axios.get(`${urlBase}/table-columns/produits`)
   columns.value = colRes.data
 
@@ -54,7 +52,7 @@ async function fetchData() {
 onMounted(async () => {
   await fetchData()
 
-  const response = await axios.get(`http://localhost:8000/equipementproduit/${props.equipementId}`)
+  const response = await axios.get(`${urlBase}/equipementproduit/${props.equipementId}`)
   const data = response.data
 
   data.forEach((item: { produit_id: number, quantite: number }) => {
@@ -62,7 +60,7 @@ onMounted(async () => {
     quantities.value[item.produit_id] = item.quantite
   })
   
-  const res = await axios.get('http://localhost:8000/produit-incompatibilites')
+  const res = await axios.get(`${urlBase}/produit-incompatibilites`)
   produitIncompatibilites.value = res.data
   
   

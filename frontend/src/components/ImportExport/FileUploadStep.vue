@@ -19,13 +19,11 @@ const isDragOver = ref(false)
 const isAnalyzing = ref(false)
 const fileInput = ref<HTMLInputElement>()
 
-// Fonction pour valider le type de fichier
 const isValidFileType = (file: File): boolean => {
   const validTypes = ['.xlsx', '.xls', '.xlsm']
   return validTypes.some(type => file.name.toLowerCase().endsWith(type))
 }
 
-// Fonction pour traiter la sélection de fichier
 const processFile = (file: File) => {
   if (isValidFileType(file)) {
     emit('update:selectedFile', file)
@@ -41,7 +39,6 @@ const processFile = (file: File) => {
   }
 }
 
-// Gestion du drag & drop
 const handleDragEnter = (event: DragEvent) => {
   event.preventDefault()
   isDragOver.value = true
@@ -49,12 +46,10 @@ const handleDragEnter = (event: DragEvent) => {
 
 const handleDragOver = (event: DragEvent) => {
   event.preventDefault()
-  // Nécessaire pour permettre le drop
 }
 
 const handleDragLeave = (event: DragEvent) => {
   event.preventDefault()
-  // Ne déclencher que si on sort vraiment de la zone (pas d'un enfant)
   const rect = (event.currentTarget as HTMLElement).getBoundingClientRect()
   const x = event.clientX
   const y = event.clientY
@@ -74,7 +69,6 @@ const handleDrop = (event: DragEvent) => {
   }
 }
 
-// Gestion de la sélection via l'input
 const handleFileSelect = (event: Event) => {
   const target = event.target as HTMLInputElement
   const files = target.files
@@ -84,7 +78,6 @@ const handleFileSelect = (event: Event) => {
   }
 }
 
-// Ouvrir le sélecteur de fichier
 const openFileSelector = () => {
   if (fileInput.value) {
     fileInput.value.click()
@@ -93,7 +86,6 @@ const openFileSelector = () => {
 
 const removeFile = () => {
   emit('update:selectedFile', null)
-  // Réinitialiser l'input file
   if (fileInput.value) {
     fileInput.value.value = ''
   }

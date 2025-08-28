@@ -61,7 +61,6 @@ interface UnmatchedItem {
   type: 'subproject' | 'group'
 }
 
-// Nouvelle interface pour la configuration de mapping (JSON)
 interface MappingConfig {
   name: string
   subproject_columns: Record<string, string>
@@ -71,26 +70,22 @@ interface MappingConfig {
   }>
 }
 
-// Props
 const props = defineProps<{
   projetsGlobaux: ProjetGlobal[]
   clients: any[]
   fpackTemplates?: any[]
 }>()
 
-// Emits
 const emit = defineEmits<{
   addNotification: [type: 'success' | 'warning' | 'error' | 'info', message: string]
 }>()
 
-// État
 const importStep = ref(1)
 const selectedFile = ref<File | null>(null)
 const previewData = ref<any[]>([])
 const previewColumns = ref<string[]>([])
 const fpackList = ref<FpackItem[]>([])
 
-// Configuration de mapping JSON (importée depuis l'éditeur)
 const emptyMappingConfig: MappingConfig = {
   name: '',
   subproject_columns: {},
@@ -103,7 +98,6 @@ const isImporting = ref(false)
 const selectedClient = ref<number | null>(null)
 const showConfigEditor = ref(false)
 
-// Computed
 const allFPacksHaveProject = computed(() => {
   return fpackList.value.every(fpack => 
     fpack.selectedProjetGlobal && fpack.selectedSousProjet
@@ -134,12 +128,10 @@ const canExecuteImport = computed(() => {
          allFPacksConfigured.value
 })
 
-// Methods
 const onFileAnalyzed = (data: any) => {
   previewData.value = data.preview
   previewColumns.value = data.columns
   
-  // Créer les objets FpackItem avec toutes les propriétés requises
   fpackList.value = data.preview.map((row: any) => ({
     FPack_number: row['FPack Number'] || '',
     Robot_Location_Code: row['Robot location code'] || '',
@@ -156,7 +148,6 @@ const toggleConfigEditor = () => {
   showConfigEditor.value = !showConfigEditor.value
 }
 
-// Handler pour recevoir la configuration de mapping depuis l'éditeur
 const onMappingConfigFromEditor = (config: MappingConfig) => {
   mappingConfig.value = config || emptyMappingConfig
   emit('addNotification', 'success', `Configuration "${config.name}" appliquée avec succès`)
@@ -166,7 +157,6 @@ const onMappingConfigFromEditor = (config: MappingConfig) => {
 const onProjectsAssigned = () => {
   importStep.value = 3
 }
-
 const onMappingConfigured = async (payload: { jsonConfig: any, fileName: string, fileSize: number }) => {
 
   mappingConfig.value = payload.jsonConfig || emptyMappingConfig
@@ -188,7 +178,6 @@ const onMappingConfigured = async (payload: { jsonConfig: any, fileName: string,
   }
 
   try {
-    // Préparer les configurations F-Pack
     const fpackConfigurations = fpackList.value.map(fpack => ({
       selectedProjetGlobal: fpack.selectedProjetGlobal,
       selectedSousProjet: fpack.selectedSousProjet, 
@@ -196,7 +185,6 @@ const onMappingConfigured = async (payload: { jsonConfig: any, fileName: string,
       clientId: getClientIdFromProjet(fpack.selectedProjetGlobal)
     }))
 
-    // Vérifier que tous les F-Packs ont un client valide
     const invalidConfigs = fpackConfigurations.filter(config => !config.clientId)
     if (invalidConfigs.length > 0) {
       emit('addNotification', 'error', `${invalidConfigs.length} F-Pack(s) n'ont pas de client valide`)
@@ -205,7 +193,7 @@ const onMappingConfigured = async (payload: { jsonConfig: any, fileName: string,
 
     const requestData = {
       preview_data: previewData.value,
-      mapping_config: mappingConfig.value, // Configuration JSON complète
+      mapping_config: mappingConfig.value,
       fpack_configurations: fpackConfigurations
     }
   
@@ -240,14 +228,12 @@ const onMappingConfigured = async (payload: { jsonConfig: any, fileName: string,
   }
 }
 
-// Fonction utilitaire pour récupérer l'ID du client depuis un projet
 const getClientIdFromProjet = (projetGlobalId: number | null): number | null => {
   if (!projetGlobalId) return null
   const projet = props.projetsGlobaux.find(p => p.id === projetGlobalId)
   return projet?.client || null
 }
 
-// Handler pour mettre à jour un élément non matché
 const updateUnmatchedItem = (itemId: string, selectedMatch: any) => {
   const item = unmatchedItems.value.find(item => item.id === itemId)
   if (item) {
@@ -255,7 +241,6 @@ const updateUnmatchedItem = (itemId: string, selectedMatch: any) => {
   }
 }
 
-// Exécution de l'import avec la configuration finale
 const executeImport = async (finalMappingConfig: MappingConfig) => {
   const incompletePacksCount = fpackList.value.filter(f => 
     !f.selectedProjetGlobal || !f.selectedSousProjet || !f.selectedFPackTemplate
@@ -268,11 +253,9 @@ const executeImport = async (finalMappingConfig: MappingConfig) => {
 
   isImporting.value = true
   try {
-    // Préparer les correspondances manuelles
     const manualMatches = unmatchedItems.value
       .filter(item => item.selectedMatch)
       .map(item => {
-        // Extraire l'index de la ligne depuis l'ID
         const parts = item.id.split('_')
         return {
           row_index: parseInt(parts[0]),
@@ -281,7 +264,6 @@ const executeImport = async (finalMappingConfig: MappingConfig) => {
         }
       })
 
-    // Préparer les configurations F-Pack
     const fpackConfigurations = fpackList.value.map(fpack => ({
       selectedProjetGlobal: fpack.selectedProjetGlobal,
       selectedSousProjet: fpack.selectedSousProjet, 
@@ -289,7 +271,6 @@ const executeImport = async (finalMappingConfig: MappingConfig) => {
       clientId: getClientIdFromProjet(fpack.selectedProjetGlobal)
     }))
 
-    // Vérifier que tous les F-Packs ont un client valide
     const invalidConfigs = fpackConfigurations.filter(config => !config.clientId)
     if (invalidConfigs.length > 0) {
       emit('addNotification', 'error', `${invalidConfigs.length} F-Pack(s) n'ont pas de client valide`)
@@ -298,7 +279,7 @@ const executeImport = async (finalMappingConfig: MappingConfig) => {
 
     const requestData = {
       file_data: previewData.value,
-      mapping_config: finalMappingConfig, // Configuration finale avec les résolutions manuelles
+      mapping_config: finalMappingConfig, 
       fpack_configurations: fpackConfigurations,
       manual_matches: manualMatches
     }
@@ -370,14 +351,12 @@ const getAvailableSousProjets = (projetGlobalId: number | null) => {
 
 <template>
   <div class="import-section">
-    <!-- Configuration du mapping -->
     <div class="mapping-config-panel" v-show="showConfigEditor">
       <MappingConfigEditor 
         @mapping-configured="onMappingConfigFromEditor"
       />
     </div>
 
-    <!-- Barre d'outils -->
     <div class="toolbar">
       <button 
         class="btn btn-config"
@@ -389,7 +368,6 @@ const getAvailableSousProjets = (projetGlobalId: number | null) => {
       </button>
     </div>
 
-    <!-- Étapes d'import -->
     <div class="import-steps">
       <!-- Étape 1: Upload du fichier -->
       <FileUploadStep 
