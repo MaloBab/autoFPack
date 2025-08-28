@@ -20,17 +20,14 @@ def list_robot_compatibilites(db: Session = Depends(get_db)):
 @router.post("/robot-produit-compatibilites", response_model=schemas.RobotProduitCompatibiliteRead)
 def create_robot_compatibilite(compat: schemas.RobotProduitCompatibiliteCreate, db: Session = Depends(get_db)):
     """Crée une nouvelle compatibilité robot-produit"""
-    # Vérifier si le robot existe
     robot = db.query(models.Robots).filter(models.Robots.id == compat.robot_id).first()
     if not robot:
         raise HTTPException(status_code=404, detail="Robot non trouvé")
     
-    # Vérifier si le produit existe
     produit = db.query(models.Produit).filter(models.Produit.id == compat.produit_id).first()
     if not produit:
         raise HTTPException(status_code=404, detail="Produit non trouvé")
     
-    # Vérifier si la compatibilité existe déjà
     existing = db.query(models.RobotProduitCompatibilite).filter(
         models.RobotProduitCompatibilite.robot_id == compat.robot_id,
         models.RobotProduitCompatibilite.produit_id == compat.produit_id
@@ -39,7 +36,6 @@ def create_robot_compatibilite(compat: schemas.RobotProduitCompatibiliteCreate, 
     if existing:
         raise HTTPException(status_code=400, detail="Cette compatibilité existe déjà")
     
-    # Créer la compatibilité
     db_compat = models.RobotProduitCompatibilite(**compat.dict())
     db.add(db_compat)
     db.commit()
